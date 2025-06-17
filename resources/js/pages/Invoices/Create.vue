@@ -11,6 +11,7 @@ import { format } from 'date-fns';
 
 // Define props interface
 interface Props {
+    invoice_number: string;
     customers: Array<{
         id: string;
         name: string;
@@ -32,7 +33,7 @@ const statusOptions = [
 ];
 
 const form = useForm({
-    invoice_number: '',
+    invoice_number: props.invoice_number,
     invoice_date: format(new Date(), 'yyyy-MM-dd\'T\'HH:mm'),
     due_date: format(new Date(), 'yyyy-MM-dd\'T\'HH:mm'),
     status: 'paid',
@@ -53,7 +54,16 @@ const remainingAmount = computed(() => {
 });
 
 const handleSubmit = () => {
-    form.post(route('invoices.store'));
+    form.post(route('invoices.store'), {
+        onSuccess: () => {
+            // Reset form after successful submission
+            form.reset();
+        },
+        onError: (errors) => {
+            // Handle validation errors
+            console.error('Validation errors:', errors);
+        }
+    });
 };
 
 const getStatusColor = (status: string) => {
@@ -90,7 +100,13 @@ const getStatusColor = (status: string) => {
                         <CardContent class="space-y-6">
                             <div class="space-y-2">
                                 <Label for="invoice_number" class="text-sm font-medium">Invoice Number</Label>
-                                <Input id="invoice_number" v-model="form.invoice_number" required class="h-10" />
+                                <Input
+                                    id="invoice_number"
+                                    v-model="form.invoice_number"
+                                    required
+                                    class="h-10 bg-gray-50"
+                                    readonly
+                                />
                             </div>
 
                             <div class="grid grid-cols-2 gap-4">

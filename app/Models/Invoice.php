@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class Invoice extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuids;
 
     protected $fillable = [
         'invoice_number',
@@ -25,6 +26,7 @@ class Invoice extends Model
         'total_discount',
         'total_amount',
         'paid_amount',
+        'remaining_amount',
     ];
 
     protected $casts = [
@@ -36,6 +38,7 @@ class Invoice extends Model
         'total_discount' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'paid_amount' => 'decimal:2',
+        'remaining_amount' => 'decimal:2',
     ];
 
     public function vehicle(): BelongsTo
@@ -46,5 +49,20 @@ class Invoice extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($invoice) {
+            // Calculate remaining amount before saving
+            $invoice->remaining_amount = $invoice->total_amount - $invoice->paid_amount;
+        });
+
+        static::updating(function ($invoice) {
+            // Recalculate remaining amount when updating
+            $invoice->remaining_amount = $invoice->total_amount - $invoice->paid_amount;
+        });
     }
 }
