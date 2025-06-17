@@ -18,15 +18,24 @@ class DatabaseSeeder extends Seeder
             TeamsSeeder::class,
         ]);
 
+        // Create team roles and permissions for all teams
+        $this->call([
+            TeamRolesSeeder::class,
+        ]);
+
         // Get the created team
         $team = \App\Models\Team::where('name', 'Luxuria Cars LLC')->first();
 
         // Create user and assign to team
-        User::factory()->create([
+        $user = User::factory()->create([
             'name' => 'Luxuria Test',
             'email' => 'test@rentluxuria.com',
             'team_id' => $team->id,
         ]);
+
+        // Set team context and assign Admin role to the test user
+        setPermissionsTeamId($team->id);
+        $user->assignRole('Admin');
 
         // Create sample customers
         $this->call([

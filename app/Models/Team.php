@@ -55,4 +55,41 @@ class Team extends Model
     {
         return $this->hasMany(Customer::class);
     }
+
+    /**
+     * Set this team as the active team for permissions
+     */
+    public function setAsActiveTeam()
+    {
+        setPermissionsTeamId($this->id);
+        return $this;
+    }
+
+    /**
+     * Create a role for this team
+     */
+    public function createRole($name, $permissions = [])
+    {
+        // Temporarily set this team as active
+        $currentTeamId = getPermissionsTeamId();
+        setPermissionsTeamId($this->id);
+        
+        // Create role for this team
+        $role = \Spatie\Permission\Models\Role::create([
+            'name' => $name,
+            'team_id' => $this->id
+        ]);
+        
+        // Assign permissions if provided
+        if (!empty($permissions)) {
+            $role->givePermissionTo($permissions);
+        }
+        
+        // Restore previous team ID
+        if ($currentTeamId) {
+            setPermissionsTeamId($currentTeamId);
+        }
+        
+        return $role;
+    }
 } 
