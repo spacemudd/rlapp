@@ -13,11 +13,21 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        // Create teams first
+        $this->call([
+            TeamsSeeder::class,
         ]);
+
+        // Get the created team
+        $team = \App\Models\Team::where('name', 'Luxuria Cars LLC')->first();
+
+        // Create user and assign to team
+        User::factory()->create([
+            'name' => 'Luxuria Test',
+            'email' => 'test@rentluxuria.com',
+            'team_id' => $team->id,
+        ]);
+
+        // User::factory(10)->create();
     }
 }
