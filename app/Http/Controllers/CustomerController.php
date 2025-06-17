@@ -12,22 +12,47 @@ class CustomerController extends Controller
     /**
      * Display a listing of the customers.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $customers = Customer::with('team')
-            ->where('team_id', auth()->user()->team_id)
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $teamId = auth()->user()->team_id;
+        $search = $request->get('search', '');
+        
+        // Build the query for paginated customers
+        $query = Customer::with('team')
+            ->where('team_id', $teamId);
+        
+        // Apply search filters if search term is provided
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhere('drivers_license_number', 'like', "%{$search}%")
+                  ->orWhere('city', 'like', "%{$search}%")
+                  ->orWhere('address', 'like', "%{$search}%")
+                  ->orWhere('notes', 'like', "%{$search}%")
+                  ->orWhereRaw("CONCAT(first_name, ' ', last_name) like ?", ["%{$search}%"]);
+            });
+        }
+        
+        $customers = $query->orderBy('created_at', 'desc')->paginate(10);
+        
+        // Preserve search parameter in pagination links
+        $customers->appends(['search' => $search]);
 
+        // Get statistics (need to query all for accurate stats)
+        $allCustomers = Customer::where('team_id', $teamId)->get();
         $stats = [
-            'total' => $customers->count(),
-            'active' => $customers->where('status', 'active')->count(),
-            'new_this_month' => $customers->where('created_at', '>=', now()->startOfMonth())->count(),
+            'total' => $allCustomers->count(),
+            'active' => $allCustomers->where('status', 'active')->count(),
+            'new_this_month' => $allCustomers->where('created_at', '>=', now()->startOfMonth())->count(),
         ];
 
         return Inertia::render('Customers', [
             'customers' => $customers,
             'stats' => $stats,
+            'search' => $search,
         ]);
     }
 

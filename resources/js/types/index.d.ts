@@ -3,6 +3,12 @@ import type { Config } from 'ziggy-js';
 
 export interface Auth {
     user: User;
+    team?: Team;
+}
+
+export interface Team {
+    id: string;
+    name: string;
 }
 
 export interface BreadcrumbItem {
