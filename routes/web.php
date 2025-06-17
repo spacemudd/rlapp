@@ -50,5 +50,19 @@ Route::post('invoices', [InvoiceController::class, 'store'])
     ->middleware(['auth', 'verified'])
     ->name('invoices.store');
 
+// Team Management Routes
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('team', [App\Http\Controllers\TeamManagementController::class, 'index'])->name('team.index');
+    Route::patch('team/users/{user}/role', [App\Http\Controllers\TeamManagementController::class, 'updateUserRole'])->name('team.users.role');
+    Route::post('team/invitations', [App\Http\Controllers\TeamManagementController::class, 'sendInvitation'])->name('team.invitations.send');
+    Route::delete('team/invitations/{invitation}', [App\Http\Controllers\TeamManagementController::class, 'cancelInvitation'])->name('team.invitations.cancel');
+    Route::delete('team/users/{user}', [App\Http\Controllers\TeamManagementController::class, 'removeUser'])->name('team.users.remove');
+});
+
+// Invitation Routes (public)
+Route::get('invitation/{token}', [App\Http\Controllers\InvitationController::class, 'show'])->name('invitation.show');
+Route::post('invitation/{token}/accept', [App\Http\Controllers\InvitationController::class, 'accept'])->name('invitation.accept');
+Route::post('invitation/{token}/decline', [App\Http\Controllers\InvitationController::class, 'decline'])->name('invitation.decline');
+
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
