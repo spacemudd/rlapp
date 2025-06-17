@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,8 +29,23 @@ interface Customer {
     created_at: string;
 }
 
+interface PaginatedCustomers {
+    data: Customer[];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from: number;
+    to: number;
+    links: Array<{
+        url: string | null;
+        label: string;
+        active: boolean;
+    }>;
+}
+
 interface Props {
-    customers: Customer[];
+    customers: PaginatedCustomers;
     stats: {
         total: number;
         active: number;
@@ -80,7 +95,15 @@ const openEditDialog = (customer: Customer) => {
     form.reset();
     Object.keys(form.data()).forEach(key => {
         if (key in customer) {
-            (form as any)[key] = (customer as any)[key] || '';
+            let value = (customer as any)[key] || '';
+            
+            // Format date fields for HTML date inputs (YYYY-MM-DD)
+            if ((key === 'date_of_birth' || key === 'drivers_license_expiry') && value) {
+                // Extract just the date part (YYYY-MM-DD) from datetime strings
+                value = value.split('T')[0];
+            }
+            
+            (form as any)[key] = value;
         }
     });
     showAddDialog.value = true;
@@ -116,6 +139,29 @@ const formatDate = (dateString: string) => {
 
 const getFullName = (customer: Customer) => {
     return `${customer.first_name} ${customer.last_name}`;
+};
+
+const generatePageNumbers = () => {
+    const current = props.customers.current_page;
+    const last = props.customers.last_page;
+    const pages: number[] = [];
+    
+    // Simple approach: show all pages if 10 or fewer, otherwise show range around current
+    if (last <= 10) {
+        for (let i = 1; i <= last; i++) {
+            pages.push(i);
+        }
+    } else {
+        // Show current page +/- 2 pages
+        const start = Math.max(1, current - 2);
+        const end = Math.min(last, current + 2);
+        
+        for (let i = start; i <= end; i++) {
+            pages.push(i);
+        }
+    }
+    
+    return pages;
 };
 </script>
 
@@ -375,7 +421,7 @@ const getFullName = (customer: Customer) => {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div v-if="props.customers.length === 0" class="flex items-center justify-center py-12">
+                    <div v-if="props.customers.data.length === 0" class="flex items-center justify-center py-12">
                         <div class="text-center">
                             <Users class="mx-auto h-16 w-16 text-muted-foreground/50" />
                             <h3 class="mt-4 text-lg font-semibold">No customers yet</h3>
@@ -404,7 +450,7 @@ const getFullName = (customer: Customer) => {
                                 </thead>
                                 <tbody>
                                     <tr
-                                        v-for="customer in props.customers"
+                                        v-for="customer in props.customers.data"
                                         :key="customer.id"
                                         class="border-b transition-colors hover:bg-muted/50"
                                     >
@@ -467,6 +513,59 @@ const getFullName = (customer: Customer) => {
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        <div v-if="props.customers.last_page > 1" class="flex items-center justify-between mt-6">
+                            <p class="text-sm text-muted-foreground">
+                                Showing {{ props.customers.from ?? 0 }} to {{ props.customers.to ?? 0 }} of {{ props.customers.total }} results
+                            </p>
+                            
+                            <div class="flex items-center gap-2">
+                                <!-- Previous Button -->
+                                <template v-if="props.customers.current_page > 1">
+                                    <Link
+                                        :href="`/customers?page=${props.customers.current_page - 1}`"
+                                        class="px-3 py-2 text-sm border rounded-md transition-colors hover:bg-muted"
+                                    >
+                                        Previous
+                                    </Link>
+                                </template>
+                                <template v-else>
+                                    <span class="px-3 py-2 text-sm border rounded-md text-muted-foreground cursor-not-allowed bg-muted/50">
+                                        Previous
+                                    </span>
+                                </template>
+
+                                <!-- Page Numbers -->
+                                <template v-for="page in generatePageNumbers()" :key="`page-${page}`">
+                                    <Link
+                                        :href="`/customers?page=${page}`"
+                                        class="px-3 py-2 text-sm border rounded-md transition-colors"
+                                        :class="{
+                                            'bg-primary text-primary-foreground border-primary': page === props.customers.current_page,
+                                            'hover:bg-muted': page !== props.customers.current_page
+                                        }"
+                                    >
+                                        {{ page }}
+                                    </Link>
+                                </template>
+
+                                <!-- Next Button -->
+                                <template v-if="props.customers.current_page < props.customers.last_page">
+                                    <Link
+                                        :href="`/customers?page=${props.customers.current_page + 1}`"
+                                        class="px-3 py-2 text-sm border rounded-md transition-colors hover:bg-muted"
+                                    >
+                                        Next
+                                    </Link>
+                                </template>
+                                <template v-else>
+                                    <span class="px-3 py-2 text-sm border rounded-md text-muted-foreground cursor-not-allowed bg-muted/50">
+                                        Next
+                                    </span>
+                                </template>
+                            </div>
                         </div>
                     </div>
                 </CardContent>

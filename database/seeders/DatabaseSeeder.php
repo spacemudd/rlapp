@@ -28,6 +28,11 @@ class DatabaseSeeder extends Seeder
             'team_id' => $team->id,
         ]);
 
+        // Create sample customers
+        $this->call([
+            CustomersSeeder::class,
+        ]);
+
         // User::factory(10)->create();
     }
 }

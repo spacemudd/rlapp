@@ -14,15 +14,20 @@ class CustomerController extends Controller
      */
     public function index()
     {
+        $teamId = auth()->user()->team_id;
+        
+        // Get paginated customers
         $customers = Customer::with('team')
-            ->where('team_id', auth()->user()->team_id)
+            ->where('team_id', $teamId)
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->paginate(10);
 
+        // Get statistics (need to query all for accurate stats)
+        $allCustomers = Customer::where('team_id', $teamId)->get();
         $stats = [
-            'total' => $customers->count(),
-            'active' => $customers->where('status', 'active')->count(),
-            'new_this_month' => $customers->where('created_at', '>=', now()->startOfMonth())->count(),
+            'total' => $allCustomers->count(),
+            'active' => $allCustomers->where('status', 'active')->count(),
+            'new_this_month' => $allCustomers->where('created_at', '>=', now()->startOfMonth())->count(),
         ];
 
         return Inertia::render('Customers', [
