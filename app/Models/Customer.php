@@ -65,6 +65,14 @@ class Customer extends Model
     }
 
     /**
+     * Get the contracts for the customer.
+     */
+    public function contracts()
+    {
+        return $this->hasMany(Contract::class);
+    }
+
+    /**
      * Get the customer's full name.
      */
     public function getFullNameAttribute(): string

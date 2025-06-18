@@ -34,6 +34,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/vehicles/{vehicle}/enable', [App\Http\Controllers\VehicleController::class, 'enable'])->name('vehicles.enable');
 });
 
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::resource('contracts', App\Http\Controllers\ContractController::class);
+    Route::patch('/contracts/{contract}/activate', [App\Http\Controllers\ContractController::class, 'activate'])->name('contracts.activate');
+    Route::patch('/contracts/{contract}/complete', [App\Http\Controllers\ContractController::class, 'complete'])->name('contracts.complete');
+    Route::patch('/contracts/{contract}/void', [App\Http\Controllers\ContractController::class, 'void'])->name('contracts.void');
+    Route::post('/contracts/{contract}/create-invoice', [App\Http\Controllers\ContractController::class, 'createInvoice'])->name('contracts.create-invoice');
+    
+    // Search endpoints for async dropdowns
+    Route::get('/api/customers/search', [App\Http\Controllers\ContractController::class, 'searchCustomers'])->name('api.customers.search');
+    Route::get('/api/vehicles/search', [App\Http\Controllers\ContractController::class, 'searchVehicles'])->name('api.vehicles.search');
+});
+
 Route::resource('customers', App\Http\Controllers\CustomerController::class)
     ->except(['show', 'create', 'edit'])
     ->middleware(['auth', 'verified']);

@@ -117,4 +117,12 @@ class Vehicle extends Model
     {
         return $this->hasMany(\App\Models\Invoice::class);
     }
+
+    /**
+     * Get the contracts for this vehicle.
+     */
+    public function contracts()
+    {
+        return $this->hasMany(Contract::class);
+    }
 }

@@ -80,9 +80,49 @@ class CustomerController extends Controller
 
         $validated['team_id'] = auth()->user()->team_id;
 
-        Customer::create($validated);
+        $customer = Customer::create($validated);
 
-        return back()->with('success', 'Customer created successfully.');
+        $customerData = [
+            'id' => $customer->id,
+            'label' => $customer->first_name . ' ' . $customer->last_name . ' - ' . $customer->phone,
+            'value' => $customer->id,
+            'first_name' => $customer->first_name,
+            'last_name' => $customer->last_name,
+            'phone' => $customer->phone,
+        ];
+
+        // If this is an AJAX request (from contract creation), return JSON
+        if ($request->wantsJson() || $request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Customer created successfully.',
+                'customer' => $customerData
+            ]);
+        }
+
+        // Check if this request came from contracts/create page
+        $referer = $request->headers->get('referer');
+        if ($referer && str_contains($referer, '/contracts/create')) {
+            // Return to contracts/create with customer data in props
+            return redirect('/contracts/create')->with([
+                'success' => 'Customer created successfully.',
+                'newCustomer' => $customerData
+            ]);
+        }
+
+        // For JSON requests, return the customer data directly
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Customer created successfully.',
+                'customer' => $customerData
+            ]);
+        }
+
+        return back()->with([
+            'success' => 'Customer created successfully.',
+            'customer' => $customerData
+        ]);
     }
 
     /**
