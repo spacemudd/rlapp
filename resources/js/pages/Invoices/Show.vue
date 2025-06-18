@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AppSidebarLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Download, DollarSign } from 'lucide-vue-next';
+import { ArrowLeft, Download, DollarSign, Printer } from 'lucide-vue-next';
 import { Link } from '@inertiajs/vue3';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { format } from 'date-fns';
@@ -90,6 +90,10 @@ function downloadPdf() {
     window.open(`/invoices/${props.invoice.id}/pdf`, '_blank');
 }
 
+function printPaymentReceipt(paymentId: string) {
+    window.open(`/payments/${paymentId}/receipt`, '_blank');
+}
+
 const showPaymentModal = ref(false);
 const paymentForm = useForm({
     amount: '',
@@ -142,6 +146,10 @@ function getTransactionTypeLabel(type: string) {
                     <Button variant="outline" class="flex items-center gap-2" @click="downloadPdf">
                         <Download class="h-4 w-4" />
                         Download PDF
+                    </Button>
+                    <Button variant="outline" class="flex items-center gap-2" @click="printPaymentReceipt(payment.id)" v-for="payment in invoice.payments" :key="payment.id">
+                        <Printer class="h-4 w-4" />
+                        Print Receipt
                     </Button>
                     <Button class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white" @click="openPaymentModal">
                         <DollarSign class="h-4 w-4" />
@@ -272,34 +280,24 @@ function getTransactionTypeLabel(type: string) {
                                     <th class="py-2 text-left">Reference</th>
                                     <th class="py-2 text-right">Amount</th>
                                     <th class="py-2 text-center">Status</th>
-                                    <th class="py-2 text-left">Notes</th>
                                     <th class="py-2 text-left">Type</th>
+                                    <th class="py-2 text-left">Notes</th>
+                                    <th class="py-2 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="payment in invoice.payments" :key="payment.id" class="border-b hover:bg-gray-50">
-                                    <td class="py-2">{{ formatDate(payment.payment_date) }}</td>
-                                    <td class="py-2">{{ payment.payment_method }}</td>
-                                    <td class="py-2">{{ payment.reference_number || '-' }}</td>
-                                    <td class="py-2 text-right">{{ formatCurrency(payment.amount) }}</td>
-                                    <td class="py-2 text-center">
-                                        <span :class="{
-                                            'text-green-600 font-semibold': payment.status === 'completed',
-                                            'text-yellow-600 font-semibold': payment.status === 'pending',
-                                            'text-red-600 font-semibold': payment.status === 'failed',
-                                        }">
-                                            {{ payment.status.charAt(0).toUpperCase() + payment.status.slice(1) }}
-                                        </span>
-                                    </td>
-                                    <td class="py-2">{{ payment.notes || '-' }}</td>
-                                    <td class="py-2">
-                                        <span :class="{
-                                            'text-blue-600 font-semibold': payment.transaction_type === 'deposit',
-                                            'text-green-600 font-semibold': payment.transaction_type === 'payment',
-                                            'text-orange-600 font-semibold': payment.transaction_type === 'refund',
-                                        }">
-                                            {{ getTransactionTypeLabel(payment.transaction_type) }}
-                                        </span>
+                                <tr v-for="payment in invoice.payments" :key="payment.id" class="border-b">
+                                    <td class="py-3 px-4">{{ formatDate(payment.payment_date) }}</td>
+                                    <td class="py-3 px-4">{{ payment.payment_method }}</td>
+                                    <td class="py-3 px-4">{{ payment.reference_number || '-' }}</td>
+                                    <td class="py-3 px-4">{{ formatCurrency(payment.amount) }}</td>
+                                    <td class="py-3 px-4">{{ payment.status }}</td>
+                                    <td class="py-3 px-4">{{ getTransactionTypeLabel(payment.transaction_type) }}</td>
+                                    <td class="py-3 px-4">{{ payment.notes || '-' }}</td>
+                                    <td class="py-3 px-4">
+                                        <Button variant="ghost" size="icon" @click="printPaymentReceipt(payment.id)">
+                                            <Printer class="h-4 w-4" />
+                                        </Button>
                                     </td>
                                 </tr>
                             </tbody>
