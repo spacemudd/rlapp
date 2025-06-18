@@ -9,7 +9,7 @@ use Carbon\Carbon;
 class VehicleSampleSeeder extends Seeder
 {
     /**
-     * Run the database seeds.
+     * Run the database seedsssssss.
      */
     public function run(): void
     {

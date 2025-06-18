@@ -42,11 +42,13 @@ class InvoiceController extends Controller
                         'first_name' => $invoice->customer->first_name,
                         'last_name' => $invoice->customer->last_name,
                     ],
-                    'vehicle' => [
-                        'make' => $invoice->vehicle->make,
-                        'model' => $invoice->vehicle->model,
-                        'plate_number' => $invoice->vehicle->plate_number,
-                    ],
+                    'vehicle' => $invoice->vehicle
+                        ? [
+                            'make' => $invoice->vehicle->make,
+                            'model' => $invoice->vehicle->model,
+                            'plate_number' => $invoice->vehicle->plate_number,
+                        ]
+                        : null,
                 ];
             });
 
@@ -57,28 +59,52 @@ class InvoiceController extends Controller
 
     public function create()
     {
+        $lastInvoice = Invoice::orderBy('created_at', 'desc')->first();
+        $nextNumber = 10001; // Start from 10001
+
+        if ($lastInvoice && preg_match('/INV-(\d+)/', $lastInvoice->invoice_number, $matches)) {
+            $nextNumber = intval($matches[1]) + 1;
+        }
+
+        $nextInvoiceNumber = 'INV-' . $nextNumber;
+
+        $customers = Customer::select([
+            'id',
+            'first_name',
+            'last_name',
+            'email',
+            'phone',
+            'drivers_license_number',
+            'address',
+            'city',
+            'country'
+        ])->get()->map(function ($customer) {
+            return [
+                'id' => $customer->id,
+                'name' => $customer->first_name . ' ' . $customer->last_name,
+                'email' => $customer->email,
+                'phone' => $customer->phone,
+                'drivers_license_number' => $customer->drivers_license_number,
+                'address' => $customer->address,
+                'city' => $customer->city,
+                'country' => $customer->country,
+            ];
+        });
+
+        $vehicles = Vehicle::select(['id', 'plate_number', 'make', 'model', 'year'])
+            ->where('status', 'available')
+            ->get()
+            ->map(function ($vehicle) {
+                return [
+                    'id' => $vehicle->id,
+                    'name' => "{$vehicle->year} {$vehicle->make} {$vehicle->model} - {$vehicle->plate_number}"
+                ];
+            });
+
         return Inertia::render('Invoices/Create', [
-            'invoice_number' => $this->generateInvoiceNumber(),
-            'customers' => \App\Models\Customer::select('id', 'first_name', 'last_name', 'email')
-                ->where('team_id', request()->user()->team_id)
-                ->where('status', 'active')
-                ->get()
-                ->map(function ($customer) {
-                    return [
-                        'id' => $customer->id,
-                        'name' => $customer->first_name . ' ' . $customer->last_name,
-                        'email' => $customer->email
-                    ];
-                }),
-            'vehicles' => \App\Models\Vehicle::select('id', 'plate_number', 'make', 'model', 'year')
-                ->where('status', 'available')
-                ->get()
-                ->map(function ($vehicle) {
-                    return [
-                        'id' => $vehicle->id,
-                        'name' => "{$vehicle->year} {$vehicle->make} {$vehicle->model} - {$vehicle->plate_number}"
-                    ];
-                })
+            'customers' => $customers,
+            'vehicles' => $vehicles,
+            'nextInvoiceNumber' => $nextInvoiceNumber,
         ]);
     }
 
@@ -88,7 +114,7 @@ class InvoiceController extends Controller
             $validated = $request->validate([
                 'invoice_date' => 'required|date',
                 'due_date' => 'required|date',
-                'status' => 'required|in:paid,fully_paid,partial_paid',
+                'status' => 'required|in:paid,fully_paid,partial_paid,unpaid',
                 'currency' => 'required|string',
                 'total_days' => 'required|integer|min:1',
                 'start_datetime' => 'required|date',
@@ -156,65 +182,6 @@ class InvoiceController extends Controller
             \Log::error('Invoice creation failed: ' . $e->getMessage());
             return back()->with('error', 'Failed to create invoice: ' . $e->getMessage())->withInput();
         }
-    }
-
-    public function create()
-    {
-        $lastInvoice = Invoice::orderBy('created_at', 'desc')->first();
-        $nextNumber = 10001; // Start from 10001
-
-        if ($lastInvoice && preg_match('/INV-(\d+)/', $lastInvoice->invoice_number, $matches)) {
-            $nextNumber = intval($matches[1]) + 1;
-        }
-
-        $nextInvoiceNumber = 'INV-' . $nextNumber;
-
-        $customers = Customer::select([
-            'id',
-            'first_name',
-            'last_name',
-            'email',
-            'phone',
-            'drivers_license_number',
-            'address',
-            'city',
-            'country'
-        ])->get()->map(function ($customer) {
-            return [
-                'id' => $customer->id,
-                'name' => $customer->first_name . ' ' . $customer->last_name,
-                'email' => $customer->email,
-                'phone' => $customer->phone,
-                'drivers_license_number' => $customer->drivers_license_number,
-                'address' => $customer->address,
-                'city' => $customer->city,
-                'country' => $customer->country,
-            ];
-        });
-
-        $vehicles = Vehicle::select(['id', 'plate_number', 'make', 'model', 'year'])
-            ->where('status', 'available')
-            ->get()
-            ->map(function ($vehicle) {
-                return [
-                    'id' => $vehicle->id,
-                    'name' => "{$vehicle->year} {$vehicle->make} {$vehicle->model} - {$vehicle->plate_number}"
-                ];
-            });
-
-        return Inertia::render('Invoices/Create', [
-            'customers' => $customers,
-            'vehicles' => $vehicles,
-            'nextInvoiceNumber' => $nextInvoiceNumber,
-        ]);
-    }
-
-    public function index()
-    {
-        $invoices = Invoice::with('customer')->orderBy('created_at', 'desc')->get();
-        return Inertia::render('Invoices/Index', [
-            'invoices' => $invoices,
-        ]);
     }
 
     public function downloadPdf($id)
