@@ -49,7 +49,13 @@ interface Contract {
     notes?: string;
     created_by: string;
     created_at: string;
-    invoice_id?: string;
+    invoices?: Array<{
+        id: string;
+        invoice_number: string;
+        status: string;
+        total_amount: number;
+        invoice_date: string;
+    }>;
     void_reason?: string;
 }
 
@@ -98,12 +104,26 @@ const submitVoid = () => {
 const getStatusColor = (status: string) => {
     switch (status) {
         case 'draft':
-            return 'bg-gray-100 text-gray-800 border-gray-200';
+            return 'bg-yellow-100 text-yellow-800 border-yellow-200';
         case 'active':
             return 'bg-blue-100 text-blue-800 border-blue-200';
         case 'completed':
             return 'bg-green-100 text-green-800 border-green-200';
         case 'void':
+            return 'bg-red-100 text-red-800 border-red-200';
+        default:
+            return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+};
+
+const getInvoiceStatusColor = (status: string) => {
+    switch (status) {
+        case 'paid':
+        case 'fully_paid':
+            return 'bg-green-100 text-green-800 border-green-200';
+        case 'partial_paid':
+            return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        case 'unpaid':
             return 'bg-red-100 text-red-800 border-red-200';
         default:
             return 'bg-gray-100 text-gray-800 border-gray-200';
@@ -144,14 +164,19 @@ const formatDateTime = (date: string) => {
         <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
             <div class="space-y-6">
                 <!-- Header -->
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-4">
+                <div class="space-y-4">
+                    <!-- Back Button -->
+                    <div>
                         <Link :href="route('contracts.index')">
                             <Button variant="ghost" size="sm">
                                 <ArrowLeft class="w-4 h-4 mr-2" />
                                 Back to Contracts
                             </Button>
                         </Link>
+                    </div>
+                    
+                    <!-- Contract Info and Actions -->
+                    <div class="flex items-center justify-between">
                         <div>
                             <h1 class="text-2xl font-semibold text-gray-900">{{ contract.contract_number }}</h1>
                             <div class="flex items-center gap-3 mt-1">
@@ -161,83 +186,98 @@ const formatDateTime = (date: string) => {
                                 <span class="text-gray-500 text-sm">Created by {{ contract.created_by }}</span>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="flex items-center gap-2">
-                        <Link v-if="contract.status === 'draft'" :href="route('contracts.edit', contract.id)">
-                            <Button variant="outline">
-                                <Edit class="w-4 h-4 mr-2" />
-                                Edit Contract
-                            </Button>
-                        </Link>
-                        <Link v-if="contract.invoice_id" :href="route('invoices.show', contract.invoice_id)">
-                            <Button variant="outline">
-                                <Receipt class="w-4 h-4 mr-2" />
-                                View Invoice
-                            </Button>
-                        </Link>
                         
-                        <!-- Actions Dropdown -->
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm">
-                                    <MoreVertical class="w-4 h-4" />
+                        <div class="flex items-center gap-2">
+                            <Link v-if="contract.status === 'draft'" :href="route('contracts.edit', contract.id)">
+                                <Button variant="outline">
+                                    <Edit class="w-4 h-4 mr-2" />
+                                    Edit Contract
                                 </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" class="w-48">
-                                <!-- Activate Contract -->
-                                <DropdownMenuItem 
-                                    v-if="contract.status === 'draft'"
-                                    @click="activateContract"
-                                    class="cursor-pointer"
-                                >
-                                    <Play class="w-4 h-4 mr-2" />
-                                    Activate Contract
-                                </DropdownMenuItem>
-                                
-                                <!-- Complete Contract -->
-                                <DropdownMenuItem 
-                                    v-if="contract.status === 'active'"
-                                    @click="completeContract"
-                                    class="cursor-pointer"
-                                >
-                                    <CheckCircle class="w-4 h-4 mr-2" />
-                                    Complete Contract
-                                </DropdownMenuItem>
-                                
-                                <!-- Create Invoice -->
-                                <DropdownMenuItem 
-                                    v-if="!contract.invoice_id && contract.status !== 'void'"
-                                    @click="createInvoice"
-                                    class="cursor-pointer"
-                                >
-                                    <Receipt class="w-4 h-4 mr-2" />
-                                    Create Invoice
-                                </DropdownMenuItem>
-                                
-                                <DropdownMenuSeparator v-if="contract.status !== 'completed' && contract.status !== 'void'" />
-                                
-                                <!-- Void Contract -->
-                                <DropdownMenuItem 
-                                    v-if="contract.status !== 'completed' && contract.status !== 'void'"
-                                    @click="showVoidDialog = true"
-                                    class="cursor-pointer text-red-600 focus:text-red-600"
-                                >
-                                    <XCircle class="w-4 h-4 mr-2" />
-                                    Void Contract
-                                </DropdownMenuItem>
-                                
-                                <!-- Delete Contract -->
-                                <DropdownMenuItem 
-                                    v-if="contract.status === 'draft'"
-                                    @click="deleteContract"
-                                    class="cursor-pointer text-red-600 focus:text-red-600"
-                                >
-                                    <Trash2 class="w-4 h-4 mr-2" />
-                                    Delete Contract
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                            </Link>
+                            <DropdownMenu v-if="contract.invoices && contract.invoices.length > 0">
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline">
+                                        <Receipt class="w-4 h-4 mr-2" />
+                                        View Invoices ({{ contract.invoices.length }})
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" class="w-64">
+                                    <DropdownMenuItem 
+                                        v-for="invoice in contract.invoices" 
+                                        :key="invoice.id"
+                                        class="cursor-pointer"
+                                        @click="$inertia.visit(route('invoices.show', invoice.id))"
+                                    >
+                                        <div class="flex flex-col">
+                                            <span class="font-medium">{{ invoice.invoice_number }}</span>
+                                            <span class="text-sm text-gray-500">{{ formatCurrency(invoice.total_amount) }} - {{ invoice.status }}</span>
+                                        </div>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            
+                            <!-- Actions Dropdown -->
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" size="sm">
+                                        <MoreVertical class="w-4 h-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" class="w-48">
+                                    <!-- Activate Contract -->
+                                    <DropdownMenuItem 
+                                        v-if="contract.status === 'draft'"
+                                        @click="activateContract"
+                                        class="cursor-pointer"
+                                    >
+                                        <Play class="w-4 h-4 mr-2" />
+                                        Activate Contract
+                                    </DropdownMenuItem>
+                                    
+                                    <!-- Complete Contract -->
+                                    <DropdownMenuItem 
+                                        v-if="contract.status === 'active'"
+                                        @click="completeContract"
+                                        class="cursor-pointer"
+                                    >
+                                        <CheckCircle class="w-4 h-4 mr-2" />
+                                        Complete Contract
+                                    </DropdownMenuItem>
+                                    
+                                    <!-- Create Invoice -->
+                                    <DropdownMenuItem 
+                                        v-if="contract.status !== 'void'"
+                                        @click="createInvoice"
+                                        class="cursor-pointer"
+                                    >
+                                        <Receipt class="w-4 h-4 mr-2" />
+                                        Create Invoice
+                                    </DropdownMenuItem>
+                                    
+                                    <DropdownMenuSeparator v-if="contract.status !== 'completed' && contract.status !== 'void'" />
+                                    
+                                    <!-- Void Contract -->
+                                    <DropdownMenuItem 
+                                        v-if="contract.status !== 'completed' && contract.status !== 'void'"
+                                        @click="showVoidDialog = true"
+                                        class="cursor-pointer text-red-600 focus:text-red-600"
+                                    >
+                                        <XCircle class="w-4 h-4 mr-2" />
+                                        Void Contract
+                                    </DropdownMenuItem>
+                                    
+                                    <!-- Delete Contract -->
+                                    <DropdownMenuItem 
+                                        v-if="contract.status === 'draft'"
+                                        @click="deleteContract"
+                                        class="cursor-pointer text-red-600 focus:text-red-600"
+                                    >
+                                        <Trash2 class="w-4 h-4 mr-2" />
+                                        Delete Contract
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
                     </div>
                 </div>
 
@@ -405,6 +445,40 @@ const formatDateTime = (date: string) => {
                         </CardContent>
                     </Card>
                 </div>
+
+                <!-- Associated Invoices -->
+                <Card v-if="contract.invoices && contract.invoices.length > 0">
+                    <CardHeader>
+                        <CardTitle class="flex items-center gap-2">
+                            <Receipt class="w-5 h-5" />
+                            Associated Invoices ({{ contract.invoices.length }})
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="space-y-3">
+                            <div 
+                                v-for="invoice in contract.invoices" 
+                                :key="invoice.id"
+                                class="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                                @click="$inertia.visit(route('invoices.show', invoice.id))"
+                            >
+                                <div class="flex items-center gap-3">
+                                    <Receipt class="w-4 h-4 text-gray-500" />
+                                    <div>
+                                        <p class="font-medium">{{ invoice.invoice_number }}</p>
+                                        <p class="text-sm text-gray-500">{{ formatDate(invoice.invoice_date) }}</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="font-medium">{{ formatCurrency(invoice.total_amount) }}</p>
+                                    <Badge :class="getInvoiceStatusColor(invoice.status)" class="text-xs">
+                                        {{ invoice.status.replace('_', ' ').toUpperCase() }}
+                                    </Badge>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 <!-- Void Reason (if applicable) -->
                 <Card v-if="contract.status === 'void' && contract.void_reason">

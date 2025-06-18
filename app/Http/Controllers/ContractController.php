@@ -18,7 +18,7 @@ class ContractController extends Controller
      */
     public function index(Request $request): Response
     {
-        $query = Contract::with(['customer', 'vehicle', 'invoice'])
+        $query = Contract::with(['customer', 'vehicle', 'invoices'])
             ->where('team_id', auth()->user()->team_id);
 
         // Search functionality
@@ -81,7 +81,7 @@ class ContractController extends Controller
     public function searchCustomers(Request $request)
     {
         $query = $request->get('query', '');
-        
+
         $customers = Customer::where('team_id', auth()->user()->team_id)
             ->where('status', 'active')
             ->where(function ($q) use ($query) {
@@ -113,7 +113,7 @@ class ContractController extends Controller
     public function searchVehicles(Request $request)
     {
         $query = $request->get('query', '');
-        
+
         $vehicles = Vehicle::where('status', 'available')
             ->where(function ($q) use ($query) {
                 $q->where('make', 'like', "%{$query}%")
@@ -195,7 +195,7 @@ class ContractController extends Controller
      */
     public function show(Contract $contract): Response
     {
-        $contract->load(['customer', 'vehicle', 'invoice']);
+        $contract->load(['customer', 'vehicle', 'invoices']);
 
         return Inertia::render('Contracts/Show', [
             'contract' => $contract,
@@ -344,11 +344,6 @@ class ContractController extends Controller
      */
     public function createInvoice(Contract $contract): RedirectResponse
     {
-        if ($contract->invoice_id) {
-            return redirect()->route('contracts.show', $contract)
-                ->with('error', 'Contract already has an associated invoice.');
-        }
-
         if ($contract->status === 'void') {
             return redirect()->route('contracts.show', $contract)
                 ->with('error', 'Cannot create invoice for voided contract.');
@@ -359,6 +354,7 @@ class ContractController extends Controller
             'invoice_number' => Invoice::generateInvoiceNumber(),
             'customer_id' => $contract->customer_id,
             'vehicle_id' => $contract->vehicle_id,
+            'contract_id' => $contract->id,
             'invoice_date' => now(),
             'due_date' => now()->addDays(30),
             'status' => 'unpaid',
@@ -369,8 +365,7 @@ class ContractController extends Controller
             'sub_total' => $contract->total_amount,
             'total_discount' => 0,
             'total_amount' => $contract->total_amount,
-            'paid_amount' => 0,
-            'remaining_amount' => $contract->total_amount,
+            'team_id' => $contract->team_id,
         ]);
 
         // Create invoice items
@@ -392,12 +387,8 @@ class ContractController extends Controller
             $invoice->update([
                 'sub_total' => $contract->total_amount + $contract->deposit_amount,
                 'total_amount' => $contract->total_amount + $contract->deposit_amount,
-                'remaining_amount' => $contract->total_amount + $contract->deposit_amount,
             ]);
         }
-
-        // Link invoice to contract
-        $contract->update(['invoice_id' => $invoice->id]);
 
         return redirect()->route('invoices.show', $invoice)
             ->with('success', 'Invoice created successfully for the contract.');

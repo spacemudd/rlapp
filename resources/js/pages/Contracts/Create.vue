@@ -139,6 +139,20 @@ const formatCurrency = (amount: number, currency: string = 'AED') => {
     }).format(amount);
 };
 
+// Duration button functions
+const setDuration = (days: number) => {
+    if (!form.start_date) {
+        // If no start date, set it to today
+        form.start_date = new Date().toISOString().split('T')[0];
+    }
+    
+    const startDate = new Date(form.start_date);
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + days - 1); // Subtract 1 because we include both start and end days
+    
+    form.end_date = endDate.toISOString().split('T')[0];
+};
+
 const submit = () => {
     form.post(route('contracts.store'));
 };
@@ -166,14 +180,14 @@ watch(() => props.newCustomer, (customer) => {
         <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
             <div class="space-y-6">
             <!-- Header -->
-            <div class="flex items-center gap-4">
+            <div class="flex items-center justify-between">
                 <Link :href="route('contracts.index')">
                     <Button variant="ghost" size="sm">
                         <ArrowLeft class="w-4 h-4 mr-2" />
                         Back to Contracts
                     </Button>
                 </Link>
-                <div>
+                <div class="text-right">
                     <h1 class="text-2xl font-semibold text-gray-900">Create New Contract</h1>
                     <p class="text-gray-600 mt-1">Contract Number: {{ contractNumber }}</p>
                 </div>
@@ -464,6 +478,76 @@ watch(() => props.newCustomer, (customer) => {
                                 <div v-if="form.errors.end_date" class="text-sm text-red-600">
                                     {{ form.errors.end_date }}
                                 </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Quick Duration Buttons -->
+                        <div class="space-y-3">
+                            <p class="text-sm font-medium text-gray-700">Quick duration:</p>
+                            <div class="flex flex-wrap gap-2">
+                                <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    size="sm"
+                                    @click="setDuration(1)"
+                                    class="text-xs px-3 py-1"
+                                >
+                                    1 day
+                                </Button>
+                                <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    size="sm"
+                                    @click="setDuration(2)"
+                                    class="text-xs px-3 py-1"
+                                >
+                                    2 days
+                                </Button>
+                                <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    size="sm"
+                                    @click="setDuration(3)"
+                                    class="text-xs px-3 py-1"
+                                >
+                                    3 days
+                                </Button>
+                                <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    size="sm"
+                                    @click="setDuration(4)"
+                                    class="text-xs px-3 py-1"
+                                >
+                                    4 days
+                                </Button>
+                                <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    size="sm"
+                                    @click="setDuration(5)"
+                                    class="text-xs px-3 py-1"
+                                >
+                                    5 days
+                                </Button>
+                                <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    size="sm"
+                                    @click="setDuration(6)"
+                                    class="text-xs px-3 py-1"
+                                >
+                                    6 days
+                                </Button>
+                                <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    size="sm"
+                                    @click="setDuration(7)"
+                                    class="text-xs px-3 py-1"
+                                >
+                                    1 week
+                                </Button>
                             </div>
                         </div>
 

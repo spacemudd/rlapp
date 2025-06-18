@@ -22,7 +22,6 @@ class Contract extends Model
         'customer_id',
         'vehicle_id',
         'team_id',
-        'invoice_id',
         'start_date',
         'end_date',
         'signed_at',
@@ -88,11 +87,11 @@ class Contract extends Model
     }
 
     /**
-     * Get the invoice associated with the contract.
+     * Get the invoices associated with the contract.
      */
-    public function invoice()
+    public function invoices()
     {
-        return $this->belongsTo(Invoice::class);
+        return $this->hasMany(Invoice::class);
     }
 
     /**

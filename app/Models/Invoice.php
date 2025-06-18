@@ -28,6 +28,7 @@ class Invoice extends Model
         'end_datetime',
         'vehicle_id',
         'customer_id',
+        'contract_id',
         'team_id',
         'sub_total',
         'subtotal',
@@ -94,6 +95,11 @@ class Invoice extends Model
     public function team()
     {
         return $this->belongsTo(Team::class);
+    }
+
+    public function contract()
+    {
+        return $this->belongsTo(Contract::class);
     }
 
     /**
