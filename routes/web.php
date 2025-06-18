@@ -29,8 +29,7 @@ Route::resource('customers', App\Http\Controllers\CustomerController::class)
     ->except(['show', 'create', 'edit'])
     ->middleware(['auth', 'verified']);
 
-<<<<<<< HEAD
-=======
+
 Route::get('invoices', function () {
     return Inertia::render('Invoices/Index');
 })->middleware(['auth', 'verified'])->name('invoices');
@@ -78,6 +77,6 @@ Route::get('invitation/{token}', [App\Http\Controllers\InvitationController::cla
 Route::post('invitation/{token}/accept', [App\Http\Controllers\InvitationController::class, 'accept'])->name('invitation.accept');
 Route::post('invitation/{token}/decline', [App\Http\Controllers\InvitationController::class, 'decline'])->name('invitation.decline');
 
->>>>>>> origin/develop
+
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
