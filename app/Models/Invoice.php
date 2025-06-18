@@ -68,11 +68,18 @@ class Invoice extends Model
 
     public function getPaidAmountAttribute()
     {
-        return $this->payments()->sum('amount');
+        return $this->payments()->where('transaction_type', 'payment')->sum('amount');
     }
 
     public function getRemainingAmountAttribute()
     {
         return $this->total_amount - $this->paid_amount;
+    }
+
+    public function getDepositBalanceAttribute()
+    {
+        $deposit = $this->payments()->where('transaction_type', 'deposit')->sum('amount');
+        $refund = $this->payments()->where('transaction_type', 'refund')->sum('amount');
+        return $deposit - $refund;
     }
 }
