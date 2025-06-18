@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AppSidebarLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Download, Printer, DollarSign } from 'lucide-vue-next';
+import { ArrowLeft, Download, DollarSign } from 'lucide-vue-next';
 import { Link } from '@inertiajs/vue3';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { format } from 'date-fns';
@@ -142,10 +142,6 @@ function getTransactionTypeLabel(type: string) {
                     <Button variant="outline" class="flex items-center gap-2" @click="downloadPdf">
                         <Download class="h-4 w-4" />
                         Download PDF
-                    </Button>
-                    <Button variant="outline" class="flex items-center gap-2" @click="window.print()">
-                        <Printer class="h-4 w-4" />
-                        Print
                     </Button>
                     <Button class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white" @click="openPaymentModal">
                         <DollarSign class="h-4 w-4" />

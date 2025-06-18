@@ -39,8 +39,7 @@ class InvoiceController extends Controller
                     'paid_amount' => (float) $invoice->paid_amount,
                     'remaining_amount' => (float) $invoice->remaining_amount,
                     'customer' => [
-                        'first_name' => $invoice->customer->first_name,
-                        'last_name' => $invoice->customer->last_name,
+                        'name' => $invoice->customer->first_name . ' ' . $invoice->customer->last_name,
                     ],
                     'vehicle' => $invoice->vehicle
                         ? [

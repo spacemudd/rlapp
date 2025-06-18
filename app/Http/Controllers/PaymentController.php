@@ -35,6 +35,17 @@ class PaymentController extends Controller
             'transaction_type' => $validated['transaction_type'],
         ]);
 
+        // تحديث حالة الفاتورة تلقائيًا بناءً على المدفوعات
+        $invoice->refresh();
+        if ($invoice->remaining_amount <= 0) {
+            $invoice->status = 'paid';
+        } elseif ($invoice->paid_amount > 0) {
+            $invoice->status = 'partial_paid';
+        } else {
+            $invoice->status = 'unpaid';
+        }
+        $invoice->save();
+
         return back()->with('success', 'Payment added successfully.');
     }
 }
