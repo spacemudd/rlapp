@@ -151,7 +151,6 @@ class InvoiceController extends Controller
         });
 
         $vehicles = Vehicle::select(['id', 'plate_number', 'make', 'model', 'year'])
-            ->where('status', 'available')
             ->get()
             ->map(function ($vehicle) {
                 return [
