@@ -11,7 +11,6 @@ import { format, differenceInDays, parseISO } from 'date-fns';
 
 // Define props interface
 interface Props {
-    invoice_number: string;
     customers: Array<{
         id: string;
         name: string;
@@ -27,6 +26,14 @@ interface Props {
         name: string;
     }>;
     nextInvoiceNumber: string;
+}
+
+// Define invoice item interface
+interface InvoiceItem {
+    description: string;
+    amount: number;
+    discount: number;
+    isVehicle?: boolean;
 }
 
 // Define props
@@ -62,7 +69,7 @@ const selectedCustomer = computed(() => {
 });
 
 const invoiceAmount = computed(() => {
-    return form.items.reduce((sum, item) => sum + (Number(item.amount || 0) - Number(item.discount || 0)), 0);
+    return (form.items as InvoiceItem[]).reduce((sum: number, item: InvoiceItem) => sum + (Number(item.amount || 0) - Number(item.discount || 0)), 0);
 });
 
 const remainingAmount = computed(() => {
@@ -73,8 +80,9 @@ const remainingAmount = computed(() => {
 watch(
     () => form.items,
     (items) => {
-        form.sub_total = items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-        form.total_discount = items.reduce((sum, item) => sum + (Number(item.discount) || 0), 0);
+        const itemsArray = items as InvoiceItem[];
+        form.sub_total = itemsArray.reduce((sum: number, item: InvoiceItem) => sum + (Number(item.amount) || 0), 0);
+        form.total_discount = itemsArray.reduce((sum: number, item: InvoiceItem) => sum + (Number(item.discount) || 0), 0);
         form.total_amount = form.sub_total - form.total_discount;
     },
     { deep: true }
@@ -112,33 +120,35 @@ watch(
 watch(
     () => form.vehicle_id,
     (newVal) => {
+        const itemsArray = form.items as InvoiceItem[];
         if (newVal) {
             const vehicle = props.vehicles.find(v => v.id === newVal);
             if (vehicle) {
-                const vehicleIndex = form.items.findIndex(item => item.isVehicle);
+                const vehicleIndex = itemsArray.findIndex((item: InvoiceItem) => item.isVehicle);
                 if (vehicleIndex !== -1) {
-                    form.items[vehicleIndex].description = vehicle.name;
+                    itemsArray[vehicleIndex].description = vehicle.name;
                 } else {
-                    form.items.unshift({ description: vehicle.name, amount: 0, discount: 0, isVehicle: true });
+                    itemsArray.unshift({ description: vehicle.name, amount: 0, discount: 0, isVehicle: true });
                 }
             }
         } else {
-            const vehicleIndex = form.items.findIndex(item => item.isVehicle);
+            const vehicleIndex = itemsArray.findIndex((item: InvoiceItem) => item.isVehicle);
             if (vehicleIndex !== -1) {
-                form.items.splice(vehicleIndex, 1);
+                itemsArray.splice(vehicleIndex, 1);
             }
         }
     }
 );
 
 const handleSubmit = () => {
+    const itemsArray = form.items as InvoiceItem[];
     // Calculate totals one last time before submission
-    form.sub_total = form.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-    form.total_discount = form.items.reduce((sum, item) => sum + (Number(item.discount) || 0), 0);
+    form.sub_total = itemsArray.reduce((sum: number, item: InvoiceItem) => sum + (Number(item.amount) || 0), 0);
+    form.total_discount = itemsArray.reduce((sum: number, item: InvoiceItem) => sum + (Number(item.discount) || 0), 0);
     form.total_amount = form.sub_total - form.total_discount;
 
     // Ensure all items have required fields
-    form.items = form.items.map(item => ({
+    form.items = itemsArray.map((item: InvoiceItem) => ({
         description: item.description || '',
         amount: Number(item.amount) || 0,
         discount: Number(item.discount) || 0
@@ -165,13 +175,15 @@ const accounts = ref([
 ]);
 
 function addItem() {
-    form.items.push({ description: '', amount: 0, discount: 0 });
+    const itemsArray = form.items as InvoiceItem[];
+    itemsArray.push({ description: '', amount: 0, discount: 0 });
 }
 
-function removeItem(idx) {
+function removeItem(idx: number) {
+    const itemsArray = form.items as InvoiceItem[];
     // Prevent removing the vehicle line
-    if (form.items[idx] && form.items[idx].isVehicle) return;
-    form.items.splice(idx, 1);
+    if (itemsArray[idx] && itemsArray[idx].isVehicle) return;
+    itemsArray.splice(idx, 1);
 }
 
 function calculateTotalDays() {
@@ -367,7 +379,7 @@ function calculateTotalDays() {
                         </tr>
                       </thead>
                       <tbody>
-                        <tr v-for="(item, idx) in form.items" :key="idx" class="border-b hover:bg-gray-50">
+                        <tr v-for="(item, idx) in (form.items as InvoiceItem[])" :key="idx" class="border-b hover:bg-gray-50">
                           <td class="px-4 py-2">
                             <input
                               v-model="item.description"

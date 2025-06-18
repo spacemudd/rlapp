@@ -132,14 +132,17 @@ class InvoiceController extends Controller
             ]);
 
             // Generate invoice number
-            $lastInvoice = \App\Models\Invoice::orderBy('created_at', 'desc')->first();
+            $lastInvoice = Invoice::orderBy('created_at', 'desc')->first();
             $nextNumber = 10001;
             if ($lastInvoice && preg_match('/INV-(\d+)/', $lastInvoice->invoice_number, $matches)) {
                 $nextNumber = intval($matches[1]) + 1;
             }
             $invoiceNumber = 'INV-' . $nextNumber;
 
-            \DB::beginTransaction();
+            DB::beginTransaction();
+
+            // Calculate remaining amount
+            $remainingAmount = $validated['total_amount'] - $validated['paid_amount'];
 
             $invoice = Invoice::create([
                 'invoice_number' => $invoiceNumber,
@@ -156,7 +159,8 @@ class InvoiceController extends Controller
                 'total_discount' => $validated['total_discount'],
                 'total_amount' => $validated['total_amount'],
                 'paid_amount' => $validated['paid_amount'],
-                'team_id' => \Auth::user()->team_id,
+                'remaining_amount' => $remainingAmount,
+                'team_id' => Auth::user()->team_id,
             ]);
 
             // Create invoice items
@@ -170,16 +174,16 @@ class InvoiceController extends Controller
                 }
             }
 
-            \DB::commit();
+            DB::commit();
 
             return redirect()->route('invoices')
                 ->with('success', 'Invoice created successfully.');
         } catch (\Illuminate\Validation\ValidationException $e) {
-            \DB::rollBack();
+            DB::rollBack();
             return back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
-            \DB::rollBack();
-            \Log::error('Invoice creation failed: ' . $e->getMessage());
+            DB::rollBack();
+            Log::error('Invoice creation failed: ' . $e->getMessage());
             return back()->with('error', 'Failed to create invoice: ' . $e->getMessage())->withInput();
         }
     }

@@ -29,44 +29,13 @@ Route::resource('customers', App\Http\Controllers\CustomerController::class)
     ->except(['show', 'create', 'edit'])
     ->middleware(['auth', 'verified']);
 
-Route::get('invoices', [InvoiceController::class, 'index'])
-    ->middleware(['auth', 'verified'])
-    ->name('invoices');
 
-Route::get('invoices/create', function () {
-    return Inertia::render('Invoices/Create', [
-        'customers' => \App\Models\Customer::select('id', 'first_name', 'last_name', 'email')
-            ->where('team_id', request()->user()->team_id)
-            ->where('status', 'active')
-            ->get()
-            ->map(function ($customer) {
-                return [
-                    'id' => $customer->id,
-                    'name' => $customer->first_name . ' ' . $customer->last_name,
-                    'email' => $customer->email
-                ];
-            }),
-        'vehicles' => \App\Models\Vehicle::select('id', 'plate_number', 'make', 'model', 'year')
-            ->where('status', 'available')
-            ->get()
-            ->map(function ($vehicle) {
-                return [
-                    'id' => $vehicle->id,
-                    'name' => "{$vehicle->year} {$vehicle->make} {$vehicle->model} - {$vehicle->plate_number}"
-                ];
-            })
-    ]);
-})->middleware(['auth', 'verified'])->name('invoices.create');
-
-Route::post('invoices', [InvoiceController::class, 'store'])
-    ->middleware(['auth', 'verified'])
-    ->name('invoices.store');
 
 Route::get('invoices/{id}/pdf', [App\Http\Controllers\InvoiceController::class, 'downloadPdf'])
     ->middleware(['auth', 'verified'])
     ->name('invoices.pdf');
 
-Route::delete('invoices/{id}', [App\Http\Controllers\InvoiceController::class, 'destroy'])->name('invoices.destroy');
+
 
 // Team Management Routes
 Route::middleware(['auth', 'verified'])->group(function () {
