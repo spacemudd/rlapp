@@ -7,6 +7,7 @@ use App\Models\Invoice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class PaymentController extends Controller
 {
@@ -47,5 +48,19 @@ class PaymentController extends Controller
         $invoice->save();
 
         return back()->with('success', 'Payment added successfully.');
+    }
+
+    public function downloadReceipt($id)
+    {
+        $payment = Payment::with(['invoice', 'invoice.customer', 'invoice.vehicle'])->findOrFail($id);
+
+        $pdf = PDF::loadView('payments.receipt', [
+            'payment' => $payment,
+            'invoice' => $payment->invoice,
+            'customer' => $payment->invoice->customer,
+            'vehicle' => $payment->invoice->vehicle,
+        ]);
+
+        return $pdf->download('payment-receipt-' . $payment->id . '.pdf');
     }
 }
