@@ -29,10 +29,9 @@ Route::resource('customers', App\Http\Controllers\CustomerController::class)
     ->except(['show', 'create', 'edit'])
     ->middleware(['auth', 'verified']);
 
-
-Route::get('invoices', function () {
-    return Inertia::render('Invoices/Index');
-})->middleware(['auth', 'verified'])->name('invoices');
+Route::get('invoices', [InvoiceController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('invoices');
 
 Route::get('invoices/create', function () {
     return Inertia::render('Invoices/Create', [

@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Invoice;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use App\Models\Customer;
+use App\Models\Vehicle;
 use Inertia\Inertia;
-use Barryvdh\DomPDF\Facade\Pdf;
 
 class InvoiceController extends Controller
 {
@@ -114,72 +116,52 @@ class InvoiceController extends Controller
         ]);
     }
 
-    public function edit(Invoice $invoice)
+    public function create()
     {
-        return Inertia::render('Invoices/Edit', [
-            'invoice' => $invoice->load(['vehicle', 'customer'])
+        $lastInvoice = \App\Models\Invoice::orderBy('created_at', 'desc')->first();
+        $nextNumber = 1001;
+        if ($lastInvoice && preg_match('/INV-(\d+)/', $lastInvoice->invoice_number, $matches)) {
+            $nextNumber = intval($matches[1]) + 1;
+        }
+        $nextInvoiceNumber = 'INV-' . $nextNumber;
+
+        $customers = Customer::select([
+            'id',
+            'first_name',
+            'last_name',
+            'email',
+            'phone',
+            'drivers_license_number',
+            'address',
+            'city',
+            'country'
+        ])->get()->map(function ($customer) {
+            return [
+                'id' => $customer->id,
+                'name' => $customer->full_name,
+                'email' => $customer->email,
+                'phone' => $customer->phone,
+                'drivers_license_number' => $customer->drivers_license_number,
+                'address' => $customer->address,
+                'city' => $customer->city,
+                'country' => $customer->country,
+            ];
+        });
+
+        $vehicles = Vehicle::select(['id', 'name'])->get();
+
+        return Inertia::render('Invoices/Create', [
+            'customers' => $customers,
+            'vehicles' => $vehicles,
+            'nextInvoiceNumber' => $nextInvoiceNumber,
         ]);
     }
 
-    public function update(Request $request, Invoice $invoice)
+    public function index()
     {
-        $validated = $request->validate([
-            'invoice_number' => 'required|string|unique:invoices,invoice_number,' . $invoice->id,
-            'invoice_date' => 'required|date',
-            'due_date' => 'required|date',
-            'status' => 'required|in:paid,unpaid,partial',
-            'currency' => 'required|string|size:3',
-            'total_days' => 'required|integer|min:1',
-            'start_datetime' => 'required|date',
-            'end_datetime' => 'required|date',
-            'vehicle_id' => 'required|uuid|exists:vehicles,id',
-            'customer_id' => 'required|uuid|exists:customers,id',
-            'sub_total' => 'required|numeric|min:0',
-            'total_discount' => 'required|numeric|min:0',
-            'total_amount' => 'required|numeric|min:0',
-            'paid_amount' => 'required|numeric|min:0',
+        $invoices = Invoice::with('customer')->orderBy('created_at', 'desc')->get();
+        return Inertia::render('Invoices/Index', [
+            'invoices' => $invoices,
         ]);
-
-        $invoice->update($validated);
-
-        return redirect()->route('invoices')->with('success', 'Invoice updated successfully.');
-    }
-
-    public function destroy(Invoice $invoice)
-    {
-        $invoice->delete();
-
-        return redirect()->route('invoices')->with('success', 'Invoice deleted successfully.');
-    }
-
-    public function generatePdf(Invoice $invoice)
-    {
-        $invoice->load(['customer', 'vehicle']);
-
-        $data = [
-            'invoice' => $invoice,
-            'luxuriaLogo' => base64_encode(file_get_contents(public_path('img/rentluxurialogo.png'))),
-            // You might add transaction data here if you have a transactions table related to invoices
-            'transactions' => [
-                ['number' => '13538-4753', 'date' => '2025-05-25 15:57', 'method' => 'Credit Card', 'category' => 'Security Deposit', 'amount' => -1510.00],
-                ['number' => '13539-4754', 'date' => '2025-05-25 15:57', 'method' => 'Credit Card', 'category' => 'damage income', 'amount' => 1510.00],
-                ['number' => '13475-4732', 'date' => '2025-05-24 17:19', 'method' => 'Bank Transfer', 'category' => 'Security Deposit', 'amount' => -20.00],
-                ['number' => '13476-4733', 'date' => '2025-05-24 17:19', 'method' => 'Bank Transfer', 'category' => 'Salik', 'amount' => 20.00],
-                ['number' => '13470-4729', 'date' => '2025-05-24 17:09', 'method' => 'Bank Transfer', 'category' => 'Security Deposit', 'amount' => -145.00],
-            ],
-            'invoiceItems' => [
-                ['description' => 'Delivery', 'amount' => 300.00, 'discount' => 0.00, 'total' => 300.00, 'balance' => 300.00],
-                ['description' => 'DEPOSIT ALLOWANCE', 'amount' => 120.00, 'discount' => 0.00, 'total' => 120.00, 'balance' => 120.00],
-                ['description' => 'Fuel Charges', 'amount' => 125.00, 'discount' => 0.00, 'total' => 125.00, 'balance' => 125.00],
-                ['description' => 'Traffic Fines', 'amount' => 495.00, 'discount' => 0.00, 'total' => 495.00, 'balance' => 495.00],
-                ['description' => 'Salik Fees', 'amount' => 20.00, 'discount' => 0.00, 'total' => 20.00, 'balance' => 20.00],
-                ['description' => 'Damages', 'amount' => 1510.00, 'discount' => 0.00, 'total' => 1510.00, 'balance' => 1510.00],
-                ['description' => 'Rental Fees', 'amount' => 4800.00, 'discount' => 0.00, 'total' => 4800.00, 'balance' => 4800.00],
-                ['description' => '- Rent Vehicle Land Rover Range Rover Vogue, Plate Number: F-98303, Daily Rate: 1200.00', 'amount' => 4800.00, 'discount' => 0.00, 'total' => 4800.00, 'balance' => 4800.00],
-            ]
-        ];
-
-        $pdf = PDF::loadView('invoices.pdf', $data);
-        return $pdf->stream('invoice-' . $invoice->invoice_number . '.pdf');
     }
 }

@@ -3,7 +3,7 @@ import AppSidebarLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Plus, Calendar, DollarSign, Car, User } from 'lucide-vue-next';
 import { Link, useForm } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -16,11 +16,17 @@ interface Props {
         id: string;
         name: string;
         email: string;
+        phone?: string;
+        drivers_license_number?: string;
+        address?: string;
+        city?: string;
+        country?: string;
     }>;
     vehicles: Array<{
         id: string;
         name: string;
     }>;
+    nextInvoiceNumber: string;
 }
 
 // Define props
@@ -47,10 +53,21 @@ const form = useForm({
     total_discount: 0,
     total_amount: 0,
     paid_amount: 0,
+    items: [
+        { description: '', amount: 0, discount: 0 }
+    ]
+});
+
+const selectedCustomer = computed(() => {
+    return props.customers.find(customer => customer.id === form.customer_id) || null;
+});
+
+const invoiceAmount = computed(() => {
+    return form.items.reduce((sum, item) => sum + (Number(item.amount || 0) - Number(item.discount || 0)), 0);
 });
 
 const remainingAmount = computed(() => {
-    return form.total_amount - form.paid_amount;
+    return invoiceAmount.value - Number(form.paid_amount || 0);
 });
 
 const handleSubmit = () => {
@@ -69,6 +86,45 @@ const handleSubmit = () => {
 const getStatusColor = (status: string) => {
     return statusOptions.find(option => option.value === status)?.color || 'text-gray-500';
 };
+
+// Example accounts data
+const accounts = ref([
+    { id: '1', name: 'Sales' },
+    { id: '2', name: 'Services' },
+]);
+
+// Watch for vehicle selection and update first line item
+watch(
+  () => form.vehicle_id,
+  (newVal) => {
+    if (newVal) {
+      const vehicle = props.vehicles.find(v => v.id === newVal);
+      if (vehicle) {
+        if (form.items.length === 0) {
+          form.items.unshift({ description: vehicle.name, amount: 0, discount: 0, isVehicle: true });
+        } else if (form.items[0].isVehicle) {
+          form.items[0].description = vehicle.name;
+        } else {
+          form.items.unshift({ description: vehicle.name, amount: 0, discount: 0, isVehicle: true });
+        }
+      }
+    } else {
+      if (form.items[0] && form.items[0].isVehicle) {
+        form.items.shift();
+      }
+    }
+  }
+);
+
+function addItem() {
+    form.items.push({ description: '', amount: 0, discount: 0 });
+}
+
+function removeItem(idx) {
+    // Prevent removing the vehicle line
+    if (form.items[idx] && form.items[idx].isVehicle) return;
+    form.items.splice(idx, 1);
+}
 </script>
 
 <template>
@@ -98,6 +154,21 @@ const getStatusColor = (status: string) => {
                             <CardDescription>Enter the basic details of the invoice</CardDescription>
                         </CardHeader>
                         <CardContent class="space-y-6">
+                            <div class="space-y-2">
+                                <Label for="customer_id" class="text-sm font-medium">Customer</Label>
+                                <select
+                                    id="customer_id"
+                                    v-model="form.customer_id"
+                                    required
+                                    class="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                >
+                                    <option value="">Select a customer</option>
+                                    <option v-for="customer in customers" :key="customer.id" :value="customer.id">
+                                        {{ customer.name }} - {{ customer.email }}
+                                    </option>
+                                </select>
+                            </div>
+
                             <div class="space-y-2">
                                 <Label for="invoice_number" class="text-sm font-medium">Invoice Number</Label>
                                 <Input
@@ -141,14 +212,46 @@ const getStatusColor = (status: string) => {
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Customer Information -->
+                            <div v-if="selectedCustomer" class="mt-6 space-y-4">
+                                <div class="flex items-center gap-2">
+                                    <User class="h-5 w-5 text-gray-400" />
+                                    <h3 class="text-sm font-medium">Customer Information</h3>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="space-y-1">
+                                        <p class="text-sm text-gray-500">Name</p>
+                                        <p class="text-sm font-medium">{{ selectedCustomer.name }}</p>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <p class="text-sm text-gray-500">Email</p>
+                                        <p class="text-sm font-medium">{{ selectedCustomer.email }}</p>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <p class="text-sm text-gray-500">Phone</p>
+                                        <p class="text-sm font-medium">{{ selectedCustomer.phone || 'N/A' }}</p>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <p class="text-sm text-gray-500">License Number</p>
+                                        <p class="text-sm font-medium">{{ selectedCustomer.drivers_license_number || 'N/A' }}</p>
+                                    </div>
+                                </div>
+                                <div class="space-y-1">
+                                    <p class="text-sm text-gray-500">Address</p>
+                                    <p class="text-sm font-medium">
+                                        {{ selectedCustomer.address ? `${selectedCustomer.address}, ${selectedCustomer.city}, ${selectedCustomer.country}` : 'N/A' }}
+                                    </p>
+                                </div>
+                            </div>
                         </CardContent>
                     </Card>
 
-                    <!-- Vehicle and Customer Information -->
+                    <!-- Rental Details -->
                     <Card class="border-none shadow-md">
                         <CardHeader class="pb-4">
-                            <CardTitle class="text-lg font-medium">Vehicle & Customer</CardTitle>
-                            <CardDescription>Select the vehicle and customer for this invoice</CardDescription>
+                            <CardTitle class="text-lg font-medium">Rental Details</CardTitle>
+                            <CardDescription>Enter the rental period and related information</CardDescription>
                         </CardHeader>
                         <CardContent class="space-y-6">
                             <div class="space-y-2">
@@ -165,31 +268,6 @@ const getStatusColor = (status: string) => {
                                     </option>
                                 </select>
                             </div>
-
-                            <div class="space-y-2">
-                                <Label for="customer_id" class="text-sm font-medium">Customer</Label>
-                                <select
-                                    id="customer_id"
-                                    v-model="form.customer_id"
-                                    required
-                                    class="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                                >
-                                    <option value="">Select a customer</option>
-                                    <option v-for="customer in customers" :key="customer.id" :value="customer.id">
-                                        {{ customer.name }} - {{ customer.email }}
-                                    </option>
-                                </select>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <!-- Rental Details -->
-                    <Card class="border-none shadow-md">
-                        <CardHeader class="pb-4">
-                            <CardTitle class="text-lg font-medium">Rental Details</CardTitle>
-                            <CardDescription>Enter the rental period and related information</CardDescription>
-                        </CardHeader>
-                        <CardContent class="space-y-6">
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="space-y-2">
                                     <Label for="start_datetime" class="text-sm font-medium">Start Date & Time</Label>
@@ -207,59 +285,113 @@ const getStatusColor = (status: string) => {
                             </div>
                         </CardContent>
                     </Card>
-
-                    <!-- Financial Details -->
-                    <Card class="border-none shadow-md lg:col-span-2">
-                        <CardHeader class="pb-4">
-                            <CardTitle class="text-lg font-medium">Financial Details</CardTitle>
-                            <CardDescription>Enter the payment and amount information</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                <div class="space-y-2">
-                                    <Label for="sub_total" class="text-sm font-medium">Sub Total</Label>
-                                    <div class="relative">
-                                        <DollarSign class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                                        <Input type="number" step="0.01" id="sub_total" v-model="form.sub_total" required class="h-10 pl-10" />
-                                    </div>
-                                </div>
-
-                                <div class="space-y-2">
-                                    <Label for="total_discount" class="text-sm font-medium">Total Discount</Label>
-                                    <div class="relative">
-                                        <DollarSign class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                                        <Input type="number" step="0.01" id="total_discount" v-model="form.total_discount" required class="h-10 pl-10" />
-                                    </div>
-                                </div>
-
-                                <div class="space-y-2">
-                                    <Label for="total_amount" class="text-sm font-medium">Total Amount</Label>
-                                    <div class="relative">
-                                        <DollarSign class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                                        <Input type="number" step="0.01" id="total_amount" v-model="form.total_amount" required class="h-10 pl-10" />
-                                    </div>
-                                </div>
-
-                                <div class="space-y-2">
-                                    <Label for="paid_amount" class="text-sm font-medium">Paid Amount</Label>
-                                    <div class="relative">
-                                        <DollarSign class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                                        <Input type="number" step="0.01" id="paid_amount" v-model="form.paid_amount" required class="h-10 pl-10" />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="mt-6 p-4 bg-gray-50 rounded-lg">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-sm font-medium text-gray-600">Remaining Amount</span>
-                                    <span class="text-lg font-semibold" :class="remainingAmount > 0 ? 'text-red-500' : 'text-green-500'">
-                                        {{ form.currency }} {{ remainingAmount.toFixed(2) }}
-                                    </span>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
                 </div>
+
+                <!-- Professional Line Items Section (Full Width) -->
+                <div class="w-full mt-10">
+                  <div class="bg-white rounded-lg shadow border">
+                    <table class="w-full text-sm">
+                      <thead class="bg-gray-50 border-b">
+                        <tr>
+                          <th class="px-4 py-3 text-left font-semibold text-gray-700">Description<span class="text-red-500">*</span></th>
+                          <th class="px-4 py-3 text-center font-semibold text-gray-700">Amount<span class="text-red-500">*</span></th>
+                          <th class="px-4 py-3 text-center font-semibold text-gray-700">Discount</th>
+                          <th class="px-4 py-3 text-right font-semibold text-gray-700">Total</th>
+                          <th class="px-4 py-3"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="(item, idx) in form.items" :key="idx" class="border-b hover:bg-gray-50">
+                          <td class="px-4 py-2">
+                            <input
+                              v-model="item.description"
+                              :readonly="item.isVehicle"
+                              class="w-full border rounded px-2 py-1 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
+                              :class="{ 'bg-gray-100 cursor-not-allowed': item.isVehicle }"
+                              placeholder="Description"
+                              :required="idx === 0"
+                            />
+                          </td>
+                          <td class="px-4 py-2 text-center">
+                            <input
+                              v-model.number="item.amount"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              class="w-28 border rounded px-2 py-1 text-center focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
+                              required
+                            />
+                          </td>
+                          <td class="px-4 py-2 text-center">
+                            <input
+                              v-model.number="item.discount"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              class="w-24 border rounded px-2 py-1 text-center focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
+                              placeholder="0.00"
+                            />
+                          </td>
+                          <td class="px-4 py-2 text-right font-semibold">
+                            {{ (item.amount - item.discount).toFixed(2) }}
+                          </td>
+                          <td class="px-2 py-2 text-center">
+                            <button
+                              v-if="!item.isVehicle"
+                              type="button"
+                              @click="removeItem(idx)"
+                              class="text-red-500 hover:text-red-700 font-bold text-lg"
+                              title="Remove"
+                            >
+                              &times;
+                            </button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <div class="px-4 py-3 bg-gray-50 rounded-b-lg flex justify-between items-center">
+                      <button
+                        type="button"
+                        class="text-blue-600 hover:underline font-medium"
+                        @click="addItem"
+                      >
+                        + Item
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Financial Details -->
+                <Card class="border-none shadow-md lg:col-span-2">
+                    <CardHeader class="pb-4">
+                        <CardTitle class="text-lg font-medium">Financial Details</CardTitle>
+                        <CardDescription>Enter the payment and amount information</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="space-y-2">
+                                <Label for="invoice_amount" class="text-sm font-medium">Invoice Amount</Label>
+                                <div class="relative">
+                                    <DollarSign class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                                    <Input id="invoice_amount" :value="invoiceAmount.toFixed(2)" readonly class="h-10 pl-10 bg-gray-100 cursor-not-allowed" />
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <Label for="paid_amount" class="text-sm font-medium">Paid Amount</Label>
+                                <div class="relative">
+                                    <DollarSign class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                                    <Input type="number" step="0.01" id="paid_amount" v-model="form.paid_amount" required class="h-10 pl-10" />
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <Label class="text-sm font-medium">Remaining Amount</Label>
+                                <div class="flex items-center h-10 px-4 bg-gray-50 rounded-lg font-semibold text-lg" :class="remainingAmount > 0 ? 'text-red-500' : 'text-green-500'">
+                                    {{ form.currency }} {{ remainingAmount.toFixed(2) }}
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 <!-- Add the Create Invoice button at the bottom -->
                 <div class="flex justify-end mt-8">

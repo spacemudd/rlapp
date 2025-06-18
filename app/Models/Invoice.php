@@ -9,7 +9,11 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class Invoice extends Model
 {
-    use HasFactory, HasUuids;
+    use HasFactory;
+    use HasUuids;
+
+    protected $keyType = 'string';
+    public $incrementing = false;
 
     protected $fillable = [
         'invoice_number',
