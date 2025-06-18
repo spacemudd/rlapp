@@ -19,6 +19,9 @@ return new class extends Migration
             $table->year('year');
             $table->string('color');
             $table->string('category');
+            $table->decimal('price_daily', 10, 2)->nullable();
+            $table->decimal('price_weekly', 10, 2)->nullable();
+            $table->decimal('price_monthly', 10, 2)->nullable();
             $table->string('current_location')->nullable();
             $table->enum('status', ['available', 'rented', 'maintenance', 'out_of_service'])->default('available');
             $table->dateTime('expected_return_date')->nullable();

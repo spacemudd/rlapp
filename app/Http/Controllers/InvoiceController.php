@@ -4,8 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Invoice;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use App\Models\Customer;
+use App\Models\Vehicle;
 use Inertia\Inertia;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\InvoiceItem;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class InvoiceController extends Controller
 {
@@ -36,11 +42,13 @@ class InvoiceController extends Controller
                         'first_name' => $invoice->customer->first_name,
                         'last_name' => $invoice->customer->last_name,
                     ],
-                    'vehicle' => [
-                        'make' => $invoice->vehicle->make,
-                        'model' => $invoice->vehicle->model,
-                        'plate_number' => $invoice->vehicle->plate_number,
-                    ],
+                    'vehicle' => $invoice->vehicle
+                        ? [
+                            'make' => $invoice->vehicle->make,
+                            'model' => $invoice->vehicle->model,
+                            'plate_number' => $invoice->vehicle->plate_number,
+                        ]
+                        : null,
                 ];
             });
 
@@ -51,135 +59,154 @@ class InvoiceController extends Controller
 
     public function create()
     {
+        $lastInvoice = Invoice::orderBy('created_at', 'desc')->first();
+        $nextNumber = 10001; // Start from 10001
+
+        if ($lastInvoice && preg_match('/INV-(\d+)/', $lastInvoice->invoice_number, $matches)) {
+            $nextNumber = intval($matches[1]) + 1;
+        }
+
+        $nextInvoiceNumber = 'INV-' . $nextNumber;
+
+        $customers = Customer::select([
+            'id',
+            'first_name',
+            'last_name',
+            'email',
+            'phone',
+            'drivers_license_number',
+            'address',
+            'city',
+            'country'
+        ])->get()->map(function ($customer) {
+            return [
+                'id' => $customer->id,
+                'name' => $customer->first_name . ' ' . $customer->last_name,
+                'email' => $customer->email,
+                'phone' => $customer->phone,
+                'drivers_license_number' => $customer->drivers_license_number,
+                'address' => $customer->address,
+                'city' => $customer->city,
+                'country' => $customer->country,
+            ];
+        });
+
+        $vehicles = Vehicle::select(['id', 'plate_number', 'make', 'model', 'year'])
+            ->where('status', 'available')
+            ->get()
+            ->map(function ($vehicle) {
+                return [
+                    'id' => $vehicle->id,
+                    'name' => "{$vehicle->year} {$vehicle->make} {$vehicle->model} - {$vehicle->plate_number}"
+                ];
+            });
+
         return Inertia::render('Invoices/Create', [
-            'invoice_number' => $this->generateInvoiceNumber(),
-            'customers' => \App\Models\Customer::select('id', 'first_name', 'last_name', 'email')
-                ->where('team_id', request()->user()->team_id)
-                ->where('status', 'active')
-                ->get()
-                ->map(function ($customer) {
-                    return [
-                        'id' => $customer->id,
-                        'name' => $customer->first_name . ' ' . $customer->last_name,
-                        'email' => $customer->email
-                    ];
-                }),
-            'vehicles' => \App\Models\Vehicle::select('id', 'plate_number', 'make', 'model', 'year')
-                ->where('status', 'available')
-                ->get()
-                ->map(function ($vehicle) {
-                    return [
-                        'id' => $vehicle->id,
-                        'name' => "{$vehicle->year} {$vehicle->make} {$vehicle->model} - {$vehicle->plate_number}"
-                    ];
-                })
+            'customers' => $customers,
+            'vehicles' => $vehicles,
+            'nextInvoiceNumber' => $nextInvoiceNumber,
         ]);
     }
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'invoice_number' => 'required|string|unique:invoices',
-            'invoice_date' => 'required|date',
-            'due_date' => 'required|date',
-            'status' => 'required|in:paid,unpaid,partial',
-            'currency' => 'required|string|size:3',
-            'total_days' => 'required|integer|min:1',
-            'start_datetime' => 'required|date',
-            'end_datetime' => 'required|date',
-            'vehicle_id' => 'required|uuid|exists:vehicles,id',
-            'customer_id' => 'required|uuid|exists:customers,id',
-            'sub_total' => 'required|numeric|min:0',
-            'total_discount' => 'required|numeric|min:0',
-            'total_amount' => 'required|numeric|min:0',
-            'paid_amount' => 'required|numeric|min:0',
-        ]);
+        try {
+            $validated = $request->validate([
+                'invoice_date' => 'required|date',
+                'due_date' => 'required|date',
+                'status' => 'required|in:paid,fully_paid,partial_paid,unpaid',
+                'currency' => 'required|string',
+                'total_days' => 'required|integer|min:1',
+                'start_datetime' => 'required|date',
+                'end_datetime' => 'required|date|after:start_datetime',
+                'vehicle_id' => 'required|exists:vehicles,id',
+                'customer_id' => 'required|exists:customers,id',
+                'sub_total' => 'required|numeric|min:0',
+                'total_discount' => 'required|numeric|min:0',
+                'total_amount' => 'required|numeric|min:0',
+                'paid_amount' => 'required|numeric|min:0',
+                'items' => 'required|array|min:1',
+                'items.*.description' => 'nullable|string',
+                'items.*.amount' => 'nullable|numeric|min:0',
+                'items.*.discount' => 'nullable|numeric|min:0',
+            ]);
 
-        // Create the invoice
-        $invoice = Invoice::create($validated);
+            // Generate invoice number
+            $lastInvoice = Invoice::orderBy('created_at', 'desc')->first();
+            $nextNumber = 10001;
+            if ($lastInvoice && preg_match('/INV-(\d+)/', $lastInvoice->invoice_number, $matches)) {
+                $nextNumber = intval($matches[1]) + 1;
+            }
+            $invoiceNumber = 'INV-' . $nextNumber;
 
-        // Update the vehicle status to 'rented' if the invoice is created
-        $vehicle = \App\Models\Vehicle::find($validated['vehicle_id']);
+            DB::beginTransaction();
+
+            // Calculate remaining amount
+            $remainingAmount = $validated['total_amount'] - $validated['paid_amount'];
+
+            $invoice = Invoice::create([
+                'invoice_number' => $invoiceNumber,
+                'invoice_date' => $validated['invoice_date'],
+                'due_date' => $validated['due_date'],
+                'status' => $validated['status'],
+                'currency' => $validated['currency'],
+                'total_days' => $validated['total_days'],
+                'start_datetime' => $validated['start_datetime'],
+                'end_datetime' => $validated['end_datetime'],
+                'vehicle_id' => $validated['vehicle_id'],
+                'customer_id' => $validated['customer_id'],
+                'sub_total' => $validated['sub_total'],
+                'total_discount' => $validated['total_discount'],
+                'total_amount' => $validated['total_amount'],
+                'paid_amount' => $validated['paid_amount'],
+                'remaining_amount' => $remainingAmount,
+                'team_id' => Auth::user()->team_id,
+            ]);
+
+            // Create invoice items
+            foreach ($request->items as $item) {
+                if (!empty($item['description'])) {
+                    $invoice->items()->create([
+                        'description' => $item['description'],
+                        'amount' => $item['amount'] ?? 0,
+                        'discount' => $item['discount'] ?? 0,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->route('invoices')
+                ->with('success', 'Invoice created successfully.');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            return back()->withErrors($e->errors())->withInput();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Invoice creation failed: ' . $e->getMessage());
+            return back()->with('error', 'Failed to create invoice: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    public function downloadPdf($id)
+    {
+        $invoice = Invoice::with(['customer', 'vehicle', 'items'])->findOrFail($id);
+        $customer = $invoice->customer;
+        $vehicle = $invoice->vehicle;
+
+        // Format vehicle name
         if ($vehicle) {
-            $vehicle->update(['status' => 'rented']);
+            $vehicle->name = "{$vehicle->year} {$vehicle->make} {$vehicle->model} - {$vehicle->plate_number}";
         }
 
-        return redirect()->route('invoices')->with('success', 'Invoice created successfully.');
-    }
-
-    public function show(Invoice $invoice)
-    {
-        return Inertia::render('Invoices/Show', [
-            'invoice' => $invoice->load(['vehicle', 'customer'])
-        ]);
-    }
-
-    public function edit(Invoice $invoice)
-    {
-        return Inertia::render('Invoices/Edit', [
-            'invoice' => $invoice->load(['vehicle', 'customer'])
-        ]);
-    }
-
-    public function update(Request $request, Invoice $invoice)
-    {
-        $validated = $request->validate([
-            'invoice_number' => 'required|string|unique:invoices,invoice_number,' . $invoice->id,
-            'invoice_date' => 'required|date',
-            'due_date' => 'required|date',
-            'status' => 'required|in:paid,unpaid,partial',
-            'currency' => 'required|string|size:3',
-            'total_days' => 'required|integer|min:1',
-            'start_datetime' => 'required|date',
-            'end_datetime' => 'required|date',
-            'vehicle_id' => 'required|uuid|exists:vehicles,id',
-            'customer_id' => 'required|uuid|exists:customers,id',
-            'sub_total' => 'required|numeric|min:0',
-            'total_discount' => 'required|numeric|min:0',
-            'total_amount' => 'required|numeric|min:0',
-            'paid_amount' => 'required|numeric|min:0',
-        ]);
-
-        $invoice->update($validated);
-
-        return redirect()->route('invoices')->with('success', 'Invoice updated successfully.');
-    }
-
-    public function destroy(Invoice $invoice)
-    {
-        $invoice->delete();
-
-        return redirect()->route('invoices')->with('success', 'Invoice deleted successfully.');
-    }
-
-    public function generatePdf(Invoice $invoice)
-    {
-        $invoice->load(['customer', 'vehicle']);
-
-        $data = [
-            'invoice' => $invoice,
-            'luxuriaLogo' => base64_encode(file_get_contents(public_path('img/rentluxurialogo.png'))),
-            // You might add transaction data here if you have a transactions table related to invoices
-            'transactions' => [
-                ['number' => '13538-4753', 'date' => '2025-05-25 15:57', 'method' => 'Credit Card', 'category' => 'Security Deposit', 'amount' => -1510.00],
-                ['number' => '13539-4754', 'date' => '2025-05-25 15:57', 'method' => 'Credit Card', 'category' => 'damage income', 'amount' => 1510.00],
-                ['number' => '13475-4732', 'date' => '2025-05-24 17:19', 'method' => 'Bank Transfer', 'category' => 'Security Deposit', 'amount' => -20.00],
-                ['number' => '13476-4733', 'date' => '2025-05-24 17:19', 'method' => 'Bank Transfer', 'category' => 'Salik', 'amount' => 20.00],
-                ['number' => '13470-4729', 'date' => '2025-05-24 17:09', 'method' => 'Bank Transfer', 'category' => 'Security Deposit', 'amount' => -145.00],
-            ],
-            'invoiceItems' => [
-                ['description' => 'Delivery', 'amount' => 300.00, 'discount' => 0.00, 'total' => 300.00, 'balance' => 300.00],
-                ['description' => 'DEPOSIT ALLOWANCE', 'amount' => 120.00, 'discount' => 0.00, 'total' => 120.00, 'balance' => 120.00],
-                ['description' => 'Fuel Charges', 'amount' => 125.00, 'discount' => 0.00, 'total' => 125.00, 'balance' => 125.00],
-                ['description' => 'Traffic Fines', 'amount' => 495.00, 'discount' => 0.00, 'total' => 495.00, 'balance' => 495.00],
-                ['description' => 'Salik Fees', 'amount' => 20.00, 'discount' => 0.00, 'total' => 20.00, 'balance' => 20.00],
-                ['description' => 'Damages', 'amount' => 1510.00, 'discount' => 0.00, 'total' => 1510.00, 'balance' => 1510.00],
-                ['description' => 'Rental Fees', 'amount' => 4800.00, 'discount' => 0.00, 'total' => 4800.00, 'balance' => 4800.00],
-                ['description' => '- Rent Vehicle Land Rover Range Rover Vogue, Plate Number: F-98303, Daily Rate: 1200.00', 'amount' => 4800.00, 'discount' => 0.00, 'total' => 4800.00, 'balance' => 4800.00],
-            ]
-        ];
-
-        $pdf = PDF::loadView('invoices.pdf', $data);
+        $pdf = Pdf::loadView('pdf.invoice', compact('invoice', 'customer', 'vehicle'));
         return $pdf->stream('invoice-' . $invoice->invoice_number . '.pdf');
+    }
+
+    public function destroy($id)
+    {
+        $invoice = \App\Models\Invoice::findOrFail($id);
+        $invoice->delete();
+        return redirect()->route('invoices')->with('success', 'Invoice deleted successfully.');
     }
 }
