@@ -108,6 +108,29 @@ watch(
     }
 );
 
+// Watch for vehicle selection and update or add the vehicle item in items
+watch(
+    () => form.vehicle_id,
+    (newVal) => {
+        if (newVal) {
+            const vehicle = props.vehicles.find(v => v.id === newVal);
+            if (vehicle) {
+                const vehicleIndex = form.items.findIndex(item => item.isVehicle);
+                if (vehicleIndex !== -1) {
+                    form.items[vehicleIndex].description = vehicle.name;
+                } else {
+                    form.items.unshift({ description: vehicle.name, amount: 0, discount: 0, isVehicle: true });
+                }
+            }
+        } else {
+            const vehicleIndex = form.items.findIndex(item => item.isVehicle);
+            if (vehicleIndex !== -1) {
+                form.items.splice(vehicleIndex, 1);
+            }
+        }
+    }
+);
+
 const handleSubmit = () => {
     // Calculate totals one last time before submission
     form.sub_total = form.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
@@ -140,29 +163,6 @@ const accounts = ref([
     { id: '1', name: 'Sales' },
     { id: '2', name: 'Services' },
 ]);
-
-// Watch for vehicle selection and update first line item
-watch(
-  () => form.vehicle_id,
-  (newVal) => {
-    if (newVal) {
-      const vehicle = props.vehicles.find(v => v.id === newVal);
-      if (vehicle) {
-        if (form.items.length === 0) {
-          form.items.unshift({ description: vehicle.name, amount: 0, discount: 0, isVehicle: true });
-        } else if (form.items[0].isVehicle) {
-          form.items[0].description = vehicle.name;
-        } else {
-          form.items.unshift({ description: vehicle.name, amount: 0, discount: 0, isVehicle: true });
-        }
-      }
-    } else {
-      if (form.items[0] && form.items[0].isVehicle) {
-        form.items.shift();
-      }
-    }
-  }
-);
 
 function addItem() {
     form.items.push({ description: '', amount: 0, discount: 0 });

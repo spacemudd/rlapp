@@ -126,8 +126,8 @@ class InvoiceController extends Controller
                 'total_amount' => 'required|numeric|min:0',
                 'paid_amount' => 'required|numeric|min:0',
                 'items' => 'required|array|min:1',
-                'items.*.description' => 'required|string',
-                'items.*.amount' => 'required|numeric|min:0',
+                'items.*.description' => 'nullable|string',
+                'items.*.amount' => 'nullable|numeric|min:0',
                 'items.*.discount' => 'nullable|numeric|min:0',
             ]);
 
