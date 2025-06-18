@@ -32,7 +32,6 @@ return new class extends Migration
             $table->date('license_expiry_date');
             $table->date('insurance_expiry_date');
             $table->text('recent_note')->nullable();
-            $table->integer('seats')->nullable();
             $table->timestamps();
         });
     }
