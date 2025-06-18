@@ -58,7 +58,6 @@ const form = useForm({
     sub_total: 0,
     total_discount: 0,
     total_amount: 0,
-    paid_amount: 0,
     items: [
         { description: '', amount: 0, discount: 0 }
     ]
@@ -73,7 +72,7 @@ const invoiceAmount = computed(() => {
 });
 
 const remainingAmount = computed(() => {
-    return invoiceAmount.value - Number(form.paid_amount || 0);
+    return invoiceAmount.value - Number(form.total_amount || 0);
 });
 
 // Add watchers for automatic calculations
@@ -90,15 +89,10 @@ watch(
 
 // Watch for paid amount changes
 watch(
-    () => form.paid_amount,
+    () => form.status,
     (newValue) => {
-        const remaining = form.total_amount - (Number(newValue) || 0);
-        if (remaining <= 0) {
-            form.status = 'paid';
-        } else if (Number(newValue) > 0) {
-            form.status = 'partial_paid';
-        } else {
-            form.status = 'unpaid';
+        if (newValue === 'paid') {
+            form.total_amount = 0;
         }
     }
 );
@@ -455,17 +449,12 @@ function calculateTotalDays() {
                                 </div>
                             </div>
                             <div class="space-y-2">
-                                <Label for="paid_amount" class="text-sm font-medium">Paid Amount</Label>
-                                <div class="relative">
-                                    <DollarSign class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                                    <Input type="number" step="0.01" id="paid_amount" v-model="form.paid_amount" required class="h-10 pl-10" />
-                                </div>
+                                <Label class="block text-sm font-medium mb-1">Paid Amount</Label>
+                                <div class="input w-full bg-gray-50">0</div>
                             </div>
                             <div class="space-y-2">
-                                <Label class="text-sm font-medium">Remaining Amount</Label>
-                                <div class="flex items-center h-10 px-4 bg-gray-50 rounded-lg font-semibold text-lg" :class="remainingAmount > 0 ? 'text-red-500' : 'text-green-500'">
-                                    {{ form.currency }} {{ remainingAmount.toFixed(2) }}
-                                </div>
+                                <Label class="block text-sm font-medium mb-1">Remaining Amount</Label>
+                                <div class="input w-full bg-gray-50">{{ form.total_amount }}</div>
                             </div>
                         </div>
                     </CardContent>

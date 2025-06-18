@@ -3,7 +3,7 @@ import AppSidebarLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Download, Printer, DollarSign } from 'lucide-vue-next';
 import { Link } from '@inertiajs/vue3';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { ref } from 'vue';
 import { useForm } from '@inertiajs/vue3';
@@ -49,6 +49,15 @@ interface Props {
             plate_number: string;
         };
         items: InvoiceItem[];
+        payments: {
+            id: string;
+            payment_date: string;
+            payment_method: string;
+            reference_number: string | null;
+            amount: number;
+            status: string;
+            notes: string | null;
+        }[];
     };
 }
 
@@ -242,6 +251,48 @@ function submitPayment() {
                     </CardContent>
                 </Card>
             </div>
+
+            <Card class="mt-8">
+                <CardHeader>
+                    <CardTitle>Payment History</CardTitle>
+                    <CardDescription>All payments made for this invoice.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div v-if="invoice.payments && invoice.payments.length > 0">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b">
+                                    <th class="py-2 text-left">Date</th>
+                                    <th class="py-2 text-left">Method</th>
+                                    <th class="py-2 text-left">Reference</th>
+                                    <th class="py-2 text-right">Amount</th>
+                                    <th class="py-2 text-center">Status</th>
+                                    <th class="py-2 text-left">Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="payment in invoice.payments" :key="payment.id" class="border-b hover:bg-gray-50">
+                                    <td class="py-2">{{ formatDate(payment.payment_date) }}</td>
+                                    <td class="py-2">{{ payment.payment_method }}</td>
+                                    <td class="py-2">{{ payment.reference_number || '-' }}</td>
+                                    <td class="py-2 text-right">{{ formatCurrency(payment.amount) }}</td>
+                                    <td class="py-2 text-center">
+                                        <span :class="{
+                                            'text-green-600 font-semibold': payment.status === 'completed',
+                                            'text-yellow-600 font-semibold': payment.status === 'pending',
+                                            'text-red-600 font-semibold': payment.status === 'failed',
+                                        }">
+                                            {{ payment.status.charAt(0).toUpperCase() + payment.status.slice(1) }}
+                                        </span>
+                                    </td>
+                                    <td class="py-2">{{ payment.notes || '-' }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div v-else class="text-gray-500 py-4 text-center">No payments found for this invoice.</div>
+                </CardContent>
+            </Card>
         </div>
     </AppSidebarLayout>
 

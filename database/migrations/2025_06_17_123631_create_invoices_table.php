@@ -24,10 +24,8 @@ return new class extends Migration
             $table->foreignUuid('vehicle_id')->constrained('vehicles')->onDelete('restrict');
             $table->foreignUuid('customer_id')->constrained('customers')->onDelete('restrict');
             $table->decimal('sub_total', 10, 2);
-            $table->decimal('total_discount', 10, 2)->default(0);
+            $table->decimal('total_discount', 10, 2)->default('0');
             $table->decimal('total_amount', 10, 2);
-            $table->decimal('paid_amount', 10, 2)->default(0);
-            $table->decimal('remaining_amount', 10, 2);
             $table->timestamps();
         });
     }

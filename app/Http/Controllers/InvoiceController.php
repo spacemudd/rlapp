@@ -59,8 +59,7 @@ class InvoiceController extends Controller
 
     public function show($id)
     {
-        $invoice = Invoice::with(['customer', 'vehicle', 'items'])
-            ->findOrFail($id);
+        $invoice = Invoice::with(['customer', 'vehicle', 'items', 'payments'])->findOrFail($id);
 
         return Inertia::render('Invoices/Show', [
             'invoice' => [
@@ -99,6 +98,18 @@ class InvoiceController extends Controller
                         'description' => $item->description,
                         'amount' => (float) $item->amount,
                         'discount' => (float) $item->discount,
+                    ];
+                }),
+                'payments' => $invoice->payments->map(function ($payment) {
+                    return [
+                        'id' => $payment->id,
+                        'amount' => (float) $payment->amount,
+                        'payment_method' => $payment->payment_method,
+                        'payment_date' => $payment->payment_date,
+                        'status' => $payment->status,
+                        'notes' => $payment->notes,
+                        'reference_number' => $payment->reference_number,
+                        'created_at' => $payment->created_at,
                     ];
                 }),
             ],
@@ -172,7 +183,6 @@ class InvoiceController extends Controller
                 'sub_total' => 'required|numeric|min:0',
                 'total_discount' => 'required|numeric|min:0',
                 'total_amount' => 'required|numeric|min:0',
-                'paid_amount' => 'required|numeric|min:0',
                 'items' => 'required|array|min:1',
                 'items.*.description' => 'nullable|string',
                 'items.*.amount' => 'nullable|numeric|min:0',
@@ -189,9 +199,6 @@ class InvoiceController extends Controller
 
             DB::beginTransaction();
 
-            // Calculate remaining amount
-            $remainingAmount = $validated['total_amount'] - $validated['paid_amount'];
-
             $invoice = Invoice::create([
                 'invoice_number' => $invoiceNumber,
                 'invoice_date' => $validated['invoice_date'],
@@ -206,8 +213,6 @@ class InvoiceController extends Controller
                 'sub_total' => $validated['sub_total'],
                 'total_discount' => $validated['total_discount'],
                 'total_amount' => $validated['total_amount'],
-                'paid_amount' => $validated['paid_amount'],
-                'remaining_amount' => $remainingAmount,
                 'team_id' => Auth::user()->team_id,
             ]);
 
@@ -220,20 +225,6 @@ class InvoiceController extends Controller
                         'discount' => $item['discount'] ?? 0,
                     ]);
                 }
-            }
-
-            // Create payment record if paid_amount > 0
-            if ($validated['paid_amount'] > 0) {
-                \App\Models\Payment::create([
-                    'invoice_id' => $invoice->id,
-                    'customer_id' => $invoice->customer_id,
-                    'amount' => $validated['paid_amount'],
-                    'payment_method' => 'cash', // يمكنك تعديله لاحقاً حسب الفورم
-                    'reference_number' => null,
-                    'payment_date' => now(),
-                    'status' => 'completed',
-                    'notes' => null,
-                ]);
             }
 
             DB::commit();
