@@ -2,7 +2,7 @@
 import AppSidebarLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { Button } from '@/components/ui/button';
 import { Plus, Search, Filter, Download, Eye, MoreVertical } from 'lucide-vue-next';
-import { Link } from '@inertiajs/vue3';
+import { Link, router } from '@inertiajs/vue3';
 import { format } from 'date-fns';
 
 interface Invoice {
@@ -57,6 +57,18 @@ const formatCurrency = (amount: number) => {
 const formatDate = (date: string) => {
     return format(new Date(date), 'MMM dd, yyyy');
 };
+
+function openPdf(id) {
+    if (typeof window !== 'undefined' && window.open) {
+        window.open(`/invoices/${id}/pdf`, '_blank');
+    }
+}
+
+function deleteInvoice(id) {
+    if (confirm('Are you sure you want to delete this invoice?')) {
+        router.delete(`/invoices/${id}`);
+    }
+}
 </script>
 
 <template>
@@ -170,15 +182,29 @@ const formatDate = (date: string) => {
                                 </td>
                                 <td class="py-4 px-4">
                                     <div class="flex items-center justify-end gap-2">
-                                        <Button variant="ghost" size="icon" class="h-8 w-8">
+                                        <Link
+                                            :href="`/invoices/${invoice.id}`"
+                                            class="h-8 w-8 flex items-center justify-center text-blue-600 hover:text-blue-900"
+                                            title="Open Invoice"
+                                        >
                                             <Eye class="h-4 w-4" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" class="h-8 w-8">
-                                            <Download class="h-4 w-4" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" class="h-8 w-8">
-                                            <MoreVertical class="h-4 w-4" />
-                                        </Button>
+                                        </Link>
+                                        <button
+                                            @click="openPdf(invoice.id)"
+                                            class="h-8 w-8 flex items-center justify-center text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-800 rounded-full ml-1 transition"
+                                            title="Download PDF"
+                                        >
+                                            <span class="font-bold text-xs">PDF</span>
+                                        </button>
+                                        <button
+                                            @click="deleteInvoice(invoice.id)"
+                                            class="h-8 w-8 flex items-center justify-center text-gray-500 hover:text-white hover:bg-red-500 rounded-full transition"
+                                            title="Delete Invoice"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>

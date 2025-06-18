@@ -55,18 +55,8 @@ class Invoice extends Model
         return $this->belongsTo(Customer::class);
     }
 
-    protected static function boot()
+    public function items()
     {
-        parent::boot();
-
-        static::creating(function ($invoice) {
-            // Calculate remaining amount before saving
-            $invoice->remaining_amount = $invoice->total_amount - $invoice->paid_amount;
-        });
-
-        static::updating(function ($invoice) {
-            // Recalculate remaining amount when updating
-            $invoice->remaining_amount = $invoice->total_amount - $invoice->paid_amount;
-        });
+        return $this->hasMany(\App\Models\InvoiceItem::class, 'invoice_id');
     }
 }

@@ -62,6 +62,12 @@ Route::post('invoices', [InvoiceController::class, 'store'])
     ->middleware(['auth', 'verified'])
     ->name('invoices.store');
 
+Route::get('invoices/{id}/pdf', [App\Http\Controllers\InvoiceController::class, 'downloadPdf'])
+    ->middleware(['auth', 'verified'])
+    ->name('invoices.pdf');
+
+Route::delete('invoices/{id}', [App\Http\Controllers\InvoiceController::class, 'destroy'])->name('invoices.destroy');
+
 // Team Management Routes
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('team', [App\Http\Controllers\TeamManagementController::class, 'index'])->name('team.index');

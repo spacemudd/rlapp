@@ -7,7 +7,7 @@ import { ref, computed, watch } from 'vue';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { format } from 'date-fns';
+import { format, differenceInDays, parseISO } from 'date-fns';
 
 // Define props interface
 interface Props {
@@ -33,16 +33,15 @@ interface Props {
 const props = defineProps<Props>();
 
 const statusOptions = [
+    { value: 'unpaid', label: 'Unpaid', color: 'text-red-500' },
     { value: 'paid', label: 'Paid', color: 'text-green-500' },
-    { value: 'fully_paid', label: 'Fully Paid', color: 'text-emerald-500' },
     { value: 'partial_paid', label: 'Partial Paid', color: 'text-yellow-500' },
 ];
 
 const form = useForm({
-    invoice_number: props.invoice_number,
     invoice_date: format(new Date(), 'yyyy-MM-dd\'T\'HH:mm'),
     due_date: format(new Date(), 'yyyy-MM-dd\'T\'HH:mm'),
-    status: 'paid',
+    status: 'unpaid',
     currency: 'AED',
     total_days: 0,
     start_datetime: format(new Date(), 'yyyy-MM-dd\'T\'HH:mm'),
@@ -70,15 +69,64 @@ const remainingAmount = computed(() => {
     return invoiceAmount.value - Number(form.paid_amount || 0);
 });
 
+// Add watchers for automatic calculations
+watch(
+    () => form.items,
+    (items) => {
+        form.sub_total = items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+        form.total_discount = items.reduce((sum, item) => sum + (Number(item.discount) || 0), 0);
+        form.total_amount = form.sub_total - form.total_discount;
+    },
+    { deep: true }
+);
+
+// Watch for paid amount changes
+watch(
+    () => form.paid_amount,
+    (newValue) => {
+        const remaining = form.total_amount - (Number(newValue) || 0);
+        if (remaining <= 0) {
+            form.status = 'paid';
+        } else if (Number(newValue) > 0) {
+            form.status = 'partial_paid';
+        } else {
+            form.status = 'unpaid';
+        }
+    }
+);
+
+// Add watcher for date changes
+watch(
+    [() => form.start_datetime, () => form.end_datetime],
+    ([start, end]) => {
+        if (start && end) {
+            const startDate = parseISO(start);
+            const endDate = parseISO(end);
+            const days = differenceInDays(endDate, startDate);
+            form.total_days = Math.max(0, days);
+        }
+    }
+);
+
 const handleSubmit = () => {
+    // Calculate totals one last time before submission
+    form.sub_total = form.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    form.total_discount = form.items.reduce((sum, item) => sum + (Number(item.discount) || 0), 0);
+    form.total_amount = form.sub_total - form.total_discount;
+
+    // Ensure all items have required fields
+    form.items = form.items.map(item => ({
+        description: item.description || '',
+        amount: Number(item.amount) || 0,
+        discount: Number(item.discount) || 0
+    }));
+
     form.post(route('invoices.store'), {
         onSuccess: () => {
-            // Reset form after successful submission
-            form.reset();
+            // Reset form or redirect
         },
         onError: (errors) => {
-            // Handle validation errors
-            console.error('Validation errors:', errors);
+            console.error('Form submission errors:', errors);
         }
     });
 };
@@ -125,6 +173,15 @@ function removeItem(idx) {
     if (form.items[idx] && form.items[idx].isVehicle) return;
     form.items.splice(idx, 1);
 }
+
+function calculateTotalDays() {
+    if (form.start_datetime && form.end_datetime) {
+        const startDate = parseISO(form.start_datetime);
+        const endDate = parseISO(form.end_datetime);
+        const days = differenceInDays(endDate, startDate);
+        form.total_days = Math.max(0, days);
+    }
+}
 </script>
 
 <template>
@@ -170,25 +227,13 @@ function removeItem(idx) {
                             </div>
 
                             <div class="space-y-2">
-                                <Label for="invoice_number" class="text-sm font-medium">Invoice Number</Label>
-                                <Input
-                                    id="invoice_number"
-                                    v-model="form.invoice_number"
-                                    required
-                                    class="h-10 bg-gray-50"
-                                    readonly
-                                />
+                                <Label for="invoice_date" class="text-sm font-medium">Invoice Date</Label>
+                                <Input type="datetime-local" id="invoice_date" v-model="form.invoice_date" required class="h-10" />
                             </div>
 
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="space-y-2">
-                                    <Label for="invoice_date" class="text-sm font-medium">Invoice Date</Label>
-                                    <Input type="datetime-local" id="invoice_date" v-model="form.invoice_date" required class="h-10" />
-                                </div>
-                                <div class="space-y-2">
-                                    <Label for="due_date" class="text-sm font-medium">Due Date</Label>
-                                    <Input type="datetime-local" id="due_date" v-model="form.due_date" required class="h-10" />
-                                </div>
+                            <div class="space-y-2">
+                                <Label for="due_date" class="text-sm font-medium">Due Date</Label>
+                                <Input type="datetime-local" id="due_date" v-model="form.due_date" required class="h-10" />
                             </div>
 
                             <div class="grid grid-cols-2 gap-4">
@@ -199,8 +244,8 @@ function removeItem(idx) {
                                         v-model="form.status"
                                         class="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                                     >
+                                        <option value="unpaid">Unpaid</option>
                                         <option value="paid">Paid</option>
-                                        <option value="fully_paid">Fully Paid</option>
                                         <option value="partial_paid">Partial Paid</option>
                                     </select>
                                 </div>
@@ -271,17 +316,38 @@ function removeItem(idx) {
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="space-y-2">
                                     <Label for="start_datetime" class="text-sm font-medium">Start Date & Time</Label>
-                                    <Input type="datetime-local" id="start_datetime" v-model="form.start_datetime" required class="h-10" />
+                                    <Input
+                                        type="datetime-local"
+                                        id="start_datetime"
+                                        v-model="form.start_datetime"
+                                        required
+                                        class="h-10"
+                                        @change="calculateTotalDays"
+                                    />
                                 </div>
                                 <div class="space-y-2">
                                     <Label for="end_datetime" class="text-sm font-medium">End Date & Time</Label>
-                                    <Input type="datetime-local" id="end_datetime" v-model="form.end_datetime" required class="h-10" />
+                                    <Input
+                                        type="datetime-local"
+                                        id="end_datetime"
+                                        v-model="form.end_datetime"
+                                        required
+                                        class="h-10"
+                                        @change="calculateTotalDays"
+                                    />
                                 </div>
                             </div>
 
                             <div class="space-y-2">
                                 <Label for="total_days" class="text-sm font-medium">Total Days</Label>
-                                <Input type="number" id="total_days" v-model="form.total_days" required class="h-10" />
+                                <Input
+                                    type="number"
+                                    id="total_days"
+                                    v-model="form.total_days"
+                                    required
+                                    class="h-10"
+                                    readonly
+                                />
                             </div>
                         </CardContent>
                     </Card>
