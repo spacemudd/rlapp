@@ -21,6 +21,8 @@ class Vehicle extends Model
         'model',
         'year',
         'color',
+        'seats',
+        'doors',
         'category',
         'price_daily',
         'price_weekly',
@@ -106,5 +108,13 @@ class Vehicle extends Model
     public function isInsuranceExpired(): bool
     {
         return $this->insurance_expiry_date->isPast();
+    }
+
+    /**
+     * Get the invoices for this vehicle.
+     */
+    public function invoices()
+    {
+        return $this->hasMany(\App\Models\Invoice::class);
     }
 }

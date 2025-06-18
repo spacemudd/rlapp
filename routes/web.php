@@ -25,6 +25,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'downloadPdf'])->name('invoices.generatePdf');
 });
 
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::resource('vehicles', App\Http\Controllers\VehicleController::class);
+    Route::patch('/vehicles/{vehicle}/disable', [App\Http\Controllers\VehicleController::class, 'disable'])->name('vehicles.disable');
+    Route::patch('/vehicles/{vehicle}/enable', [App\Http\Controllers\VehicleController::class, 'enable'])->name('vehicles.enable');
+});
+
 Route::resource('customers', App\Http\Controllers\CustomerController::class)
     ->except(['show', 'create', 'edit'])
     ->middleware(['auth', 'verified']);
