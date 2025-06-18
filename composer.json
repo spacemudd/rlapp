@@ -14,7 +14,11 @@
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
+<<<<<<< HEAD
         "milon/barcode": "^12.0",
+=======
+        "spatie/laravel-permission": "^6.20",
+>>>>>>> origin/develop
         "tightenco/ziggy": "^2.4"
     },
     "require-dev": {
