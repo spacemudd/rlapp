@@ -21,8 +21,6 @@ return new class extends Migration
             $table->date('date_of_birth')->nullable();
             $table->string('drivers_license_number');
             $table->date('drivers_license_expiry');
-            $table->text('address');
-            $table->string('city');
             $table->string('country')->default('United Arab Emirates');
             $table->string('emergency_contact_name')->nullable();
             $table->string('emergency_contact_phone')->nullable();

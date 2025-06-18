@@ -69,8 +69,6 @@ class CustomerController extends Controller
             'date_of_birth' => 'nullable|date|before:today',
             'drivers_license_number' => 'required|string|max:255',
             'drivers_license_expiry' => 'required|date|after:today',
-            'address' => 'required|string',
-            'city' => 'required|string|max:255',
             'country' => 'required|string|max:255',
             'emergency_contact_name' => 'nullable|string|max:255',
             'emergency_contact_phone' => 'nullable|string|max:20',

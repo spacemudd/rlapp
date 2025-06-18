@@ -6,9 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import AsyncCombobox from '@/components/ui/combobox/AsyncCombobox.vue';
-import InputError from '@/components/InputError.vue';
+import CreateCustomerForm from '@/components/CreateCustomerForm.vue';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import { ref, computed, watch } from 'vue';
 import { ArrowLeft, Calendar, DollarSign, FileText, User, Car, Plus } from 'lucide-vue-next';
@@ -37,24 +37,6 @@ const selectedVehicle = ref<any>(null);
 const showCreateCustomerDialog = ref(false);
 const customerComboboxRef = ref<any>(null);
 
-// Customer creation form
-const customerForm = useForm({
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone: '',
-    date_of_birth: '',
-    drivers_license_number: '',
-    drivers_license_expiry: '',
-    address: 'Dubai',
-    city: 'Dubai',
-    country: 'United Arab Emirates',
-    emergency_contact_name: '',
-    emergency_contact_phone: '',
-    status: 'active' as 'active' | 'inactive',
-    notes: '',
-});
-
 const totalDays = computed(() => {
     if (!form.start_date || !form.end_date) return 0;
     const start = new Date(form.start_date);
@@ -75,7 +57,7 @@ const handleVehicleSelected = (vehicle: any) => {
 };
 
 // Create customer
-const createCustomer = () => {
+const handleCustomerSubmit = (customerForm: any) => {
     router.post('/customers', customerForm.data(), {
         onSuccess: (page) => {
             console.log('Customer creation success, page:', page);
@@ -107,7 +89,6 @@ const createCustomer = () => {
             }
 
             showCreateCustomerDialog.value = false;
-            customerForm.reset();
         },
         onError: (errors) => {
             console.log('Validation errors:', errors);
@@ -124,10 +105,7 @@ const createCustomer = () => {
     });
 };
 
-
-
-const resetCustomerForm = () => {
-    customerForm.reset();
+const handleCustomerCancel = () => {
     showCreateCustomerDialog.value = false;
 };
 
@@ -235,164 +213,10 @@ watch(() => props.newCustomer, (customer) => {
                                                 </DialogDescription>
                                             </DialogHeader>
                                             
-                                            <form @submit.prevent="createCustomer" class="space-y-4">
-                                                <!-- Personal Information -->
-                                                <div class="grid grid-cols-2 gap-4">
-                                                    <div class="space-y-2">
-                                                        <Label for="customer_first_name">First Name *</Label>
-                                                        <Input
-                                                            id="customer_first_name"
-                                                            v-model="customerForm.first_name"
-                                                            type="text"
-                                                            required
-                                                        />
-                                                        <InputError :message="customerForm.errors.first_name" />
-                                                    </div>
-                                                    <div class="space-y-2">
-                                                        <Label for="customer_last_name">Last Name *</Label>
-                                                        <Input
-                                                            id="customer_last_name"
-                                                            v-model="customerForm.last_name"
-                                                            type="text"
-                                                            required
-                                                        />
-                                                        <InputError :message="customerForm.errors.last_name" />
-                                                    </div>
-                                                </div>
-
-                                                <div class="grid grid-cols-2 gap-4">
-                                                    <div class="space-y-2">
-                                                        <Label for="customer_email">Email</Label>
-                                                        <Input
-                                                            id="customer_email"
-                                                            v-model="customerForm.email"
-                                                            type="email"
-                                                        />
-                                                        <InputError :message="customerForm.errors.email" />
-                                                    </div>
-                                                    <div class="space-y-2">
-                                                        <Label for="customer_phone">Phone *</Label>
-                                                        <Input
-                                                            id="customer_phone"
-                                                            v-model="customerForm.phone"
-                                                            type="tel"
-                                                            required
-                                                        />
-                                                        <InputError :message="customerForm.errors.phone" />
-                                                    </div>
-                                                </div>
-
-                                                <div class="space-y-2">
-                                                    <Label for="customer_date_of_birth">Date of Birth</Label>
-                                                    <Input
-                                                        id="customer_date_of_birth"
-                                                        v-model="customerForm.date_of_birth"
-                                                        type="date"
-                                                    />
-                                                    <InputError :message="customerForm.errors.date_of_birth" />
-                                                </div>
-
-                                                <!-- Driver's License Information -->
-                                                <div class="grid grid-cols-2 gap-4">
-                                                    <div class="space-y-2">
-                                                        <Label for="customer_drivers_license_number">Driver's License Number *</Label>
-                                                        <Input
-                                                            id="customer_drivers_license_number"
-                                                            v-model="customerForm.drivers_license_number"
-                                                            type="text"
-                                                            required
-                                                        />
-                                                        <InputError :message="customerForm.errors.drivers_license_number" />
-                                                    </div>
-                                                    <div class="space-y-2">
-                                                        <Label for="customer_drivers_license_expiry">License Expiry Date *</Label>
-                                                        <Input
-                                                            id="customer_drivers_license_expiry"
-                                                            v-model="customerForm.drivers_license_expiry"
-                                                            type="date"
-                                                            required
-                                                        />
-                                                        <InputError :message="customerForm.errors.drivers_license_expiry" />
-                                                    </div>
-                                                </div>
-
-                                                <!-- Address Information -->
-                                                <div class="space-y-2">
-                                                    <Label for="customer_address">Address *</Label>
-                                                    <Input
-                                                        id="customer_address"
-                                                        v-model="customerForm.address"
-                                                        type="text"
-                                                        required
-                                                    />
-                                                    <InputError :message="customerForm.errors.address" />
-                                                </div>
-
-                                                <div class="space-y-2">
-                                                    <Label for="customer_city">City *</Label>
-                                                    <Input
-                                                        id="customer_city"
-                                                        v-model="customerForm.city"
-                                                        type="text"
-                                                        required
-                                                    />
-                                                    <InputError :message="customerForm.errors.city" />
-                                                </div>
-
-                                                <div class="space-y-2">
-                                                    <Label for="customer_country">Country *</Label>
-                                                    <Input
-                                                        id="customer_country"
-                                                        v-model="customerForm.country"
-                                                        type="text"
-                                                        required
-                                                    />
-                                                    <InputError :message="customerForm.errors.country" />
-                                                </div>
-
-                                                <!-- Emergency Contact -->
-                                                <div class="grid grid-cols-2 gap-4">
-                                                    <div class="space-y-2">
-                                                        <Label for="customer_emergency_contact_name">Emergency Contact Name</Label>
-                                                        <Input
-                                                            id="customer_emergency_contact_name"
-                                                            v-model="customerForm.emergency_contact_name"
-                                                            type="text"
-                                                        />
-                                                        <InputError :message="customerForm.errors.emergency_contact_name" />
-                                                    </div>
-                                                    <div class="space-y-2">
-                                                        <Label for="customer_emergency_contact_phone">Emergency Contact Phone</Label>
-                                                        <Input
-                                                            id="customer_emergency_contact_phone"
-                                                            v-model="customerForm.emergency_contact_phone"
-                                                            type="tel"
-                                                        />
-                                                        <InputError :message="customerForm.errors.emergency_contact_phone" />
-                                                    </div>
-                                                </div>
-
-                                                <!-- Notes -->
-                                                <div class="space-y-2">
-                                                    <Label for="customer_notes">Notes</Label>
-                                                    <Textarea 
-                                                        id="customer_notes"
-                                                        v-model="customerForm.notes"
-                                                        placeholder="Additional notes about the customer..."
-                                                        rows="3"
-                                                    />
-                                                    <InputError :message="customerForm.errors.notes" />
-                                                </div>
-
-                                                <DialogFooter>
-                                                    <Button type="button" variant="outline" @click="resetCustomerForm">
-                                                        Cancel
-                                                    </Button>
-                                                    <Button type="submit" :disabled="customerForm.processing">
-                                                        {{ customerForm.processing ? 'Creating...' : 'Create Customer' }}
-                                                    </Button>
-                                                </DialogFooter>
-                                            </form>
+                                            <CreateCustomerForm
+                                                @submit="handleCustomerSubmit"
+                                                @cancel="handleCustomerCancel"
+                                            />
                                         </DialogContent>
                                     </Dialog>
                                 </div>
