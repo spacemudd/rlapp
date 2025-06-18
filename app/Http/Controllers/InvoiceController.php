@@ -39,8 +39,7 @@ class InvoiceController extends Controller
                     'paid_amount' => (float) $invoice->paid_amount,
                     'remaining_amount' => (float) $invoice->remaining_amount,
                     'customer' => [
-                        'first_name' => $invoice->customer->first_name,
-                        'last_name' => $invoice->customer->last_name,
+                        'name' => $invoice->customer->first_name . ' ' . $invoice->customer->last_name,
                     ],
                     'vehicle' => $invoice->vehicle
                         ? [
@@ -54,6 +53,66 @@ class InvoiceController extends Controller
 
         return Inertia::render('Invoices/Index', [
             'invoices' => $invoices
+        ]);
+    }
+
+    public function show($id)
+    {
+        $invoice = Invoice::with(['customer', 'vehicle', 'items', 'payments'])->findOrFail($id);
+
+        return Inertia::render('Invoices/Show', [
+            'invoice' => [
+                'id' => $invoice->id,
+                'invoice_number' => $invoice->invoice_number,
+                'invoice_date' => $invoice->invoice_date,
+                'due_date' => $invoice->due_date,
+                'status' => $invoice->status,
+                'currency' => $invoice->currency,
+                'total_days' => $invoice->total_days,
+                'start_datetime' => $invoice->start_datetime,
+                'end_datetime' => $invoice->end_datetime,
+                'sub_total' => (float) $invoice->sub_total,
+                'total_discount' => (float) $invoice->total_discount,
+                'total_amount' => (float) $invoice->total_amount,
+                'paid_amount' => (float) $invoice->paid_amount,
+                'remaining_amount' => (float) $invoice->remaining_amount,
+                'customer' => [
+                    'id' => $invoice->customer->id,
+                    'name' => $invoice->customer->first_name . ' ' . $invoice->customer->last_name,
+                    'email' => $invoice->customer->email,
+                    'phone' => $invoice->customer->phone_number,
+                    'address' => $invoice->customer->address,
+                    'city' => $invoice->customer->city,
+                    'country' => $invoice->customer->nationality,
+                ],
+                'vehicle' => [
+                    'id' => $invoice->vehicle->id,
+                    'name' => $invoice->vehicle->make . ' ' . $invoice->vehicle->model,
+                    'make' => $invoice->vehicle->make,
+                    'model' => $invoice->vehicle->model,
+                    'plate_number' => $invoice->vehicle->plate_number,
+                ],
+                'items' => $invoice->items->map(function ($item) {
+                    return [
+                        'description' => $item->description,
+                        'amount' => (float) $item->amount,
+                        'discount' => (float) $item->discount,
+                    ];
+                }),
+                'payments' => $invoice->payments->map(function ($payment) {
+                    return [
+                        'id' => $payment->id,
+                        'amount' => (float) $payment->amount,
+                        'payment_method' => $payment->payment_method,
+                        'payment_date' => $payment->payment_date,
+                        'status' => $payment->status,
+                        'notes' => $payment->notes,
+                        'reference_number' => $payment->reference_number,
+                        'transaction_type' => $payment->transaction_type,
+                        'created_at' => $payment->created_at,
+                    ];
+                }),
+            ],
         ]);
     }
 
@@ -124,7 +183,6 @@ class InvoiceController extends Controller
                 'sub_total' => 'required|numeric|min:0',
                 'total_discount' => 'required|numeric|min:0',
                 'total_amount' => 'required|numeric|min:0',
-                'paid_amount' => 'required|numeric|min:0',
                 'items' => 'required|array|min:1',
                 'items.*.description' => 'nullable|string',
                 'items.*.amount' => 'nullable|numeric|min:0',
@@ -141,9 +199,6 @@ class InvoiceController extends Controller
 
             DB::beginTransaction();
 
-            // Calculate remaining amount
-            $remainingAmount = $validated['total_amount'] - $validated['paid_amount'];
-
             $invoice = Invoice::create([
                 'invoice_number' => $invoiceNumber,
                 'invoice_date' => $validated['invoice_date'],
@@ -158,8 +213,6 @@ class InvoiceController extends Controller
                 'sub_total' => $validated['sub_total'],
                 'total_discount' => $validated['total_discount'],
                 'total_amount' => $validated['total_amount'],
-                'paid_amount' => $validated['paid_amount'],
-                'remaining_amount' => $remainingAmount,
                 'team_id' => Auth::user()->team_id,
             ]);
 

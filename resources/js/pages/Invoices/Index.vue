@@ -183,11 +183,11 @@ function deleteInvoice(id) {
                                 <td class="py-4 px-4">
                                     <div class="flex items-center justify-end gap-2">
                                         <Link
-                                            :href="`/invoices/${invoice.id}`"
-                                            class="h-8 w-8 flex items-center justify-center text-blue-600 hover:text-blue-900"
+                                            :href="route('invoices.show', invoice.id)"
+                                            class="h-8 px-3 flex items-center justify-center text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 rounded-full"
                                             title="Open Invoice"
                                         >
-                                            <Eye class="h-4 w-4" />
+                                            Open
                                         </Link>
                                         <button
                                             @click="openPdf(invoice.id)"

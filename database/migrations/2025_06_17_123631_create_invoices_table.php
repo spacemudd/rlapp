@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('invoice_number')->unique();
             $table->dateTime('invoice_date');
             $table->dateTime('due_date');
-            $table->enum('status', ['paid', 'unpaid', 'partial'])->default('unpaid');
+            $table->enum('status', ['paid', 'unpaid', 'partial', 'partial_paid', 'fully_paid'])->default('unpaid');
             $table->string('currency', 3)->default('AED');
             $table->integer('total_days');
             $table->dateTime('start_datetime');
@@ -24,10 +24,8 @@ return new class extends Migration
             $table->foreignUuid('vehicle_id')->constrained('vehicles')->onDelete('restrict');
             $table->foreignUuid('customer_id')->constrained('customers')->onDelete('restrict');
             $table->decimal('sub_total', 10, 2);
-            $table->decimal('total_discount', 10, 2)->default(0);
+            $table->decimal('total_discount', 10, 2)->default('0');
             $table->decimal('total_amount', 10, 2);
-            $table->decimal('paid_amount', 10, 2)->default(0);
-            $table->decimal('remaining_amount', 10, 2);
             $table->timestamps();
         });
     }

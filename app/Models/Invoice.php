@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Invoice extends Model
 {
@@ -55,8 +56,30 @@ class Invoice extends Model
         return $this->belongsTo(Customer::class);
     }
 
-    public function items()
+    public function items(): HasMany
     {
-        return $this->hasMany(\App\Models\InvoiceItem::class, 'invoice_id');
+        return $this->hasMany(InvoiceItem::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function getPaidAmountAttribute()
+    {
+        return $this->payments()->where('transaction_type', 'payment')->sum('amount');
+    }
+
+    public function getRemainingAmountAttribute()
+    {
+        return $this->total_amount - $this->paid_amount;
+    }
+
+    public function getDepositBalanceAttribute()
+    {
+        $deposit = $this->payments()->where('transaction_type', 'deposit')->sum('amount');
+        $refund = $this->payments()->where('transaction_type', 'refund')->sum('amount');
+        return $deposit - $refund;
     }
 }
