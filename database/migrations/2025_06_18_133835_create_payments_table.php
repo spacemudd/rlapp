@@ -21,6 +21,7 @@ return new class extends Migration
             $table->date('payment_date');
             $table->enum('status', ['completed', 'pending', 'failed'])->default('completed');
             $table->text('notes')->nullable();
+            $table->enum('transaction_type', ['payment', 'deposit', 'refund'])->default('payment');
             $table->timestamps();
 
             $table->foreign('invoice_id')

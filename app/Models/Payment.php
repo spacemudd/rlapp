@@ -19,6 +19,7 @@ class Payment extends Model
         'payment_date',
         'status',
         'notes',
+        'transaction_type',
     ];
 
     protected $casts = [

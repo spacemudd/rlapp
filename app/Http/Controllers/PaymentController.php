@@ -18,6 +18,7 @@ class PaymentController extends Controller
             'payment_date' => 'required|date',
             'status' => 'required|in:completed,pending,failed',
             'notes' => 'nullable|string',
+            'transaction_type' => 'required|in:payment,deposit,refund',
         ]);
 
         $invoice = Invoice::findOrFail($invoiceId);
@@ -31,6 +32,7 @@ class PaymentController extends Controller
             'payment_date' => $validated['payment_date'],
             'status' => $validated['status'],
             'notes' => $validated['notes'],
+            'transaction_type' => $validated['transaction_type'],
         ]);
 
         return back()->with('success', 'Payment added successfully.');

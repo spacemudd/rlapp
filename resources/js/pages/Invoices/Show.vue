@@ -57,6 +57,8 @@ interface Props {
             amount: number;
             status: string;
             notes: string | null;
+            type: string;
+            transaction_type: string;
         }[];
     };
 }
@@ -95,6 +97,7 @@ const paymentForm = useForm({
     payment_date: format(new Date(), 'yyyy-MM-dd'),
     status: 'completed',
     notes: '',
+    transaction_type: 'payment',
 });
 
 function openPaymentModal() {
@@ -110,6 +113,12 @@ function submitPayment() {
             closePaymentModal();
         },
     });
+}
+
+function getTransactionTypeLabel(type: string) {
+    if (type === 'deposit') return 'Security Deposit';
+    if (type === 'refund') return 'Refund';
+    return 'Payment';
 }
 </script>
 
@@ -268,6 +277,7 @@ function submitPayment() {
                                     <th class="py-2 text-right">Amount</th>
                                     <th class="py-2 text-center">Status</th>
                                     <th class="py-2 text-left">Notes</th>
+                                    <th class="py-2 text-left">Type</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -286,6 +296,15 @@ function submitPayment() {
                                         </span>
                                     </td>
                                     <td class="py-2">{{ payment.notes || '-' }}</td>
+                                    <td class="py-2">
+                                        <span :class="{
+                                            'text-blue-600 font-semibold': payment.transaction_type === 'deposit',
+                                            'text-green-600 font-semibold': payment.transaction_type === 'payment',
+                                            'text-orange-600 font-semibold': payment.transaction_type === 'refund',
+                                        }">
+                                            {{ getTransactionTypeLabel(payment.transaction_type) }}
+                                        </span>
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
@@ -326,6 +345,14 @@ function submitPayment() {
                         <option value="completed">Completed</option>
                         <option value="pending">Pending</option>
                         <option value="failed">Failed</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Transaction Type</label>
+                    <select v-model="paymentForm.transaction_type" class="input w-full" required>
+                        <option value="payment">Payment</option>
+                        <option value="deposit">Security Deposit</option>
+                        <option value="refund">Refund</option>
                     </select>
                 </div>
                 <div>

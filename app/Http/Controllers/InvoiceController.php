@@ -109,6 +109,7 @@ class InvoiceController extends Controller
                         'status' => $payment->status,
                         'notes' => $payment->notes,
                         'reference_number' => $payment->reference_number,
+                        'transaction_type' => $payment->transaction_type,
                         'created_at' => $payment->created_at,
                     ];
                 }),
