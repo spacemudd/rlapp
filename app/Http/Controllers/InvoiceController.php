@@ -57,6 +57,54 @@ class InvoiceController extends Controller
         ]);
     }
 
+    public function show($id)
+    {
+        $invoice = Invoice::with(['customer', 'vehicle', 'items'])
+            ->findOrFail($id);
+
+        return Inertia::render('Invoices/Show', [
+            'invoice' => [
+                'id' => $invoice->id,
+                'invoice_number' => $invoice->invoice_number,
+                'invoice_date' => $invoice->invoice_date,
+                'due_date' => $invoice->due_date,
+                'status' => $invoice->status,
+                'currency' => $invoice->currency,
+                'total_days' => $invoice->total_days,
+                'start_datetime' => $invoice->start_datetime,
+                'end_datetime' => $invoice->end_datetime,
+                'sub_total' => (float) $invoice->sub_total,
+                'total_discount' => (float) $invoice->total_discount,
+                'total_amount' => (float) $invoice->total_amount,
+                'paid_amount' => (float) $invoice->paid_amount,
+                'remaining_amount' => (float) $invoice->remaining_amount,
+                'customer' => [
+                    'id' => $invoice->customer->id,
+                    'name' => $invoice->customer->first_name . ' ' . $invoice->customer->last_name,
+                    'email' => $invoice->customer->email,
+                    'phone' => $invoice->customer->phone_number,
+                    'address' => $invoice->customer->address,
+                    'city' => $invoice->customer->city,
+                    'country' => $invoice->customer->nationality,
+                ],
+                'vehicle' => [
+                    'id' => $invoice->vehicle->id,
+                    'name' => $invoice->vehicle->make . ' ' . $invoice->vehicle->model,
+                    'make' => $invoice->vehicle->make,
+                    'model' => $invoice->vehicle->model,
+                    'plate_number' => $invoice->vehicle->plate_number,
+                ],
+                'items' => $invoice->items->map(function ($item) {
+                    return [
+                        'description' => $item->description,
+                        'amount' => (float) $item->amount,
+                        'discount' => (float) $item->discount,
+                    ];
+                }),
+            ],
+        ]);
+    }
+
     public function create()
     {
         $lastInvoice = Invoice::orderBy('created_at', 'desc')->first();
