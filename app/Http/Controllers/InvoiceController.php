@@ -222,6 +222,20 @@ class InvoiceController extends Controller
                 }
             }
 
+            // Create payment record if paid_amount > 0
+            if ($validated['paid_amount'] > 0) {
+                \App\Models\Payment::create([
+                    'invoice_id' => $invoice->id,
+                    'customer_id' => $invoice->customer_id,
+                    'amount' => $validated['paid_amount'],
+                    'payment_method' => 'cash', // يمكنك تعديله لاحقاً حسب الفورم
+                    'reference_number' => null,
+                    'payment_date' => now(),
+                    'status' => 'completed',
+                    'notes' => null,
+                ]);
+            }
+
             DB::commit();
 
             return redirect()->route('invoices')

@@ -5,6 +5,9 @@ import { ArrowLeft, Download, Printer, DollarSign } from 'lucide-vue-next';
 import { Link } from '@inertiajs/vue3';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
+import { ref } from 'vue';
+import { useForm } from '@inertiajs/vue3';
+import { Dialog, DialogOverlay, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 interface InvoiceItem {
     description: string;
@@ -75,6 +78,30 @@ const formatDate = (date: string) => {
 function downloadPdf() {
     window.open(`/invoices/${props.invoice.id}/pdf`, '_blank');
 }
+
+const showPaymentModal = ref(false);
+const paymentForm = useForm({
+    amount: '',
+    payment_method: '',
+    payment_date: format(new Date(), 'yyyy-MM-dd'),
+    status: 'completed',
+    notes: '',
+});
+
+function openPaymentModal() {
+    showPaymentModal.value = true;
+}
+function closePaymentModal() {
+    showPaymentModal.value = false;
+    paymentForm.reset();
+}
+function submitPayment() {
+    paymentForm.post(route('payments.store', { invoice: props.invoice.id }), {
+        onSuccess: () => {
+            closePaymentModal();
+        },
+    });
+}
 </script>
 
 <template>
@@ -102,7 +129,7 @@ function downloadPdf() {
                         <Printer class="h-4 w-4" />
                         Print
                     </Button>
-                    <Button class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white">
+                    <Button class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white" @click="openPaymentModal">
                         <DollarSign class="h-4 w-4" />
                         Add Payment
                     </Button>
@@ -217,4 +244,48 @@ function downloadPdf() {
             </div>
         </div>
     </AppSidebarLayout>
+
+    <Dialog v-model:open="showPaymentModal">
+        <DialogOverlay />
+        <DialogContent class="max-w-md w-full">
+            <DialogTitle>Add Payment</DialogTitle>
+            <DialogDescription>Enter payment details for this invoice.</DialogDescription>
+            <form @submit.prevent="submitPayment" class="space-y-4 mt-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Amount</label>
+                    <input v-model="paymentForm.amount" type="number" min="0" step="0.01" class="input w-full" required />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Payment Method</label>
+                    <select v-model="paymentForm.payment_method" class="input w-full" required>
+                        <option value="">Select method</option>
+                        <option value="cash">Cash</option>
+                        <option value="credit_card">Credit Card</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Payment Date</label>
+                    <input v-model="paymentForm.payment_date" type="date" class="input w-full" required />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Status</label>
+                    <select v-model="paymentForm.status" class="input w-full" required>
+                        <option value="completed">Completed</option>
+                        <option value="pending">Pending</option>
+                        <option value="failed">Failed</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Notes</label>
+                    <textarea v-model="paymentForm.notes" class="input w-full" rows="2"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 mt-4">
+                    <Button type="button" variant="outline" @click="closePaymentModal">Cancel</Button>
+                    <Button type="submit" :disabled="paymentForm.processing">Save Payment</Button>
+                </div>
+            </form>
+        </DialogContent>
+    </Dialog>
 </template>

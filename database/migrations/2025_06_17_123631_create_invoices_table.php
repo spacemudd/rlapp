@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('invoice_number')->unique();
             $table->dateTime('invoice_date');
             $table->dateTime('due_date');
-            $table->enum('status', ['paid', 'unpaid', 'partial'])->default('unpaid');
+            $table->enum('status', ['paid', 'unpaid', 'partial', 'partial_paid', 'fully_paid'])->default('unpaid');
             $table->string('currency', 3)->default('AED');
             $table->integer('total_days');
             $table->dateTime('start_datetime');
