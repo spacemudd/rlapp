@@ -4,9 +4,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { DialogFooter } from '@/components/ui/dialog';
-import InputError from '@/components/InputError.vue';
+import SearchableSelect from './ui/SearchableSelect.vue';
+import InputError from './InputError.vue';
 import { useForm } from '@inertiajs/vue3';
 import { watch } from 'vue';
+import { CreditCard, BookOpen, IdCard } from 'lucide-vue-next';
+import { countryOptions, nationalityOptions } from '../lib/countries';
 
 interface Props {
     editingCustomer?: any;
@@ -27,8 +30,13 @@ const form = useForm({
     email: '',
     phone: '',
     date_of_birth: '',
+    identification_type: '',
     drivers_license_number: '',
     drivers_license_expiry: '',
+    passport_number: '',
+    passport_expiry: '',
+    resident_id_number: '',
+    resident_id_expiry: '',
     country: 'United Arab Emirates',
     nationality: '',
     emergency_contact_name: '',
@@ -58,6 +66,7 @@ watch(() => props.editingCustomer, (customer) => {
         form.reset();
         form.country = 'United Arab Emirates';
         form.status = 'active';
+        form.identification_type = '';
     }
 }, { immediate: true });
 
@@ -111,8 +120,84 @@ const cancelForm = () => {
                 <InputError :message="form.errors.phone" />
             </div>
 
-            <!-- Driver's License Information -->
-            <div class="grid grid-cols-2 gap-4">
+            <!-- Identification Type Selection -->
+            <div class="space-y-4">
+                <Label>Identification Type *</Label>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Driver's License Option -->
+                    <div 
+                        class="relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:bg-gray-50"
+                        :class="{
+                            'border-blue-500 bg-blue-50': form.identification_type === 'drivers_license',
+                            'border-gray-200': form.identification_type !== 'drivers_license'
+                        }"
+                        @click="form.identification_type = 'drivers_license'"
+                    >
+                        <div class="flex flex-col items-center text-center space-y-2">
+                            <CreditCard class="h-8 w-8 text-gray-600" />
+                            <h3 class="font-medium text-gray-900">Driver's License</h3>
+                            <p class="text-sm text-gray-500">UAE or International License</p>
+                        </div>
+                        <input
+                            type="radio"
+                            name="identification_type"
+                            value="drivers_license"
+                            v-model="form.identification_type"
+                            class="absolute top-2 right-2"
+                        />
+                    </div>
+
+                    <!-- Passport Option -->
+                    <div 
+                        class="relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:bg-gray-50"
+                        :class="{
+                            'border-blue-500 bg-blue-50': form.identification_type === 'passport',
+                            'border-gray-200': form.identification_type !== 'passport'
+                        }"
+                        @click="form.identification_type = 'passport'"
+                    >
+                        <div class="flex flex-col items-center text-center space-y-2">
+                            <BookOpen class="h-8 w-8 text-gray-600" />
+                            <h3 class="font-medium text-gray-900">Passport</h3>
+                            <p class="text-sm text-gray-500">International Passport</p>
+                        </div>
+                        <input
+                            type="radio"
+                            name="identification_type"
+                            value="passport"
+                            v-model="form.identification_type"
+                            class="absolute top-2 right-2"
+                        />
+                    </div>
+
+                    <!-- Resident ID Option -->
+                    <div 
+                        class="relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:bg-gray-50"
+                        :class="{
+                            'border-blue-500 bg-blue-50': form.identification_type === 'resident_id',
+                            'border-gray-200': form.identification_type !== 'resident_id'
+                        }"
+                        @click="form.identification_type = 'resident_id'"
+                    >
+                        <div class="flex flex-col items-center text-center space-y-2">
+                            <IdCard class="h-8 w-8 text-gray-600" />
+                            <h3 class="font-medium text-gray-900">Resident ID</h3>
+                            <p class="text-sm text-gray-500">Emirates ID or Resident Card</p>
+                        </div>
+                        <input
+                            type="radio"
+                            name="identification_type"
+                            value="resident_id"
+                            v-model="form.identification_type"
+                            class="absolute top-2 right-2"
+                        />
+                    </div>
+                </div>
+                <InputError :message="form.errors.identification_type" />
+            </div>
+
+            <!-- Identification Details (shown based on selection) -->
+            <div v-if="form.identification_type === 'drivers_license'" class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">
                     <Label for="drivers_license_number">Driver's License Number *</Label>
                     <Input
@@ -120,6 +205,7 @@ const cancelForm = () => {
                         v-model="form.drivers_license_number"
                         type="text"
                         required
+                        placeholder="Enter license number"
                     />
                     <InputError :message="form.errors.drivers_license_number" />
                 </div>
@@ -135,27 +221,73 @@ const cancelForm = () => {
                 </div>
             </div>
 
+            <div v-if="form.identification_type === 'passport'" class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                    <Label for="passport_number">Passport Number *</Label>
+                    <Input
+                        id="passport_number"
+                        v-model="form.passport_number"
+                        type="text"
+                        required
+                        placeholder="Enter passport number"
+                    />
+                    <InputError :message="form.errors.passport_number" />
+                </div>
+                <div class="space-y-2">
+                    <Label for="passport_expiry">Passport Expiry Date *</Label>
+                    <Input
+                        id="passport_expiry"
+                        v-model="form.passport_expiry"
+                        type="date"
+                        required
+                    />
+                    <InputError :message="form.errors.passport_expiry" />
+                </div>
+            </div>
+
+            <div v-if="form.identification_type === 'resident_id'" class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                    <Label for="resident_id_number">Resident ID Number *</Label>
+                    <Input
+                        id="resident_id_number"
+                        v-model="form.resident_id_number"
+                        type="text"
+                        required
+                        placeholder="Enter Emirates ID or Resident Card number"
+                    />
+                    <InputError :message="form.errors.resident_id_number" />
+                </div>
+                <div class="space-y-2">
+                    <Label for="resident_id_expiry">ID Expiry Date *</Label>
+                    <Input
+                        id="resident_id_expiry"
+                        v-model="form.resident_id_expiry"
+                        type="date"
+                        required
+                    />
+                    <InputError :message="form.errors.resident_id_expiry" />
+                </div>
+            </div>
+
             <!-- Country and Nationality Information -->
             <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">
                     <Label for="country">Country *</Label>
-                    <Input
-                        id="country"
+                    <SearchableSelect
                         v-model="form.country"
-                        type="text"
-                        required
+                        :options="countryOptions"
+                        placeholder="Search and select country..."
+                        :error="form.errors.country"
                     />
-                    <InputError :message="form.errors.country" />
                 </div>
                 <div class="space-y-2">
                     <Label for="nationality">Nationality *</Label>
-                    <Input
-                        id="nationality"
+                    <SearchableSelect
                         v-model="form.nationality"
-                        type="text"
-                        required
+                        :options="nationalityOptions"
+                        placeholder="Search and select nationality..."
+                        :error="form.errors.nationality"
                     />
-                    <InputError :message="form.errors.nationality" />
                 </div>
             </div>
 

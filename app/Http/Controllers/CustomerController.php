@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\Team;
+use App\Http\Requests\StoreCustomerRequest;
+use App\Http\Requests\UpdateCustomerRequest;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -29,8 +31,10 @@ class CustomerController extends Controller
                   ->orWhere('email', 'like', "%{$search}%")
                   ->orWhere('phone', 'like', "%{$search}%")
                   ->orWhere('drivers_license_number', 'like', "%{$search}%")
-                  ->orWhere('city', 'like', "%{$search}%")
-                  ->orWhere('address', 'like', "%{$search}%")
+                  ->orWhere('passport_number', 'like', "%{$search}%")
+                  ->orWhere('resident_id_number', 'like', "%{$search}%")
+                  ->orWhere('nationality', 'like', "%{$search}%")
+                  ->orWhere('country', 'like', "%{$search}%")
                   ->orWhere('notes', 'like', "%{$search}%")
                   ->orWhereRaw("CONCAT(first_name, ' ', last_name) like ?", ["%{$search}%"]);
             });
@@ -59,22 +63,9 @@ class CustomerController extends Controller
     /**
      * Store a newly created customer in storage.
      */
-    public function store(Request $request)
+    public function store(StoreCustomerRequest $request)
     {
-        $validated = $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'email' => 'nullable|string|email|max:255|unique:customers',
-            'phone' => 'required|string|max:20',
-            'date_of_birth' => 'nullable|date|before:today',
-            'drivers_license_number' => 'required|string|max:255',
-            'drivers_license_expiry' => 'required|date|after:today',
-            'country' => 'required|string|max:255',
-            'emergency_contact_name' => 'nullable|string|max:255',
-            'emergency_contact_phone' => 'nullable|string|max:20',
-            'status' => 'required|in:active,inactive',
-            'notes' => 'nullable|string',
-        ]);
+        $validated = $request->validated();
 
         $validated['team_id'] = auth()->user()->team_id;
 
@@ -126,29 +117,14 @@ class CustomerController extends Controller
     /**
      * Update the specified customer in storage.
      */
-    public function update(Request $request, Customer $customer)
+    public function update(UpdateCustomerRequest $request, Customer $customer)
     {
         // Ensure customer belongs to user's team
         if ($customer->team_id !== auth()->user()->team_id) {
             abort(403);
         }
 
-        $validated = $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'email' => 'nullable|string|email|max:255|unique:customers,email,' . $customer->id,
-            'phone' => 'required|string|max:20',
-            'date_of_birth' => 'nullable|date|before:today',
-            'drivers_license_number' => 'required|string|max:255',
-            'drivers_license_expiry' => 'required|date|after:today',
-            'address' => 'required|string',
-            'city' => 'required|string|max:255',
-            'country' => 'required|string|max:255',
-            'emergency_contact_name' => 'nullable|string|max:255',
-            'emergency_contact_phone' => 'nullable|string|max:20',
-            'status' => 'required|in:active,inactive',
-            'notes' => 'nullable|string',
-        ]);
+        $validated = $request->validated();
 
         $customer->update($validated);
 
