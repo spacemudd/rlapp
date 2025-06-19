@@ -367,7 +367,7 @@ class ContractController extends Controller
             'sub_total' => $contract->total_amount,
             'total_discount' => 0,
             'total_amount' => $contract->total_amount,
-            'team_id' => $contract->team_id,
+            // 'team_id' => $contract->team_id,
         ]);
 
         // Create invoice items

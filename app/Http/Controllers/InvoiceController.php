@@ -12,6 +12,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\InvoiceItem;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Contract;
 
 class InvoiceController extends Controller
 {
@@ -116,7 +117,7 @@ class InvoiceController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $lastInvoice = Invoice::orderBy('created_at', 'desc')->first();
         $nextNumber = 10001; // Start from 10001
@@ -159,9 +160,20 @@ class InvoiceController extends Controller
                 ];
             });
 
+        $contracts = \App\Models\Contract::with('vehicle')->get()->map(function($contract) {
+            return [
+                'id' => $contract->id,
+                'contract_number' => $contract->contract_number,
+                'vehicle_id' => $contract->vehicle_id,
+                'start_date' => $contract->start_date,
+                'end_date' => $contract->end_date,
+            ];
+        });
+
         return Inertia::render('Invoices/Create', [
             'customers' => $customers,
             'vehicles' => $vehicles,
+            'contracts' => $contracts,
             'nextInvoiceNumber' => $nextInvoiceNumber,
         ]);
     }

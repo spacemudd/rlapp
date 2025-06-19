@@ -8,6 +8,8 @@ use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\Vehicle;
 use App\Models\Team;
+use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class ContractSeeder extends Seeder
 {
@@ -16,52 +18,50 @@ class ContractSeeder extends Seeder
      */
     public function run(): void
     {
+        // Get existing data
+        $customers = Customer::all();
+        $vehicles = Vehicle::all();
         $team = Team::first();
-        if (!$team) {
-            $this->command->info('No team found. Please create a team first.');
-            return;
-        }
-
-        $customers = Customer::where('team_id', $team->id)->take(3)->get();
-        $vehicles = Vehicle::where('status', 'available')->take(3)->get();
 
         if ($customers->isEmpty() || $vehicles->isEmpty()) {
-            $this->command->info('Not enough customers or vehicles found. Please create some first.');
+            echo "Please seed customers and vehicles first.\n";
             return;
         }
 
-        $statuses = ['draft', 'active', 'completed'];
-        
-        for ($i = 0; $i < 5; $i++) {
-            $customer = $customers->random();
-            $vehicle = $vehicles->random();
-            $status = $statuses[array_rand($statuses)];
-            
-            $startDate = now()->addDays(rand(1, 30));
-            $endDate = $startDate->copy()->addDays(rand(1, 14));
-            $totalDays = $startDate->diffInDays($endDate) + 1;
+        // Create 10 contracts
+        for ($i = 1; $i <= 10; $i++) {
+            $startDate = Carbon::now()->addDays(rand(-30, 30))->startOfDay();
+            $endDate = $startDate->copy()->addDays(rand(1, 30));
             $dailyRate = rand(100, 500);
+            $totalDays = $startDate->diffInDays($endDate);
             $totalAmount = $dailyRate * $totalDays;
 
-            $contract = Contract::create([
-                'contract_number' => Contract::generateContractNumber(),
+            Contract::create([
+                'id' => Str::uuid(),
+                'contract_number' => 'CNT-' . str_pad($i, 5, '0', STR_PAD_LEFT),
+                'status' => rand(0, 1) ? 'active' : 'completed',
+                'customer_id' => $customers->random()->id,
+                'vehicle_id' => $vehicles->random()->id,
                 'team_id' => $team->id,
-                'customer_id' => $customer->id,
-                'vehicle_id' => $vehicle->id,
                 'start_date' => $startDate,
                 'end_date' => $endDate,
+                'signed_at' => $startDate->subHours(rand(1, 24)),
+                'activated_at' => $startDate,
+                'completed_at' => rand(0, 1) ? $endDate : null,
+                'total_amount' => $totalAmount,
+                'deposit_amount' => $totalAmount * 0.2, // 20% deposit
                 'daily_rate' => $dailyRate,
                 'total_days' => $totalDays,
-                'total_amount' => $totalAmount,
-                'deposit_amount' => rand(0, 1000),
-                'status' => $status,
+                'currency' => 'AED',
+                'mileage_limit' => rand(100, 300),
+                'excess_mileage_rate' => 2.00,
+                'terms_and_conditions' => 'Standard rental terms and conditions apply.',
+                'notes' => 'Contract created by seeder',
                 'created_by' => 'Seeder',
-                'activated_at' => $status !== 'draft' ? now() : null,
-                'completed_at' => $status === 'completed' ? now() : null,
-                'notes' => 'Sample contract created by seeder',
+                'approved_by' => 'System',
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
-
-            $this->command->info("Created contract: {$contract->contract_number} ({$status})");
         }
     }
 }

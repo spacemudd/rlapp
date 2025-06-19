@@ -2,8 +2,8 @@
 import AppSidebarLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Plus, Calendar, DollarSign, Car, User } from 'lucide-vue-next';
-import { Link, useForm } from '@inertiajs/vue3';
-import { ref, computed, watch } from 'vue';
+import { Link, useForm, usePage } from '@inertiajs/vue3';
+import { ref, computed, watch, onMounted } from 'vue';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -24,6 +24,14 @@ interface Props {
     vehicles: Array<{
         id: string;
         name: string;
+    }>;
+    contracts: Array<{
+        id: string;
+        contract_number: string;
+        start_date: string;
+        end_date: string;
+        vehicle_id: string;
+        total_days: number;
     }>;
     nextInvoiceNumber: string;
 }
@@ -55,9 +63,11 @@ const form = useForm({
     end_datetime: format(new Date(), 'yyyy-MM-dd\'T\'HH:mm'),
     vehicle_id: '',
     customer_id: '',
+    contract_id: '',
     sub_total: 0,
     total_discount: 0,
     total_amount: 0,
+    type: 'Rental',
     items: [
         { description: '', amount: 0, discount: 0 }
     ]
@@ -97,7 +107,7 @@ watch(
     }
 );
 
-// Add watcher for date changes
+// ووتشر التواريخ ليحسب دائماً الفرق بين التواريخ ناقص 1
 watch(
     [() => form.start_datetime, () => form.end_datetime],
     ([start, end]) => {
@@ -105,7 +115,7 @@ watch(
             const startDate = parseISO(start);
             const endDate = parseISO(end);
             const days = differenceInDays(endDate, startDate);
-            form.total_days = Math.max(0, days);
+            form.total_days = Math.max(0, days - 1);
         }
     }
 );
@@ -132,6 +142,46 @@ watch(
             }
         }
     }
+);
+
+// دالة لتحويل التاريخ لصيغة input datetime-local
+function toDatetimeLocal(dateString: string) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    // YYYY-MM-DDTHH:MM
+    return date.toISOString().slice(0, 16);
+}
+
+// ووتشر لتعبئة التواريخ والسيارة عند اختيار عقد
+watch(
+    () => form.contract_id,
+    (newVal) => {
+        if (newVal) {
+            const selectedContract = props.contracts.find(c => c.id === newVal);
+            if (selectedContract) {
+                if (selectedContract.start_date) form.start_datetime = toDatetimeLocal(selectedContract.start_date);
+                if (selectedContract.end_date) form.end_datetime = toDatetimeLocal(selectedContract.end_date);
+                if (selectedContract.vehicle_id) form.vehicle_id = selectedContract.vehicle_id;
+                if (selectedContract.total_days) form.total_days = selectedContract.total_days;
+            }
+        }
+    }
+);
+
+// ووتشر إضافي لضمان تعبئة البيانات عند توفر العقود بعد تحميل الصفحة
+watch(
+    () => props.contracts,
+    (newContracts) => {
+        if (form.contract_id) {
+            const selectedContract = newContracts.find(c => c.id === form.contract_id);
+            if (selectedContract) {
+                if (selectedContract.start_date) form.start_datetime = toDatetimeLocal(selectedContract.start_date);
+                if (selectedContract.end_date) form.end_datetime = toDatetimeLocal(selectedContract.end_date);
+                if (selectedContract.total_days) form.total_days = selectedContract.total_days;
+            }
+        }
+    },
+    { immediate: true, deep: true }
 );
 
 const handleSubmit = () => {
@@ -185,9 +235,33 @@ function calculateTotalDays() {
         const startDate = parseISO(form.start_datetime);
         const endDate = parseISO(form.end_datetime);
         const days = differenceInDays(endDate, startDate);
-        form.total_days = Math.max(0, days);
+        form.total_days = Math.max(0, days - 1);
     }
 }
+
+function addSecurityDeposit() {
+    const itemsArray = form.items as InvoiceItem[];
+    itemsArray.push({ description: 'Security Deposit', amount: 0, discount: 0 });
+}
+
+const page = usePage();
+
+// عند تحميل الصفحة، إذا كان هناك contract_id في الكويري، يتم تعيينه تلقائياً
+const contractIdFromQuery = page.url.split('contract_id=')[1]?.split('&')[0];
+if (contractIdFromQuery && props.contracts.some(c => c.id === contractIdFromQuery)) {
+    form.contract_id = contractIdFromQuery;
+}
+
+onMounted(() => {
+    if (form.contract_id) {
+        const selectedContract = props.contracts.find(c => c.id === form.contract_id);
+        if (selectedContract) {
+            if (selectedContract.start_date) form.start_datetime = toDatetimeLocal(selectedContract.start_date);
+            if (selectedContract.end_date) form.end_datetime = toDatetimeLocal(selectedContract.end_date);
+            if (selectedContract.total_days) form.total_days = selectedContract.total_days;
+        }
+    }
+});
 </script>
 
 <template>
@@ -298,69 +372,108 @@ function calculateTotalDays() {
                         </CardContent>
                     </Card>
 
-                    <!-- Rental Details -->
+                    <!-- Type Section -->
                     <Card class="border-none shadow-md">
                         <CardHeader class="pb-4">
-                            <CardTitle class="text-lg font-medium">Rental Details</CardTitle>
-                            <CardDescription>Enter the rental period and related information</CardDescription>
+                            <CardTitle class="text-lg font-medium">Type</CardTitle>
+                            <CardDescription>Select invoice type and related details</CardDescription>
                         </CardHeader>
-                        <CardContent class="space-y-6">
-                            <div class="space-y-2">
-                                <Label for="vehicle_id" class="text-sm font-medium">Vehicle</Label>
-                                <select
-                                    id="vehicle_id"
-                                    v-model="form.vehicle_id"
-                                    required
-                                    class="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                                >
-                                    <option value="">Select a vehicle</option>
-                                    <option v-for="vehicle in props.vehicles" :key="vehicle.id" :value="vehicle.id">
-                                        {{ vehicle.name }}
-                                    </option>
-                                </select>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
+                        <CardContent>
+                            <div class="space-y-4">
                                 <div class="space-y-2">
-                                    <Label for="start_datetime" class="text-sm font-medium">Start Date & Time</Label>
-                                    <Input
-                                        type="datetime-local"
-                                        id="start_datetime"
-                                        v-model="form.start_datetime"
-                                        required
-                                        class="h-10"
-                                        @change="calculateTotalDays"
-                                    />
+                                    <Label for="type" class="text-sm font-medium">Type</Label>
+                                    <select
+                                        id="type"
+                                        v-model="form.type"
+                                        class="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                    >
+                                        <option value="Rental">Rental</option>
+                                        <option value="Service">Service</option>
+                                        <option value="Fee">Fee</option>
+                                        <option value="General">General</option>
+                                    </select>
                                 </div>
-                                <div class="space-y-2">
-                                    <Label for="end_datetime" class="text-sm font-medium">End Date & Time</Label>
-                                    <Input
-                                        type="datetime-local"
-                                        id="end_datetime"
-                                        v-model="form.end_datetime"
-                                        required
-                                        class="h-10"
-                                        @change="calculateTotalDays"
-                                    />
-                                </div>
-                            </div>
 
-                            <div class="space-y-2">
-                                <Label for="total_days" class="text-sm font-medium">Total Days</Label>
-                                <Input
-                                    type="number"
-                                    id="total_days"
-                                    v-model="form.total_days"
-                                    required
-                                    class="h-10"
-                                    readonly
-                                />
+                                <!-- Rental Fields - تظهر فقط عند اختيار Rental -->
+                                <div v-if="form.type === 'Rental'" class="space-y-4">
+                                    <!-- Contract -->
+                                    <div class="space-y-2">
+                                        <Label for="contract_id" class="text-sm font-medium">Contract</Label>
+                                        <select
+                                            id="contract_id"
+                                            v-model="form.contract_id"
+                                            class="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                        >
+                                            <option value="">Select a contract</option>
+                                            <option v-for="contract in props.contracts" :key="contract.id" :value="contract.id">
+                                                {{ contract.contract_number }}
+                                            </option>
+                                        </select>
+                                    </div>
+                                    <!-- Vehicle Dropdown -->
+                                    <div class="space-y-2">
+                                        <Label for="vehicle_id" class="text-sm font-medium">Vehicle</Label>
+                                        <select
+                                            id="vehicle_id"
+                                            v-model="form.vehicle_id"
+                                            required
+                                            class="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                        >
+                                            <option value="">Select a vehicle</option>
+                                            <option v-for="vehicle in props.vehicles" :key="vehicle.id" :value="vehicle.id">
+                                                {{ vehicle.name }}
+                                            </option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Dates Grid -->
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <!-- Start Date & Time -->
+                                        <div class="space-y-2">
+                                            <Label for="start_datetime" class="text-sm font-medium">Start Date & Time</Label>
+                                            <Input
+                                                type="datetime-local"
+                                                id="start_datetime"
+                                                v-model="form.start_datetime"
+                                                required
+                                                class="h-10"
+                                                @change="calculateTotalDays"
+                                            />
+                                        </div>
+                                        <!-- End Date & Time -->
+                                        <div class="space-y-2">
+                                            <Label for="end_datetime" class="text-sm font-medium">End Date & Time</Label>
+                                            <Input
+                                                type="datetime-local"
+                                                id="end_datetime"
+                                                v-model="form.end_datetime"
+                                                required
+                                                class="h-10"
+                                                @change="calculateTotalDays"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <!-- Total Days -->
+                                    <div class="space-y-2">
+                                        <Label for="total_days" class="text-sm font-medium">Total Days</Label>
+                                        <Input
+                                            type="number"
+                                            id="total_days"
+                                            v-model="form.total_days"
+                                            required
+                                            class="h-10"
+                                            :readonly="!!form.contract_id"
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
                 </div>
 
                 <!-- Professional Line Items Section (Full Width) -->
-                <div class="w-full mt-10">
+                <div class="w-full mt-0">
                   <div class="bg-white rounded-lg shadow border">
                     <table class="w-full text-sm">
                       <thead class="bg-gray-50 border-b">
@@ -422,13 +535,22 @@ function calculateTotalDays() {
                       </tbody>
                     </table>
                     <div class="px-4 py-3 bg-gray-50 rounded-b-lg flex justify-between items-center">
-                      <button
-                        type="button"
-                        class="text-blue-600 hover:underline font-medium"
-                        @click="addItem"
-                      >
-                        + Item
-                      </button>
+                      <div class="flex gap-4">
+                        <button
+                          type="button"
+                          class="text-blue-600 hover:underline font-medium"
+                          @click="addItem"
+                        >
+                          + Item
+                        </button>
+                        <button
+                          type="button"
+                          class="text-green-600 hover:underline font-medium"
+                          @click="addSecurityDeposit"
+                        >
+                          + Security Deposit
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

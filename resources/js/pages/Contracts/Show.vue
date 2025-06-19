@@ -159,11 +159,15 @@ const formatDateTime = (date: string) => {
         minute: '2-digit',
     });
 };
+
+function goToCreateInvoice() {
+    window.location.href = route('invoices.create', { contract_id: props.contract.id });
+}
 </script>
 
 <template>
     <Head :title="`Contract ${contract.contract_number}`" />
-    
+
     <AppLayout>
         <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
             <div class="space-y-6">
@@ -178,7 +182,7 @@ const formatDateTime = (date: string) => {
                             </Button>
                         </Link>
                     </div>
-                    
+
                     <!-- Contract Info and Actions -->
                     <div class="flex items-center justify-between">
                         <div>
@@ -190,7 +194,7 @@ const formatDateTime = (date: string) => {
                                 <span class="text-gray-500 text-sm">Created by {{ contract.created_by }}</span>
                             </div>
                         </div>
-                        
+
                         <div class="flex items-center gap-2">
                             <Link v-if="contract.status === 'draft'" :href="route('contracts.edit', contract.id)">
                                 <Button variant="outline">
@@ -206,8 +210,8 @@ const formatDateTime = (date: string) => {
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" class="w-64">
-                                    <DropdownMenuItem 
-                                        v-for="invoice in contract.invoices" 
+                                    <DropdownMenuItem
+                                        v-for="invoice in contract.invoices"
                                         :key="invoice.id"
                                         class="cursor-pointer"
                                         @click="$inertia.visit(route('invoices.show', invoice.id))"
@@ -219,7 +223,7 @@ const formatDateTime = (date: string) => {
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
-                            
+
                             <!-- Actions Dropdown -->
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -229,18 +233,18 @@ const formatDateTime = (date: string) => {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" class="w-48">
                                     <!-- Download PDF -->
-                                    <DropdownMenuItem 
+                                    <DropdownMenuItem
                                         @click="downloadPdf"
                                         class="cursor-pointer"
                                     >
                                         <Download class="w-4 h-4 mr-2" />
                                         Download PDF
                                     </DropdownMenuItem>
-                                    
+
                                     <DropdownMenuSeparator />
-                                    
+
                                     <!-- Activate Contract -->
-                                    <DropdownMenuItem 
+                                    <DropdownMenuItem
                                         v-if="contract.status === 'draft'"
                                         @click="activateContract"
                                         class="cursor-pointer"
@@ -248,9 +252,9 @@ const formatDateTime = (date: string) => {
                                         <Play class="w-4 h-4 mr-2" />
                                         Activate Contract
                                     </DropdownMenuItem>
-                                    
+
                                     <!-- Complete Contract -->
-                                    <DropdownMenuItem 
+                                    <DropdownMenuItem
                                         v-if="contract.status === 'active'"
                                         @click="completeContract"
                                         class="cursor-pointer"
@@ -258,21 +262,21 @@ const formatDateTime = (date: string) => {
                                         <CheckCircle class="w-4 h-4 mr-2" />
                                         Complete Contract
                                     </DropdownMenuItem>
-                                    
+
                                     <!-- Create Invoice -->
-                                    <DropdownMenuItem 
+                                    <DropdownMenuItem
                                         v-if="contract.status !== 'void'"
-                                        @click="createInvoice"
+                                        @click="goToCreateInvoice"
                                         class="cursor-pointer"
                                     >
                                         <Receipt class="w-4 h-4 mr-2" />
                                         Create Invoice
                                     </DropdownMenuItem>
-                                    
+
                                     <DropdownMenuSeparator v-if="contract.status !== 'completed' && contract.status !== 'void'" />
-                                    
+
                                     <!-- Void Contract -->
-                                    <DropdownMenuItem 
+                                    <DropdownMenuItem
                                         v-if="contract.status !== 'completed' && contract.status !== 'void'"
                                         @click="showVoidDialog = true"
                                         class="cursor-pointer text-red-600 focus:text-red-600"
@@ -280,9 +284,9 @@ const formatDateTime = (date: string) => {
                                         <XCircle class="w-4 h-4 mr-2" />
                                         Void Contract
                                     </DropdownMenuItem>
-                                    
+
                                     <!-- Delete Contract -->
-                                    <DropdownMenuItem 
+                                    <DropdownMenuItem
                                         v-if="contract.status === 'draft'"
                                         @click="deleteContract"
                                         class="cursor-pointer text-red-600 focus:text-red-600"
@@ -421,7 +425,7 @@ const formatDateTime = (date: string) => {
                                 <p class="font-medium">{{ formatCurrency(contract.excess_mileage_rate, contract.currency) }}/KM</p>
                             </div>
                         </div>
-                        
+
                         <div class="mt-6 p-4 bg-green-50 border border-green-200 rounded-md">
                             <div class="flex justify-between items-center">
                                 <span class="text-green-800 font-medium">Total Contract Amount:</span>
@@ -471,8 +475,8 @@ const formatDateTime = (date: string) => {
                     </CardHeader>
                     <CardContent>
                         <div class="space-y-3">
-                            <div 
-                                v-for="invoice in contract.invoices" 
+                            <div
+                                v-for="invoice in contract.invoices"
                                 :key="invoice.id"
                                 class="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
                                 @click="$inertia.visit(route('invoices.show', invoice.id))"
@@ -516,7 +520,7 @@ const formatDateTime = (date: string) => {
                         Please provide a reason for voiding this contract. This action cannot be undone.
                     </DialogDescription>
                 </DialogHeader>
-                
+
                 <form @submit.prevent="submitVoid" class="space-y-4">
                     <div class="space-y-2">
                         <Label for="void_reason">Void Reason *</Label>
@@ -531,7 +535,7 @@ const formatDateTime = (date: string) => {
                             {{ voidForm.errors.void_reason }}
                         </div>
                     </div>
-                    
+
                     <DialogFooter>
                         <Button type="button" variant="outline" @click="showVoidDialog = false">
                             Cancel
@@ -544,4 +548,4 @@ const formatDateTime = (date: string) => {
             </DialogContent>
         </Dialog>
     </AppLayout>
-</template> 
+</template>
