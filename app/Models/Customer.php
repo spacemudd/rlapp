@@ -23,11 +23,17 @@ class Customer extends Model
         'email',
         'phone',
         'date_of_birth',
+        'identification_type',
         'drivers_license_number',
         'drivers_license_expiry',
+        'passport_number',
+        'passport_expiry',
+        'resident_id_number',
+        'resident_id_expiry',
         'address',
         'city',
         'country',
+        'nationality',
         'emergency_contact_name',
         'emergency_contact_phone',
         'status',
@@ -51,6 +57,8 @@ class Customer extends Model
         return [
             'date_of_birth' => 'date',
             'drivers_license_expiry' => 'date',
+            'passport_expiry' => 'date',
+            'resident_id_expiry' => 'date',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];
@@ -62,6 +70,14 @@ class Customer extends Model
     public function team()
     {
         return $this->belongsTo(Team::class);
+    }
+
+    /**
+     * Get the contracts for the customer.
+     */
+    public function contracts()
+    {
+        return $this->hasMany(Contract::class);
     }
 
     /**

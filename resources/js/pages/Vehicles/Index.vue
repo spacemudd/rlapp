@@ -195,7 +195,11 @@ const formatCurrency = (amount?: number) => {
                                         <Car class="h-5 w-5 text-blue-600" />
                                     </div>
                                     <div>
-                                        <CardTitle class="text-lg">{{ vehicle.make }} {{ vehicle.model }}</CardTitle>
+                                        <Link :href="`/vehicles/${vehicle.id}`" class="block">
+                                            <CardTitle class="text-lg hover:text-blue-600 transition-colors cursor-pointer">
+                                                {{ vehicle.make }} {{ vehicle.model }}
+                                            </CardTitle>
+                                        </Link>
                                         <p class="text-sm text-gray-500">{{ vehicle.year }} • {{ vehicle.plate_number }}</p>
                                     </div>
                                 </div>

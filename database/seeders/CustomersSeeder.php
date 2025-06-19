@@ -27,21 +27,6 @@ class CustomersSeeder extends Seeder
         $count = (int) $count;
 
         $faker = Faker::create();
-        
-        // UAE-specific data arrays
-        $uaeCities = ['Dubai', 'Abu Dhabi', 'Sharjah', 'Al Ain', 'Ajman', 'Ras Al Khaimah', 'Fujairah'];
-        
-        $dubaiAreas = [
-            'Dubai Marina', 'Downtown Dubai', 'Jumeirah Beach Residence', 'Business Bay',
-            'Al Barsha', 'Jumeirah', 'Deira', 'Bur Dubai', 'Al Wasl', 'Emirates Hills',
-            'Dubai Sports City', 'The Greens', 'International City', 'Al Nahda',
-            'Motor City', 'Arabian Ranches', 'The Springs', 'The Meadows'
-        ];
-
-        $abuDhabiAreas = [
-            'Corniche', 'Al Reem Island', 'Yas Island', 'Saadiyat Island',
-            'Al Khalidiyah', 'Al Mariah Island', 'Al Raha Beach', 'Masdar City'
-        ];
 
         $commonLastNames = [
             // Arabic/Emirati surnames
@@ -74,15 +59,6 @@ class CustomersSeeder extends Seeder
         $progressBar->start();
 
         for ($i = 0; $i < $count; $i++) {
-            $city = $faker->randomElement($uaeCities);
-            
-            // Generate area based on city
-            $area = match($city) {
-                'Dubai' => $faker->randomElement($dubaiAreas),
-                'Abu Dhabi' => $faker->randomElement($abuDhabiAreas),
-                default => $faker->streetName
-            };
-
             // 70% chance of having email, 30% null
             $email = $faker->boolean(70) ? $faker->unique()->safeEmail : null;
             
@@ -108,8 +84,6 @@ class CustomersSeeder extends Seeder
                 'date_of_birth' => $dateOfBirth,
                 'drivers_license_number' => 'DL' . $faker->numerify('########'),
                 'drivers_license_expiry' => $licenseExpiry,
-                'address' => $faker->buildingNumber . ', ' . $area,
-                'city' => $city,
                 'country' => 'United Arab Emirates',
                 'emergency_contact_name' => $hasEmergencyContact ? $faker->name : null,
                 'emergency_contact_phone' => $emergencyPhone,
