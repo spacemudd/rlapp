@@ -32,6 +32,7 @@ interface Props {
         end_date: string;
         vehicle_id: string;
         total_days: number;
+        customer_id: string;
     }>;
     nextInvoiceNumber: string;
 }
@@ -163,6 +164,7 @@ watch(
                 if (selectedContract.end_date) form.end_datetime = toDatetimeLocal(selectedContract.end_date);
                 if (selectedContract.vehicle_id) form.vehicle_id = selectedContract.vehicle_id;
                 if (selectedContract.total_days) form.total_days = selectedContract.total_days;
+                if (selectedContract.customer_id) form.customer_id = selectedContract.customer_id;
             }
         }
     }
@@ -178,6 +180,7 @@ watch(
                 if (selectedContract.start_date) form.start_datetime = toDatetimeLocal(selectedContract.start_date);
                 if (selectedContract.end_date) form.end_datetime = toDatetimeLocal(selectedContract.end_date);
                 if (selectedContract.total_days) form.total_days = selectedContract.total_days;
+                if (selectedContract.customer_id) form.customer_id = selectedContract.customer_id;
             }
         }
     },
@@ -259,6 +262,7 @@ onMounted(() => {
             if (selectedContract.start_date) form.start_datetime = toDatetimeLocal(selectedContract.start_date);
             if (selectedContract.end_date) form.end_datetime = toDatetimeLocal(selectedContract.end_date);
             if (selectedContract.total_days) form.total_days = selectedContract.total_days;
+            if (selectedContract.customer_id) form.customer_id = selectedContract.customer_id;
         }
     }
 });

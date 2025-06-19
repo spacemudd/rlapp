@@ -167,6 +167,8 @@ class InvoiceController extends Controller
                 'vehicle_id' => $contract->vehicle_id,
                 'start_date' => $contract->start_date,
                 'end_date' => $contract->end_date,
+                'total_days' => $contract->total_days,
+                'customer_id' => $contract->customer_id,
             ];
         });
 
