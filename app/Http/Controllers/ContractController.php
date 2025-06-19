@@ -10,8 +10,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
-use Barryvdh\DomPDF\Facade\Pdf;
-use App\Services\ArabicTextProcessor;
+use Barryvdh\Snappy\Facades\SnappyPdf as PDF;
 
 class ContractController extends Controller
 {
@@ -403,22 +402,25 @@ class ContractController extends Controller
     {
         $contract->load(['customer', 'vehicle']);
 
-        // Process the view with Arabic text handling
-        $html = view('contracts.pdf', [
+        // Generate PDF using Snappy (wkhtmltopdf)
+        $pdf = PDF::loadView('contracts.pdf', [
             'contract' => $contract,
             'customer' => $contract->customer,
             'vehicle' => $contract->vehicle,
-        ])->render();
-        
-        $processedHtml = ArabicTextProcessor::processHtml($html);
+        ]);
 
-        $pdf = Pdf::loadHTML($processedHtml);
-
-        // Configure PDF options for Arabic support
-        $pdf->getDomPDF()->getOptions()->set('fontDir', storage_path('fonts/'));
-        $pdf->getDomPDF()->getOptions()->set('fontCache', storage_path('fonts/'));
-        $pdf->getDomPDF()->getOptions()->set('isRemoteEnabled', true);
-        $pdf->getDomPDF()->getOptions()->set('defaultFont', 'ArialArabic');
+        // Set options for better Arabic support
+        $pdf->setOptions([
+            'page-size' => 'A4',
+            'margin-top' => '0.75in',
+            'margin-right' => '0.75in',
+            'margin-bottom' => '0.75in',
+            'margin-left' => '0.75in',
+            'encoding' => 'UTF-8',
+            'enable-local-file-access' => true,
+            'no-outline' => true,
+            'disable-smart-shrinking' => true,
+        ]);
 
         return $pdf->stream('contract-' . $contract->contract_number . '.pdf');
     }

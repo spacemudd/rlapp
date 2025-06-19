@@ -16,7 +16,7 @@
         }
 
         @page {
-            margin: 15mm;
+            margin: 5mm;
             size: A4;
         }
 
@@ -32,6 +32,10 @@
         .arabic-text {
             direction: rtl;
             text-align: right;
+            word-wrap: break-word;
+            word-break: normal;
+            white-space: normal;
+            line-height: 1.4;
         }
 
         .arabic-inline {
@@ -39,11 +43,29 @@
             display: inline-block;
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 15px;
-            border-bottom: 2px solid #000;
-            padding-bottom: 10px;
+        .arabic-terms {
+            direction: rtl;
+            text-align: right;
+            word-wrap: break-word;
+            word-break: normal;
+            white-space: normal;
+            line-height: 1.4;
+            hyphens: none;
+            -webkit-hyphens: none;
+            -moz-hyphens: none;
+            -ms-hyphens: none;
+        }
+
+        .arabic-terms p {
+            margin: 5px 0;
+            word-wrap: break-word;
+            word-break: normal;
+            white-space: normal;
+            line-height: 1.4;
+            hyphens: none;
+            -webkit-hyphens: none;
+            -moz-hyphens: none;
+            -ms-hyphens: none;
         }
 
         .company-name {
@@ -63,6 +85,10 @@
             font-size: 12px;
             font-weight: bold;
             margin-bottom: 5px;
+            float:left;
+        }
+        .contract-code {
+            float:right;
         }
 
         .barcode-section {
@@ -86,7 +112,6 @@
 
         .main-content {
             clear: both;
-            margin-top: 20px;
         }
 
         .main-content-left-side {
@@ -205,12 +230,12 @@
         .vehicle-status {
             margin-top: 15px;
             text-align: center;
+            border: 1px solid #000;
         }
 
         .vehicle-diagrams {
             display: table;
             width: 100%;
-            margin-top: 10px;
         }
 
         .diagram-section {
@@ -227,12 +252,12 @@
         }
 
         .car-diagram {
-            width: 120px;
-            height: 80px;
-            border: 2px solid #000;
-            margin: 0 auto;
             position: relative;
             background: #fff;
+        }
+        .car-diagram img {
+            /*max-width: 100%;*/
+            height: 125px;
         }
 
         .terms-section {
@@ -260,7 +285,7 @@
             padding: 0 5px;
         }
 
-                 .terms-right {
+        .terms-right {
              direction: rtl;
              text-align: right;
          }
@@ -319,21 +344,14 @@
 <body>
     <!-- Header -->
     <div class="header">
-        <div class="company-name">LUXURIA</div>
-        <div class="company-subtitle">CARS RENTAL</div>
-        <div class="contract-title">Vehicle Rental Contract</div>
+        <div class="contract-title">LUXURIA Cars Rental LLC - Vehicle Rental Contract</div>
+        <div class="contract-code">Contract ID: {{ $contract->contract_number }}</div>
     </div>
 
     <!-- Order Info and Barcode -->
-    <div class="barcode-section">
-        <div style="font-size: 20px;">||||| |||| |||||</div>
-    </div>
-
-         <div class="order-info">
-         <div class="arabic-title" dir="rtl">عقد إيجار مركبة</div>
-         <div>Order No: {{ $contract->contract_number }}</div>
-         <div class="arabic-text" dir="rtl">رقم الطلب</div>
-     </div>
+{{--    <div class="barcode-section">--}}
+{{--        <div style="font-size: 20px;">||||| |||| |||||</div>--}}
+{{--    </div>--}}
 
     <div class="clear"></div>
 
@@ -507,103 +525,160 @@
 
     <div class="clear"></div>
 
-                                  <!-- Financial Information -->
-         <div class="financial-section">
-             <div class="financial-title">Financial Information &nbsp;&nbsp;&nbsp;&nbsp; <span class="arabic-inline" dir="rtl">المعلومات المالية</span></div>
+    <!-- Financial Information and Vehicle Status Side by Side -->
+    <div class="main-content">
+        <div class="main-content-left-side">
+            <!-- Financial Information -->
+            <div class="financial-section">
+                <div class="financial-title">Financial Information &nbsp;&nbsp;&nbsp;&nbsp; <span class="arabic-inline" dir="rtl">المعلومات المالية</span></div>
 
-            <table class="financial-table">
-                <tr>
-                    <td>
-                        <div>Downpayment: _____________</div>
-                        <div>Rental Charges | Days: _____________</div>
-                        <div>Extra km /1km: _____________</div>
-                        <div>Damages: _____________</div>
-                        <div>Salik: _____________</div>
-                        <div>Traffic Fines: _____________</div>
-                        <div><strong>Total Amount: {{ number_format($contract->total_amount, 2) }} AED</strong></div>
-                        <div><strong>Paid Amount: _____________</strong></div>
-                        <div><strong>Remaining Amount: _____________</strong></div>
-                    </td>
-                    <td class="financial-right">
-                        <div class="arabic-text" dir="rtl">دفعة مقدمة</div>
-                        <div class="arabic-text" dir="rtl">رسوم الايجار | الأيام</div>
-                        <div class="arabic-text" dir="rtl">الكيلومترات الاضافية</div>
-                        <div class="arabic-text" dir="rtl">بدل أضرار</div>
-                        <div class="arabic-text" dir="rtl">ساليك</div>
-                        <div class="arabic-text" dir="rtl">مخالفات مرورية</div>
-                        <div><strong class="arabic-text" dir="rtl">المبلغ الاجمالي</strong></div>
-                        <div><strong class="arabic-text" dir="rtl">المبلغ المدفوع</strong></div>
-                        <div><strong class="arabic-text" dir="rtl">المبلغ المتبقي</strong></div>
-                    </td>
-                </tr>
-            </table>
+                <table class="financial-table" style="width: 100%; border-spacing: 0; border-collapse: collapse;">
+                    <tr style="height: 5px;">
+                        <td>Downpayment:</td>
+                        <td>_____________</td>
+                        <td class="arabic-text" dir="rtl">دفعة مقدمة</td>
+                    </tr>
+                    <tr style="height: 5px;">
+                        <td>Rental Charges | Days:</td>
+                        <td>_____________</td>
+                        <td class="arabic-text" dir="rtl">رسوم الايجار | الأيام</td>
+                    </tr>
+                    <tr style="height: 5px;">
+                        <td>Extra km /1km:</td>
+                        <td>_____________</td>
+                        <td class="arabic-text" dir="rtl">الكيلومترات الاضافية</td>
+                    </tr>
+                    <tr style="height: 5px;">
+                        <td>Damages:</td>
+                        <td>_____________</td>
+                        <td class="arabic-text" dir="rtl">بدل أضرار</td>
+                    </tr>
+                    <tr style="height: 5px;">
+                        <td>Salik:</td>
+                        <td>_____________</td>
+                        <td class="arabic-text" dir="rtl">ساليك</td>
+                    </tr>
+                    <tr style="height: 5px;">
+                        <td>Traffic Fines:</td>
+                        <td>_____________</td>
+                        <td class="arabic-text" dir="rtl">مخالفات مرورية</td>
+                    </tr>
+                    <tr style="height: 5px;">
+                        <td>Total Amount:</td>
+                        <td>{{ number_format($contract->total_amount, 2) }} AED</td>
+                        <td style="text-align:right;">المبلغ الاجمالي</td>
+                    </tr>
+                    <tr style="height: 5px;">
+                        <td>Paid Amount:</td>
+                        <td>_____________</td>
+                        <td class="arabic-text" dir="rtl" style="text-align:right;">المبلغ المدفوع</td>
+                    </tr>
+                    <tr style="height: 5px;">
+                        <td>Remaining Amount:</td>
+                        <td>_____________</td>
+                        <td class="arabic-text" dir="rtl" style="text-align:right;">المبلغ المتبقي</td>
+                    </tr>
+                </table>
+            </div>
         </div>
 
-                 <!-- Vehicle Status -->
-         <div class="vehicle-status">
-             <div style="font-weight: bold; margin-bottom: 10px;">Vehicle Status &nbsp;&nbsp;&nbsp;&nbsp; <span class="arabic-inline" dir="rtl">حالة السيارة</span></div>
+        <div class="main-content-right-side">
+            <!-- Vehicle Status -->
+            <div class="vehicle-status">
+                <table style="width: 100%; font-weight: bold; margin-bottom: 2px;">
+                    <tr>
+                        <td>Vehicle Status</td>
+                        <td dir="rtl" style="text-align: right;">حالة السيارة</td>
+                    </tr>
+                </table>
 
-            <div class="vehicle-diagrams">
-                                 <div class="diagram-section">
-                     <div class="diagram-title">Return &nbsp;&nbsp;&nbsp;&nbsp; <span class="arabic-inline" dir="rtl">العودة</span></div>
-                    <div class="car-diagram">
-                        <!-- Simple car outline -->
-                        <svg width="120" height="80" style="border: 1px solid #000;">
-                            <rect x="20" y="15" width="80" height="50" fill="none" stroke="#000" stroke-width="1"/>
-                            <rect x="10" y="25" width="15" height="30" fill="none" stroke="#000" stroke-width="1"/>
-                            <rect x="95" y="25" width="15" height="30" fill="none" stroke="#000" stroke-width="1"/>
-                            <circle cx="30" cy="70" r="8" fill="none" stroke="#000" stroke-width="1"/>
-                            <circle cx="90" cy="70" r="8" fill="none" stroke="#000" stroke-width="1"/>
-                        </svg>
+                <div class="vehicle-diagrams" style="padding-bottom: 5px;">
+                    <div class="diagram-section">
+                        <span>Return - العودة</span>
+                        <div class="car-diagram">
+                            <!-- Simple car outline -->
+                            <img src="{{ public_path('img/carscheme.png') }}" style="max-width: 100%;" />
+                        </div>
                     </div>
-                </div>
 
-                                 <div class="diagram-section">
-                     <div class="diagram-title">Departure &nbsp;&nbsp;&nbsp;&nbsp; <span class="arabic-inline" dir="rtl">المغادرة</span></div>
-                    <div class="car-diagram">
-                        <!-- Simple car outline -->
-                        <svg width="120" height="80" style="border: 1px solid #000;">
-                            <rect x="20" y="15" width="80" height="50" fill="none" stroke="#000" stroke-width="1"/>
-                            <rect x="10" y="25" width="15" height="30" fill="none" stroke="#000" stroke-width="1"/>
-                            <rect x="95" y="25" width="15" height="30" fill="none" stroke="#000" stroke-width="1"/>
-                            <circle cx="30" cy="70" r="8" fill="none" stroke="#000" stroke-width="1"/>
-                            <circle cx="90" cy="70" r="8" fill="none" stroke="#000" stroke-width="1"/>
-                        </svg>
+                    <div class="diagram-section">
+                        <span>Departure - المغادرة</span>
+                        <div class="car-diagram">
+                            <!-- Simple car outline -->
+                            <img src="{{ public_path('img/carscheme.png') }}" style="max-width: 100%;" />
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
+
+    <div class="clear"></div>
 
                  <!-- Terms and Conditions -->
          <div class="terms-section">
-             <div class="terms-title">Terms and Conditions &nbsp;&nbsp;&nbsp;&nbsp; <span class="arabic-inline" dir="rtl">الشروط والاحكام</span></div>
-
-            <div class="terms-content">
-                <div class="terms-left">
-                    <p>1. The lessee or the driver shall have a valid Driver's License from the UAE Traffic and Licensing Department.</p>
-                    <p>2. The lessee shall be responsible for implementing all the conditions of this Agreement.</p>
-                    <p>3. The lessee shall assume the responsibility for the correctness of all his data and information contained in this Agreement without any liability on the office or the owner.</p>
-                    <p>4. The lessee shall be responsible for all the documents required for the Agreement and for all traffic fines imposed on the vehicle during the rental Agreement, and he shall also bear the fees owed to the office.</p>
-                    <p>5. The lessee shall bear all costs relating to the toll gates fees (Salik).</p>
-                    <p>6. The vehicle may only be received after paying all fees required for the Agreement.</p>
-                    <p>7. The duration of the daily rental is 24 hours starting from the Agreement validity time. The permitted distance is 300 km per day, and each extra kilometre costs 0.50.</p>
-                    <p>8. If the Vehicle Agreement is monthly or annually and the lessee exceeds the monthly distance, he shall pay for the agreed upon, whether monthly or annually, the daily rental rate of the vehicle is calculated.</p>
-                    <p>9. The lessee may neither lease nor hand over the vehicle to anyone else, nor may he further lease or mortgage or sell the vehicle, and he may not use it for any commercial purposes. The guarantor shall assume the entire responsibility for any damage that may not be claimed from the insurance company.</p>
-                    <p>10. The lessee may not remove or add any of the vehicle parts internally or externally, therefore, he shall return the vehicle in its original state. The lessee shall bear the cost of the spare parts or any modifications.</p>
+            <!-- Arabic Terms -->
+            <div class="arabic-terms" style="direction: rtl; text-align: right; margin-bottom: 20px;">
+                <h4 style="font-weight: bold; margin-bottom: 10px; font-size: 8px;">الشروط والأحكام:</h4>
+                <div style="padding-right: 20px; line-height: 1.4; font-size: 7px;">
+                    <p style="margin-bottom: 5px;">١. يجب ان يكون المستأجر او السائق لديه رخصة قيادة سيارة المفعول لدى إدارة و الترخيص بدولة الامارات العربية المتحدة.</p>
+                    <p style="margin-bottom: 5px;">٢. يعتبر الكفيل في هذا العقد ملزم عن تنفيذ جميع البنود هذا العقد.</p>
+                    <p style="margin-bottom: 5px;">٣. يتحمل المستأجر مسوؤلية صحة كافة البيانات و المعلومات المتعلقة به الواردة في العقد دون أدنى مسؤولية على المكتب او المالك.</p>
+                    <p style="margin-bottom: 5px;">٤. يكون المستأجر مسؤول عن سداد جميع المستحقات عن هذا العقد و جميع المخالفات المرورية المترتبة على السيارة بتاريخ العقد ويلتزم تجاه المكتب بسداد قيمة جميع المستحقات.</p>
+                    <p style="margin-bottom: 5px;">٥. يتحمل المستأجر جميع النفقات المتعلقة ببوابات التعرفة المرورية (سالك) و (درب).</p>
+                    <p style="margin-bottom: 5px;">٦. لا يتم استلام السيارة الا بعد دفع جميع المستحقات الخاصة بالعقد.</p>
+                    <p style="margin-bottom: 5px;">٧. مدة الايجار اليومي 24 ساعة تبدأ من وقت سريان العقد والمسافة اليومية المسموح بها هي 300 كيلومتر باليوم، ويحتسب 0.50 فلس عن كل كيلومتر زائد عن المسافة المسموح بها.</p>
+                    <p style="margin-bottom: 5px;">٨. اذا كان العقد السيارة شهري او سنوي ويرغب المستأجر بإرجاع السيارة قبل اكتمال مدة العقد المتفق عليها سواء شهري او سنوي يتم حساب سعر الايجار اليومي للسيارة.</p>
+                    <p style="margin-bottom: 5px;">٩. لا يحق للمستأجر تأجير السيارة او تسليمها لأي شخص غيره، كما لا يحق له رقن او بيع السيارة وفي حالة مخالفة الشرط يتحمل المستأجر و الكفيل كافة المسؤولية تجاه أي ضرر ولا يحق له مطالبة التأمين بأي تعويض.</p>
+                    <p style="margin-bottom: 5px;">١٠. لا يحق المستأجر إضافة او إزالة أي جزء من أجزاء السيارة داخليا او خارجيا وعليه أداة السيارة بالحالة التي كانت عليها من قبل و يتحمل المستأجر كل النفقات نتيجة حدوث أي اضرار او اعطال.</p>
+                    <p style="margin-bottom: 5px;">١١. في حالة مصادرة السيارة من قبل أي جهة لأي سبب كان او وقوع حادث او في حالة كان السائق تحت تأثير المشروبات الكحولية او أي مخدر أخر يترتب عليه دفع تعويض شامل عن أي ضرر للسيارة او الغير و يكون مسؤول مسؤولية كاملة امام القانون.</p>
+                    <p style="margin-bottom: 5px;">١٢. على المستأجر ارجاع السيارة نظيفة او دفع 30 درهم بدل غسيل.</p>
+                    <p style="margin-bottom: 5px;">١٣. يتحمل المستأجر كامل المسؤولية عن الاضرار التي قد تحدث للسيارة، وفي حال وقوع حادث سواء كان متسبب او متضرر فإنه ملزم بإصلاح السيارة على نفقته الشخصية ولا يحق له مطالبة من شركة التأمين او أي جهة ويلتزم بدفع ايجارالسيارة لحين خروجها من التصيلح.</p>
+                    <p style="margin-bottom: 5px;">١٤. يتم حجز مبلغ مالي بقيمة 1500 درهم تأمين مخالفات يتم ارجاعه بعد خمسة عشر يوماً 15 يوم من تاريخ تسليم السيارة للمؤجر ولا يحق للمستأجر المطالبة بالمبلغ قبل الموعد المحدد واوافق بتحويل المخالفات على رخصتي بدون الرجوع الي.</p>
+                    <p style="margin-bottom: 5px;">١٥. في حالة مشاركة السيارة في أي حادث:</p>
+                    <p style="margin-bottom: 3px; margin-right: 15px;">أ. يجب على السيائق عدم مغادرة الحادث حتى تحضر الشرطة ويحصل على تقرير الحادث.</p>
+                    <p style="margin-bottom: 3px; margin-right: 15px;">ب. على المستأجر إبلاغ المكتب عن الحادث والاضرار الناتجه عنه وأخذ موافقة خطية لتصليح السيارة.</p>
+                    <p style="margin-bottom: 3px; margin-right: 15px;">ج. يتحمل المستأجر مبلغ 1000 درهم بالإضافة الى نسبة تحمل 15% من قيمة التصليح اذا كان المستأجر متسبب في الحادث.</p>
+                    <p style="margin-bottom: 5px; margin-right: 15px;">د. يتحمل المستأجر (سواء كان مستبب او متضرر) قيمة الايجار كاملة وذلك حتى تسليم السيارة بعد إصلاحها واعادتها بالحالة التي كانت عليها قبل الحادث.</p>
+                    <p style="margin-bottom: 5px;">١٦. في حال شطب السيارة من التأمين يتم دفع 35% من قيمة السيارة بغض النظر عن تعويض التأمين للمكتب.</p>
+                    <p style="margin-bottom: 5px;">١٧. يحق للمؤجر إيقاف المركبة أو سحب السيارة في أي وقت دون الرجوع للمستأجر في حالة تأخره عن سداد المستحقات الخاصة بهذا العقد دون تحمل المؤجر أي مسؤولية عن أي متعلقات للمستأجر داخل السيارة.</p>
+                    <p style="margin-bottom: 5px;">١٨. يتحمل المستأجر مبلغ 5000 درهم مصاريف فتح بلاغ اتعاب المحاماة.</p>
+                    <p style="margin-bottom: 5px;">١٩. لا يتم استلام السيارة يوم الخميس و الجمعة و ما قبل العطلات الرسمية بيوم و العطلات الرسمية في الدولة، وعلى المستأجر مراعاة مواعيد العمل الخاصة بالمكتب.</p>
+                    <p style="margin-bottom: 5px;">٢٠. اقر بأنني قد قرأت جميع الشروط و البنود الموجودة بهذا العقد و أوافق عليها.</p>
                 </div>
+            </div>
 
-                                 <div class="terms-right">
-                     <p class="arabic-text" dir="rtl">1. يجب أن يكون المستأجم أو السائق لديه رخصة قيادة سارية المفعول.</p>
-                     <p class="arabic-text" dir="rtl">2. يتحر المستأجر في هذا الاتفاق عن تنفيذ جميع بنود هذا العقد.</p>
-                     <p class="arabic-text" dir="rtl">3. يتحمل المستأجر المسؤولية عن صحة بياناته ومعلوماته الواردة في هذا الاتفاق دون أدنى مسؤولية على المكتب أو المالك.</p>
-                     <p class="arabic-text" dir="rtl">4. يتحمل المستأجر مسؤولية عن جميع الوثائق المطلوبة للاتفاق وعن جميع المخالفات المرورية المترتبة على السيارة خلال فترة الاتفاق وعليه أيضاً تحمل الرسوم المستحقة للمكتب.</p>
-                     <p class="arabic-text" dir="rtl">5. يتحمل المستأجر جميع التكاليف المتعلقة ببوابات التحصيل الضريبي (ساليك).</p>
-                     <p class="arabic-text" dir="rtl">6. لا يتم استلام السيارة إلا بعد دفع جميع الرسوم المطلوبة للاتفاق.</p>
-                     <p class="arabic-text" dir="rtl">7. مدة الايجار اليومي 24 ساعة تبدأ من وقت سريان الاتفاق والمسافة المسموحة يومياً 300 كيلومتر وكل كيلومتر زائد يكلف 0.50 فلس.</p>
-                     <p class="arabic-text" dir="rtl">8. إذا كان عقد السيارة شهري أو سنوي وتجاوز المستأجر المسافة الشهرية فعليه دفع ما تم الاتفاق عليه سواء شهرياً أو سنوياً يحسب السعر اليومي للسيارة.</p>
-                     <p class="arabic-text" dir="rtl">9. لا يحق له تأجير أو تسليم السيارة وفي حالة مخالفة هذا الشرط يتحمل الضامن كامل المسؤولية عن أي ضرر قد لا يطالب به من شركة التأمين.</p>
-                     <p class="arabic-text" dir="rtl">10. لا يحق للمستأجر إزالة أو إضافة أي من قطع غيار السيارة داخلياً أو خارجياً وعليه إعادة السيارة على حالتها الأصلية ويتحمل المستأجر تكلفة قطع الغيار أو أي تعديلات.</p>
-                 </div>
+            <!-- English Terms -->
+            <div style="margin-bottom: 20px;">
+                <h4 style="font-weight: bold; margin-bottom: 10px; font-size: 8px;">Terms and Conditions:</h4>
+                <ol style="padding-left: 20px; line-height: 1.4; font-size: 7px;">
+                    <li style="margin-bottom: 5px;">The lessee or the driver shall have a valid Driver's License with the UAE Traffic and Licensing Department.</li>
+                    <li style="margin-bottom: 5px;">The Guarantor shall be liable for implementing all terms and conditions of this Agreement.</li>
+                    <li style="margin-bottom: 5px;">The lessee shall assume the responsibility for the correctness of all his data and information contained in this Agreement without any liability to the office or the owner.</li>
+                    <li style="margin-bottom: 5px;">The lessee shall assume the responsibility for paying all fees required for the Agreement and for all traffic fines imposed on the vehicle from the date of this Agreement, and he shall also bear the fees owed to the office.</li>
+                    <li style="margin-bottom: 5px;">The lessee shall bear all costs relating to the toll gates [Salik] and [Darb].</li>
+                    <li style="margin-bottom: 5px;">The vehicle may only be received after paying all fees required for the Agreement.</li>
+                    <li style="margin-bottom: 5px;">The duration of the daily rental is 24 hours starting from the Agreement validity time. The permitted distance is 300 km per day, each extra kilometre costs 0.50.</li>
+                    <li style="margin-bottom: 5px;">If the vehicle Agreement is monthly or annually and the lessee desires to return the vehicle before the expiry date agreed upon, whether monthly or annually, the daily rental price of the vehicle shall be calculated.</li>
+                    <li style="margin-bottom: 5px;">The lessee may neither lease nor hand over the vehicle to anyone else, he may further not mortgage or sell the vehicle. In case of violating this condition, the lessee and guarantor shall assume the entire responsibility for any damage and may not claim any compensation from the insurance company.</li>
+                    <li style="margin-bottom: 5px;">The lessee may not add or remove any of the vehicle parts internally or externally, therefore, he shall return the vehicle to its previous state. The lessee shall bear the costs incurred for damages or malfunction.</li>
+                    <li style="margin-bottom: 5px;">In case the vehicle seized by any entity for whatever reason or accident or in case the driver is drunk because of alcoholic beverages or any other drug, he shall pay comprehensive compensation for any damage that occurred to the vehicle or third parties and assume the whole responsibility before the law.</li>
+                    <li style="margin-bottom: 5px;">The lessee shall return the vehicle clean or pay 30 dirhams as washing allowance.</li>
+                    <li style="margin-bottom: 5px;">The lessee bears full responsibility for the damages that may occur to the car, and in the event of an accident, whether he was caused or aggrieved, he is obligated to repair the car at his personal expense, and he is not entitled to claim from the insurance company or any entity, and he is obligated to pay the car rent to complete the repair.</li>
+                    <li style="margin-bottom: 5px;">An amount of 1,500 dirhams is reserved to ensure violations, which will be returned after fifteen days (15 days) from the date of delivery of the car to the lessor.</li>
+                    <li style="margin-bottom: 5px;">In case the vehicle gets into an accident:</li>
+                    <ul style="padding-left: 20px; line-height: 1.4; font-size: 7px;">
+                        <li style="margin-bottom: 3px;">The driver shall not leave the accident place until the police come and draw up a report on the accident.</li>
+                        <li style="margin-bottom: 3px;">The lessee shall notify the office of the accident and its damages and obtain the written approval so that he can repair the vehicle.</li>
+                        <li style="margin-bottom: 3px;">The lessee shall pay an amount of 1000 dirhams as well as 10% of the repair fees in case he is the one who caused the accident.</li>
+                        <li style="margin-bottom: 5px;">The lessee shall bear, whether caused or damaged, the rental fees until the vehicle is handed over, repaired and returned on its previous date before the accident.</li>
+                    </ul>
+                    <li style="margin-bottom: 5px;">In case the vehicle is deleted from the insurance, the rate of 35% of the vehicle value shall be paid to the office regardless of the compensation of the insurance.</li>
+                    <li style="margin-bottom: 5px;">The lessor may suspend or withdraw the vehicle at any time without the consent of the lessee in case the latter is late in paying the dues related to this Agreement, and the lessor shall not assume any responsibility for any belongings of the lessee inside the vehicle.</li>
+                    <li style="margin-bottom: 5px;">The lessee shall pay an amount of 5000 dirhams as expenses for filing a case other than the fees of the attorney.</li>
+                    <li style="margin-bottom: 5px;">The vehicle shall not be received on Thursdays, Fridays, the days followed by official holidays and official holidays in the country, and the lessee shall respect the working hours of the office.</li>
+                    <li style="margin-bottom: 5px;">I hereby acknowledge that I have read and accepted all terms and conditions set forth in this Agreement.</li>
+                </ol>
             </div>
         </div>
 
