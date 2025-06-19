@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\PdfFontService;
 
 class ContractController extends Controller
 {
@@ -392,5 +394,30 @@ class ContractController extends Controller
 
         return redirect()->route('invoices.show', $invoice)
             ->with('success', 'Invoice created successfully for the contract.');
+    }
+
+    /**
+     * Download contract as PDF.
+     */
+    public function downloadPdf(Contract $contract)
+    {
+        $contract->load(['customer', 'vehicle']);
+
+        $pdf = Pdf::loadView('contracts.pdf', [
+            'contract' => $contract,
+            'customer' => $contract->customer,
+            'vehicle' => $contract->vehicle,
+        ]);
+
+        // Configure PDF options for Arabic support
+        $pdf->getDomPDF()->getOptions()->set('fontDir', storage_path('fonts/'));
+        $pdf->getDomPDF()->getOptions()->set('fontCache', storage_path('fonts/'));
+        $pdf->getDomPDF()->getOptions()->set('isRemoteEnabled', true);
+        $pdf->getDomPDF()->getOptions()->set('defaultFont', 'Arial');
+
+        // Register Arabic fonts
+        PdfFontService::registerArabicFonts($pdf->getDomPDF());
+
+        return $pdf->stream('contract-' . $contract->contract_number . '.pdf');
     }
 }

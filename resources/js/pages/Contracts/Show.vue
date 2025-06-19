@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ArrowLeft, Edit, User, Car, Calendar, DollarSign, FileText, Receipt, MoreVertical, Play, CheckCircle, XCircle, Trash2 } from 'lucide-vue-next';
+import { ArrowLeft, Edit, User, Car, Calendar, DollarSign, FileText, Receipt, MoreVertical, Play, CheckCircle, XCircle, Trash2, Download } from 'lucide-vue-next';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -99,6 +99,10 @@ const submitVoid = () => {
             voidForm.reset();
         }
     });
+};
+
+const downloadPdf = () => {
+    window.open(route('contracts.pdf', props.contract.id), '_blank');
 };
 
 const getStatusColor = (status: string) => {
@@ -224,6 +228,17 @@ const formatDateTime = (date: string) => {
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" class="w-48">
+                                    <!-- Download PDF -->
+                                    <DropdownMenuItem 
+                                        @click="downloadPdf"
+                                        class="cursor-pointer"
+                                    >
+                                        <Download class="w-4 h-4 mr-2" />
+                                        Download PDF
+                                    </DropdownMenuItem>
+                                    
+                                    <DropdownMenuSeparator />
+                                    
                                     <!-- Activate Contract -->
                                     <DropdownMenuItem 
                                         v-if="contract.status === 'draft'"
