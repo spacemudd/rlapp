@@ -226,7 +226,6 @@ class InvoiceController extends Controller
                 'sub_total' => $validated['sub_total'],
                 'total_discount' => $validated['total_discount'],
                 'total_amount' => $validated['total_amount'],
-                'team_id' => Auth::user()->team_id,
             ]);
 
             // Create invoice items

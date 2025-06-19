@@ -592,6 +592,11 @@ onMounted(() => {
                         Create
                     </Button>
                 </div>
+                <div v-if="$page.props.errors && Object.keys($page.props.errors).length" class="text-red-600 mt-4">
+                  <div v-for="(error, key) in $page.props.errors" :key="key">
+                    {{ error }}
+                  </div>
+                </div>
             </form>
         </div>
     </AppSidebarLayout>
