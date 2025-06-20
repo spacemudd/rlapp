@@ -99,9 +99,15 @@ class ContractController extends Controller
                     'id' => $customer->id,
                     'label' => $customer->first_name . ' ' . $customer->last_name . ' - ' . $customer->phone,
                     'value' => $customer->id,
+                    'name' => $customer->first_name . ' ' . $customer->last_name,
                     'first_name' => $customer->first_name,
                     'last_name' => $customer->last_name,
+                    'email' => $customer->email,
                     'phone' => $customer->phone,
+                    'drivers_license_number' => $customer->drivers_license_number,
+                    'address' => $customer->address,
+                    'city' => $customer->city,
+                    'country' => $customer->country,
                 ];
             });
 
@@ -152,7 +158,7 @@ class ContractController extends Controller
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'vehicle_id' => 'required|exists:vehicles,id',
-            'start_date' => 'required|date|after_or_equal:today',
+            'start_date' => 'required|date|after_or_equal:now',
             'end_date' => 'required|date|after:start_date',
             'daily_rate' => 'required|numeric|min:0',
             'deposit_amount' => 'nullable|numeric|min:0',
@@ -236,7 +242,7 @@ class ContractController extends Controller
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'vehicle_id' => 'required|exists:vehicles,id',
-            'start_date' => 'required|date|after_or_equal:today',
+            'start_date' => 'required|date|after_or_equal:now',
             'end_date' => 'required|date|after:start_date',
             'daily_rate' => 'required|numeric|min:0',
             'deposit_amount' => 'nullable|numeric|min:0',

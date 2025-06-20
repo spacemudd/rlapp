@@ -120,15 +120,15 @@ const formatCurrency = (amount: number, currency: string = 'AED') => {
 // Duration button functions
 const setDuration = (days: number) => {
     if (!form.start_date) {
-        // If no start date, set it to today
-        form.start_date = new Date().toISOString().split('T')[0];
+        // If no start date, set it to today at current time
+        form.start_date = new Date().toISOString().slice(0, 16);
     }
     
     const startDate = new Date(form.start_date);
     const endDate = new Date(startDate);
     endDate.setDate(startDate.getDate() + days - 1); // Subtract 1 because we include both start and end days
     
-    form.end_date = endDate.toISOString().split('T')[0];
+    form.end_date = endDate.toISOString().slice(0, 16);
 };
 
 const submit = () => {
@@ -277,12 +277,12 @@ watch(() => props.newCustomer, (customer) => {
                     <CardContent class="space-y-6">
                         <div class="grid gap-4 md:grid-cols-2">
                             <div class="space-y-2">
-                                <Label for="start_date">Start Date *</Label>
+                                <Label for="start_date">Start Date & Time *</Label>
                                 <Input
                                     id="start_date"
-                                    type="date"
+                                    type="datetime-local"
                                     v-model="form.start_date"
-                                    :min="new Date().toISOString().split('T')[0]"
+                                    :min="new Date().toISOString().slice(0, 16)"
                                     required
                                 />
                                 <div v-if="form.errors.start_date" class="text-sm text-red-600">
@@ -291,12 +291,12 @@ watch(() => props.newCustomer, (customer) => {
                             </div>
 
                             <div class="space-y-2">
-                                <Label for="end_date">End Date *</Label>
+                                <Label for="end_date">End Date & Time *</Label>
                                 <Input
                                     id="end_date"
-                                    type="date"
+                                    type="datetime-local"
                                     v-model="form.end_date"
-                                    :min="form.start_date || new Date().toISOString().split('T')[0]"
+                                    :min="form.start_date || new Date().toISOString().slice(0, 16)"
                                     required
                                 />
                                 <div v-if="form.errors.end_date" class="text-sm text-red-600">

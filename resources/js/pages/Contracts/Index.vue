@@ -79,11 +79,24 @@ const getStatusColor = (contractStatus: string) => {
 };
 
 const formatCurrency = (amount: number, currency: string = 'AED') => {
-    return new Intl.NumberFormat('en-AE', {
-        style: 'currency',
-        currency: currency,
-        minimumFractionDigits: 2,
-    }).format(amount);
+    // List of valid currency codes
+    const validCurrencies = ['USD', 'EUR', 'AED', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'SEK', 'NZD'];
+    
+    // Use the provided currency if it's valid, otherwise default to AED
+    if (!validCurrencies.includes(currency.toUpperCase())) {
+        currency = 'AED'; // Default fallback currency
+    }
+    
+    try {
+        return new Intl.NumberFormat('en-AE', {
+            style: 'currency',
+            currency: currency,
+            minimumFractionDigits: 2,
+        }).format(amount);
+    } catch (error) {
+        // If there's still an error, use a simple format
+        return `${currency} ${amount.toFixed(2)}`;
+    }
 };
 
 const formatDate = (date: string) => {

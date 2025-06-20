@@ -8,23 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { format, differenceInDays, parseISO } from 'date-fns';
+import AsyncCombobox from '@/components/ui/combobox/AsyncCombobox.vue';
 
 // Define props interface
 interface Props {
-    customers: Array<{
-        id: string;
-        name: string;
-        email: string;
-        phone?: string;
-        drivers_license_number?: string;
-        address?: string;
-        city?: string;
-        country?: string;
-    }>;
-    vehicles: Array<{
-        id: string;
-        name: string;
-    }>;
     contracts: Array<{
         id: string;
         contract_number: string;
@@ -74,9 +61,8 @@ const form = useForm({
     ]
 });
 
-const selectedCustomer = computed(() => {
-    return props.customers.find(customer => customer.id === form.customer_id) || null;
-});
+const selectedCustomer = ref<any>(null);
+const selectedVehicle = ref<any>(null);
 
 const invoiceAmount = computed(() => {
     return (form.items as InvoiceItem[]).reduce((sum: number, item: InvoiceItem) => sum + (Number(item.amount || 0) - Number(item.discount || 0)), 0);
@@ -125,18 +111,9 @@ watch(
 watch(
     () => form.vehicle_id,
     (newVal) => {
-        const itemsArray = form.items as InvoiceItem[];
-        if (newVal) {
-            const vehicle = props.vehicles.find(v => v.id === newVal);
-            if (vehicle) {
-                const vehicleIndex = itemsArray.findIndex((item: InvoiceItem) => item.isVehicle);
-                if (vehicleIndex !== -1) {
-                    itemsArray[vehicleIndex].description = vehicle.name;
-                } else {
-                    itemsArray.unshift({ description: vehicle.name, amount: 0, discount: 0, isVehicle: true });
-                }
-            }
-        } else {
+        if (!newVal) {
+            // Remove vehicle item if no vehicle selected
+            const itemsArray = form.items as InvoiceItem[];
             const vehicleIndex = itemsArray.findIndex((item: InvoiceItem) => item.isVehicle);
             if (vehicleIndex !== -1) {
                 itemsArray.splice(vehicleIndex, 1);
@@ -266,6 +243,24 @@ onMounted(() => {
         }
     }
 });
+
+// Handle customer selection
+const handleCustomerSelected = (customer: any) => {
+    selectedCustomer.value = customer;
+};
+
+// Handle vehicle selection  
+const handleVehicleSelected = (vehicle: any) => {
+    selectedVehicle.value = vehicle;
+    // Update the vehicle item in items array
+    const itemsArray = form.items as InvoiceItem[];
+    const vehicleIndex = itemsArray.findIndex((item: InvoiceItem) => item.isVehicle);
+    if (vehicleIndex !== -1) {
+        itemsArray[vehicleIndex].description = vehicle.label;
+    } else {
+        itemsArray.unshift({ description: vehicle.label, amount: 0, discount: 0, isVehicle: true });
+    }
+};
 </script>
 
 <template>
@@ -296,18 +291,14 @@ onMounted(() => {
                         </CardHeader>
                         <CardContent class="space-y-6">
                             <div class="space-y-2">
-                                <Label for="customer_id" class="text-sm font-medium">Customer</Label>
-                                <select
-                                    id="customer_id"
+                                <AsyncCombobox
                                     v-model="form.customer_id"
-                                    required
-                                    class="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                                >
-                                    <option value="">Select a customer</option>
-                                    <option v-for="customer in customers" :key="customer.id" :value="customer.id">
-                                        {{ customer.name }} - {{ customer.email }}
-                                    </option>
-                                </select>
+                                    label="Customer"
+                                    placeholder="Search customers..."
+                                    search-url="/api/customers/search"
+                                    :required="true"
+                                    @option-selected="handleCustomerSelected"
+                                />
                             </div>
 
                             <div class="space-y-2">
@@ -417,17 +408,14 @@ onMounted(() => {
                                     <!-- Vehicle Dropdown -->
                                     <div class="space-y-2">
                                         <Label for="vehicle_id" class="text-sm font-medium">Vehicle</Label>
-                                        <select
-                                            id="vehicle_id"
+                                        <AsyncCombobox
                                             v-model="form.vehicle_id"
-                                            required
-                                            class="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                                        >
-                                            <option value="">Select a vehicle</option>
-                                            <option v-for="vehicle in props.vehicles" :key="vehicle.id" :value="vehicle.id">
-                                                {{ vehicle.name }}
-                                            </option>
-                                        </select>
+                                            label="Vehicle"
+                                            placeholder="Search vehicles..."
+                                            search-url="/api/vehicles/search"
+                                            :required="true"
+                                            @option-selected="handleVehicleSelected"
+                                        />
                                     </div>
 
                                     <!-- Dates Grid -->

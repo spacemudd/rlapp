@@ -55,11 +55,11 @@ interface Props {
 
 const props = defineProps<Props>();
 
-// Helper function to format date for HTML date input (YYYY-MM-DD)
+// Helper function to format datetime for HTML datetime-local input (YYYY-MM-DDTHH:MM)
 const formatDateForInput = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
-    return date.toISOString().split('T')[0];
+    return date.toISOString().slice(0, 16);
 };
 
 const form = useForm({
@@ -131,25 +131,38 @@ const onVehicleSelect = (vehicle: any) => {
 };
 
 const formatCurrency = (amount: number, currency: string = 'AED') => {
-    return new Intl.NumberFormat('en-AE', {
-        style: 'currency',
-        currency: currency,
-        minimumFractionDigits: 2,
-    }).format(amount);
+    // List of valid currency codes
+    const validCurrencies = ['USD', 'EUR', 'AED', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'SEK', 'NZD'];
+    
+    // Use the provided currency if it's valid, otherwise default to AED
+    if (!validCurrencies.includes(currency.toUpperCase())) {
+        currency = 'AED'; // Default fallback currency
+    }
+    
+    try {
+        return new Intl.NumberFormat('en-AE', {
+            style: 'currency',
+            currency: currency,
+            minimumFractionDigits: 2,
+        }).format(amount);
+    } catch (error) {
+        // If there's still an error, use a simple format
+        return `${currency} ${amount.toFixed(2)}`;
+    }
 };
 
 // Duration button functions
 const setDuration = (days: number) => {
     if (!form.start_date) {
-        // If no start date, set it to today
-        form.start_date = new Date().toISOString().split('T')[0];
+        // If no start date, set it to today at current time
+        form.start_date = new Date().toISOString().slice(0, 16);
     }
     
     const startDate = new Date(form.start_date);
     const endDate = new Date(startDate);
     endDate.setDate(startDate.getDate() + days - 1); // Subtract 1 because we include both start and end days
     
-    form.end_date = endDate.toISOString().split('T')[0];
+    form.end_date = endDate.toISOString().slice(0, 16);
 };
 
 const submit = () => {
@@ -278,12 +291,12 @@ const submit = () => {
                     <CardContent class="space-y-6">
                         <div class="grid gap-4 md:grid-cols-2">
                             <div class="space-y-2">
-                                <Label for="start_date">Start Date *</Label>
+                                <Label for="start_date">Start Date & Time *</Label>
                                 <Input
                                     id="start_date"
-                                    type="date"
+                                    type="datetime-local"
                                     v-model="form.start_date"
-                                    :min="new Date().toISOString().split('T')[0]"
+                                    :min="new Date().toISOString().slice(0, 16)"
                                     required
                                 />
                                 <div v-if="form.errors.start_date" class="text-sm text-red-600">
@@ -292,12 +305,12 @@ const submit = () => {
                             </div>
 
                             <div class="space-y-2">
-                                <Label for="end_date">End Date *</Label>
+                                <Label for="end_date">End Date & Time *</Label>
                                 <Input
                                     id="end_date"
-                                    type="date"
+                                    type="datetime-local"
                                     v-model="form.end_date"
-                                    :min="form.start_date || new Date().toISOString().split('T')[0]"
+                                    :min="form.start_date || new Date().toISOString().slice(0, 16)"
                                     required
                                 />
                                 <div v-if="form.errors.end_date" class="text-sm text-red-600">

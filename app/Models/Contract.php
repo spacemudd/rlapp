@@ -48,8 +48,8 @@ class Contract extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'start_date' => 'date',
-        'end_date' => 'date',
+        'start_date' => 'datetime',
+        'end_date' => 'datetime',
         'signed_at' => 'datetime',
         'activated_at' => 'datetime',
         'completed_at' => 'datetime',
