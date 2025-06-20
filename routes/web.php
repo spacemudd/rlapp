@@ -42,6 +42,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/contracts/{contract}/create-invoice', [App\Http\Controllers\ContractController::class, 'createInvoice'])->name('contracts.create-invoice');
     Route::get('/contracts/{contract}/pdf', [App\Http\Controllers\ContractController::class, 'downloadPdf'])->name('contracts.pdf');
     
+    // Test routes
+    Route::get('/test-arabic', function() {
+        return view('contracts.test-arabic');
+    });
+    
+    Route::get('/test-arabic-pdf', function() {
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('contracts.test-arabic');
+        
+        // Configure PDF options for Arabic support
+        $pdf->getDomPDF()->getOptions()->set('fontDir', storage_path('fonts/'));
+        $pdf->getDomPDF()->getOptions()->set('fontCache', storage_path('fonts/'));
+        $pdf->getDomPDF()->getOptions()->set('isRemoteEnabled', true);
+        $pdf->getDomPDF()->getOptions()->set('defaultFont', 'Arial');
+        
+        return $pdf->stream('arabic-test.pdf');
+    });
+    
     // Search endpoints for async dropdowns
     Route::get('/api/customers/search', [App\Http\Controllers\ContractController::class, 'searchCustomers'])->name('api.customers.search');
     Route::get('/api/vehicles/search', [App\Http\Controllers\ContractController::class, 'searchVehicles'])->name('api.vehicles.search');

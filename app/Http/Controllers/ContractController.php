@@ -10,8 +10,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
-use Barryvdh\DomPDF\Facade\Pdf;
-use App\Services\PdfFontService;
+use Barryvdh\Snappy\Facades\SnappyPdf as PDF;
 
 class ContractController extends Controller
 {
@@ -100,9 +99,15 @@ class ContractController extends Controller
                     'id' => $customer->id,
                     'label' => $customer->first_name . ' ' . $customer->last_name . ' - ' . $customer->phone,
                     'value' => $customer->id,
+                    'name' => $customer->first_name . ' ' . $customer->last_name,
                     'first_name' => $customer->first_name,
                     'last_name' => $customer->last_name,
+                    'email' => $customer->email,
                     'phone' => $customer->phone,
+                    'drivers_license_number' => $customer->drivers_license_number,
+                    'address' => $customer->address,
+                    'city' => $customer->city,
+                    'country' => $customer->country,
                 ];
             });
 
@@ -153,7 +158,7 @@ class ContractController extends Controller
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'vehicle_id' => 'required|exists:vehicles,id',
-            'start_date' => 'required|date|after_or_equal:today',
+            'start_date' => 'required|date|after_or_equal:now',
             'end_date' => 'required|date|after:start_date',
             'daily_rate' => 'required|numeric|min:0',
             'deposit_amount' => 'nullable|numeric|min:0',
@@ -237,7 +242,7 @@ class ContractController extends Controller
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'vehicle_id' => 'required|exists:vehicles,id',
-            'start_date' => 'required|date|after_or_equal:today',
+            'start_date' => 'required|date|after_or_equal:now',
             'end_date' => 'required|date|after:start_date',
             'daily_rate' => 'required|numeric|min:0',
             'deposit_amount' => 'nullable|numeric|min:0',
@@ -403,20 +408,25 @@ class ContractController extends Controller
     {
         $contract->load(['customer', 'vehicle']);
 
-        $pdf = Pdf::loadView('contracts.pdf', [
+        // Generate PDF using Snappy (wkhtmltopdf)
+        $pdf = PDF::loadView('contracts.pdf', [
             'contract' => $contract,
             'customer' => $contract->customer,
             'vehicle' => $contract->vehicle,
         ]);
 
-        // Configure PDF options for Arabic support
-        $pdf->getDomPDF()->getOptions()->set('fontDir', storage_path('fonts/'));
-        $pdf->getDomPDF()->getOptions()->set('fontCache', storage_path('fonts/'));
-        $pdf->getDomPDF()->getOptions()->set('isRemoteEnabled', true);
-        $pdf->getDomPDF()->getOptions()->set('defaultFont', 'Arial');
-
-        // Register Arabic fonts
-        PdfFontService::registerArabicFonts($pdf->getDomPDF());
+        // Set options for better Arabic support
+        $pdf->setOptions([
+            'page-size' => 'A4',
+            'margin-top' => '0.75in',
+            'margin-right' => '0.75in',
+            'margin-bottom' => '0.75in',
+            'margin-left' => '0.75in',
+            'encoding' => 'UTF-8',
+            'enable-local-file-access' => true,
+            'no-outline' => true,
+            'disable-smart-shrinking' => true,
+        ]);
 
         return $pdf->stream('contract-' . $contract->contract_number . '.pdf');
     }

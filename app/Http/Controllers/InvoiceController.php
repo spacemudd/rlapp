@@ -128,38 +128,6 @@ class InvoiceController extends Controller
 
         $nextInvoiceNumber = 'INV-' . $nextNumber;
 
-        $customers = Customer::select([
-            'id',
-            'first_name',
-            'last_name',
-            'email',
-            'phone',
-            'drivers_license_number',
-            'address',
-            'city',
-            'country'
-        ])->get()->map(function ($customer) {
-            return [
-                'id' => $customer->id,
-                'name' => $customer->first_name . ' ' . $customer->last_name,
-                'email' => $customer->email,
-                'phone' => $customer->phone,
-                'drivers_license_number' => $customer->drivers_license_number,
-                'address' => $customer->address,
-                'city' => $customer->city,
-                'country' => $customer->country,
-            ];
-        });
-
-        $vehicles = Vehicle::select(['id', 'plate_number', 'make', 'model', 'year'])
-            ->get()
-            ->map(function ($vehicle) {
-                return [
-                    'id' => $vehicle->id,
-                    'name' => "{$vehicle->year} {$vehicle->make} {$vehicle->model} - {$vehicle->plate_number}"
-                ];
-            });
-
         $contracts = \App\Models\Contract::with('vehicle')->get()->map(function($contract) {
             return [
                 'id' => $contract->id,
@@ -167,12 +135,12 @@ class InvoiceController extends Controller
                 'vehicle_id' => $contract->vehicle_id,
                 'start_date' => $contract->start_date,
                 'end_date' => $contract->end_date,
+                'total_days' => $contract->total_days,
+                'customer_id' => $contract->customer_id,
             ];
         });
 
         return Inertia::render('Invoices/Create', [
-            'customers' => $customers,
-            'vehicles' => $vehicles,
             'contracts' => $contracts,
             'nextInvoiceNumber' => $nextInvoiceNumber,
         ]);
@@ -224,7 +192,6 @@ class InvoiceController extends Controller
                 'sub_total' => $validated['sub_total'],
                 'total_discount' => $validated['total_discount'],
                 'total_amount' => $validated['total_amount'],
-                'team_id' => Auth::user()->team_id,
             ]);
 
             // Create invoice items

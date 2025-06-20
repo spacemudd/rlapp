@@ -79,11 +79,24 @@ const getStatusColor = (contractStatus: string) => {
 };
 
 const formatCurrency = (amount: number, currency: string = 'AED') => {
-    return new Intl.NumberFormat('en-AE', {
-        style: 'currency',
-        currency: currency,
-        minimumFractionDigits: 2,
-    }).format(amount);
+    // List of valid currency codes
+    const validCurrencies = ['USD', 'EUR', 'AED', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'SEK', 'NZD'];
+    
+    // Use the provided currency if it's valid, otherwise default to AED
+    if (!validCurrencies.includes(currency.toUpperCase())) {
+        currency = 'AED'; // Default fallback currency
+    }
+    
+    try {
+        return new Intl.NumberFormat('en-AE', {
+            style: 'currency',
+            currency: currency,
+            minimumFractionDigits: 2,
+        }).format(amount);
+    } catch (error) {
+        // If there's still an error, use a simple format
+        return `${currency} ${amount.toFixed(2)}`;
+    }
 };
 
 const formatDate = (date: string) => {
@@ -102,7 +115,7 @@ watch([search, status], () => {
         const params = new URLSearchParams();
         if (search.value) params.set('search', search.value);
         if (status.value !== 'all') params.set('status', status.value);
-        
+
         router.get(route('contracts.index'), Object.fromEntries(params), {
             preserveState: true,
             preserveScroll: true,
@@ -150,11 +163,15 @@ const createInvoice = (contract: Contract) => {
         });
     }
 };
+
+function goToCreateInvoice(contract: Contract) {
+    window.location.href = route('invoices.create', { contract_id: contract.id });
+}
 </script>
 
 <template>
     <Head title="Contracts" />
-    
+
     <AppLayout>
         <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
             <div class="space-y-6">
@@ -187,7 +204,7 @@ const createInvoice = (contract: Contract) => {
                             </div>
                         </div>
                         <div class="w-full sm:w-48">
-                            <select 
+                            <select
                                 v-model="status"
                                 class="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                             >
@@ -246,7 +263,7 @@ const createInvoice = (contract: Contract) => {
                                         <XCircle class="w-4 h-4 mr-2" />
                                         Void
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem v-if="!contract.invoice_id && contract.status !== 'void'" @click="createInvoice(contract)">
+                                    <DropdownMenuItem v-if="!contract.invoice_id && contract.status !== 'void'" @click="() => goToCreateInvoice(contract)">
                                         <Receipt class="w-4 h-4 mr-2" />
                                         Create Invoice
                                     </DropdownMenuItem>
@@ -319,17 +336,17 @@ const createInvoice = (contract: Contract) => {
             <div v-if="contracts.links && contracts.data.length > 0" class="flex justify-center">
                 <nav class="flex items-center space-x-2">
                     <template v-for="link in contracts.links" :key="link.label">
-                        <Link v-if="link.url" 
-                              :href="link.url" 
+                        <Link v-if="link.url"
+                              :href="link.url"
                               :class="[
                                   'px-3 py-2 text-sm rounded-md',
-                                  link.active 
-                                      ? 'bg-blue-600 text-white' 
+                                  link.active
+                                      ? 'bg-blue-600 text-white'
                                       : 'text-gray-700 hover:bg-gray-100'
                               ]"
                               v-html="link.label">
                         </Link>
-                        <span v-else 
+                        <span v-else
                               :class="[
                                   'px-3 py-2 text-sm rounded-md text-gray-400 cursor-not-allowed'
                               ]"
@@ -341,4 +358,4 @@ const createInvoice = (contract: Contract) => {
             </div>
         </div>
     </AppLayout>
-</template> 
+</template>
