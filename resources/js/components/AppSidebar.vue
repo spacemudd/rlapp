@@ -4,29 +4,70 @@ import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid } from 'lucide-vue-next';
+import { Link, usePage } from '@inertiajs/vue3';
+import { BookOpen, Folder, LayoutGrid, Users, Receipt, Settings, Car, FileText } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
+import { computed } from 'vue';
 
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: '/dashboard',
-        icon: LayoutGrid,
-    },
-];
+const page = usePage();
+
+// Get user permissions from page props
+const userPermissions = computed(() => {
+    return page.props.auth?.permissions || [];
+});
+
+// Check if user can manage team settings
+const canManageTeam = computed(() => {
+    return userPermissions.value.includes('manage team settings');
+});
+
+const mainNavItems = computed<NavItem[]>(() => {
+    const items: NavItem[] = [
+        {
+            title: 'Dashboard',
+            href: '/dashboard',
+            icon: LayoutGrid,
+        },
+        {
+            title: 'Customers',
+            href: '/customers',
+            icon: Users,
+        },
+        {
+            title: 'Invoices',
+            href: '/invoices',
+            icon: Receipt,
+        },
+        {
+            title: 'Vehicles',
+            href: '/vehicles',
+            icon: Car,
+        },
+        {
+            title: 'Contracts',
+            href: '/contracts',
+            icon: FileText,
+        },
+    ];
+
+    // Add Team link only for users with manage team settings permission
+    if (canManageTeam.value) {
+        items.push({
+            title: 'Team',
+            href: '/team',
+            icon: Settings,
+        });
+    }
+
+    return items;
+});
 
 const footerNavItems: NavItem[] = [
-    {
-        title: 'Github Repo',
-        href: 'https://github.com/laravel/vue-starter-kit',
-        icon: Folder,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#vue',
-        icon: BookOpen,
-    },
+    // {
+    //     title: 'Github Repo',
+    //     href: 'https://github.com/laravel/vue-starter-kit',
+    //     icon: Folder,
+    // },
 ];
 </script>
 
