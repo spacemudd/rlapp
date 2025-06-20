@@ -30,9 +30,9 @@ const form = useForm({
     email: '',
     phone: '',
     date_of_birth: '',
-    identification_type: '',
     drivers_license_number: '',
     drivers_license_expiry: '',
+    secondary_identification_type: '', // passport or resident_id
     passport_number: '',
     passport_expiry: '',
     resident_id_number: '',
@@ -54,7 +54,7 @@ watch(() => props.editingCustomer, (customer) => {
                 let value = customer[key] || '';
                 
                 // Format date fields for HTML date inputs (YYYY-MM-DD)
-                if ((key === 'date_of_birth' || key === 'drivers_license_expiry') && value) {
+                if ((key === 'date_of_birth' || key === 'drivers_license_expiry' || key === 'passport_expiry' || key === 'resident_id_expiry') && value) {
                     // Extract just the date part (YYYY-MM-DD) from datetime strings
                     value = value.split('T')[0];
                 }
@@ -62,15 +62,60 @@ watch(() => props.editingCustomer, (customer) => {
                 (form as any)[key] = value;
             }
         });
+        
+        // Set secondary identification type based on existing data
+        if (customer.passport_number) {
+            form.secondary_identification_type = 'passport';
+        } else if (customer.resident_id_number) {
+            form.secondary_identification_type = 'resident_id';
+        }
     } else {
         form.reset();
         form.country = 'United Arab Emirates';
         form.status = 'active';
-        form.identification_type = '';
+        form.drivers_license_number = '';
+        form.drivers_license_expiry = '';
+        form.secondary_identification_type = '';
+        form.passport_number = '';
+        form.passport_expiry = '';
+        form.resident_id_number = '';
+        form.resident_id_expiry = '';
     }
 }, { immediate: true });
 
+// Watch for secondary identification type changes to clear unused fields
+watch(() => form.secondary_identification_type, (newType) => {
+    if (newType === 'passport') {
+        // Clear resident ID fields
+        form.resident_id_number = '';
+        form.resident_id_expiry = '';
+    } else if (newType === 'resident_id') {
+        // Clear passport fields
+        form.passport_number = '';
+        form.passport_expiry = '';
+    }
+});
+
 const submitForm = () => {
+    // Client-side validation for secondary identification
+    if (!form.secondary_identification_type) {
+        alert('Please select either Passport or Emirates Resident ID');
+        return;
+    }
+    
+    if (form.secondary_identification_type === 'passport') {
+        if (!form.passport_number || !form.passport_expiry) {
+            alert('Please fill in all passport information');
+            return;
+        }
+    } else if (form.secondary_identification_type === 'resident_id') {
+        if (!form.resident_id_number || !form.resident_id_expiry) {
+            alert('Please fill in all Emirates Resident ID information');
+            return;
+        }
+    }
+    
+    console.log('Form data being submitted:', form.data());
     emit('submit', form);
 };
 
@@ -122,39 +167,45 @@ const cancelForm = () => {
 
             <!-- Identification Type Selection -->
             <div class="space-y-4">
-                <Label>Identification Type *</Label>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <!-- Driver's License Option -->
-                    <div 
-                        class="relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:bg-gray-50"
-                        :class="{
-                            'border-blue-500 bg-blue-50': form.identification_type === 'drivers_license',
-                            'border-gray-200': form.identification_type !== 'drivers_license'
-                        }"
-                        @click="form.identification_type = 'drivers_license'"
-                    >
-                        <div class="flex flex-col items-center text-center space-y-2">
-                            <CreditCard class="h-8 w-8 text-gray-600" />
-                            <h3 class="font-medium text-gray-900">Driver's License</h3>
-                            <p class="text-sm text-gray-500">UAE or International License</p>
-                        </div>
-                        <input
-                            type="radio"
-                            name="identification_type"
-                            value="drivers_license"
-                            v-model="form.identification_type"
-                            class="absolute top-2 right-2"
+                <Label>Driver's License (Required) *</Label>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <Label for="drivers_license_number">Driver's License Number *</Label>
+                        <Input
+                            id="drivers_license_number"
+                            v-model="form.drivers_license_number"
+                            type="text"
+                            required
+                            placeholder="Enter license number"
                         />
+                        <InputError :message="form.errors.drivers_license_number" />
                     </div>
+                    <div class="space-y-2">
+                        <Label for="drivers_license_expiry">License Expiry Date *</Label>
+                        <Input
+                            id="drivers_license_expiry"
+                            v-model="form.drivers_license_expiry"
+                            type="date"
+                            required
+                        />
+                        <InputError :message="form.errors.drivers_license_expiry" />
+                    </div>
+                </div>
+            </div>
 
+            <!-- Secondary Identification -->
+            <div class="space-y-4">
+                <Label>Secondary Identification (Choose One) *</Label>
+                <p class="text-sm text-gray-600">You must provide either a Passport OR Emirates ID/Resident ID</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <!-- Passport Option -->
                     <div 
                         class="relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:bg-gray-50"
                         :class="{
-                            'border-blue-500 bg-blue-50': form.identification_type === 'passport',
-                            'border-gray-200': form.identification_type !== 'passport'
+                            'border-blue-500 bg-blue-50': form.secondary_identification_type === 'passport',
+                            'border-gray-200': form.secondary_identification_type !== 'passport'
                         }"
-                        @click="form.identification_type = 'passport'"
+                        @click="form.secondary_identification_type = 'passport'"
                     >
                         <div class="flex flex-col items-center text-center space-y-2">
                             <BookOpen class="h-8 w-8 text-gray-600" />
@@ -163,10 +214,11 @@ const cancelForm = () => {
                         </div>
                         <input
                             type="radio"
-                            name="identification_type"
+                            name="secondary_identification_type"
                             value="passport"
-                            v-model="form.identification_type"
+                            v-model="form.secondary_identification_type"
                             class="absolute top-2 right-2"
+                            required
                         />
                     </div>
 
@@ -174,61 +226,38 @@ const cancelForm = () => {
                     <div 
                         class="relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:bg-gray-50"
                         :class="{
-                            'border-blue-500 bg-blue-50': form.identification_type === 'resident_id',
-                            'border-gray-200': form.identification_type !== 'resident_id'
+                            'border-blue-500 bg-blue-50': form.secondary_identification_type === 'resident_id',
+                            'border-gray-200': form.secondary_identification_type !== 'resident_id'
                         }"
-                        @click="form.identification_type = 'resident_id'"
+                        @click="form.secondary_identification_type = 'resident_id'"
                     >
                         <div class="flex flex-col items-center text-center space-y-2">
                             <IdCard class="h-8 w-8 text-gray-600" />
-                            <h3 class="font-medium text-gray-900">Resident ID</h3>
+                            <h3 class="font-medium text-gray-900">Emirates ID / Resident ID</h3>
                             <p class="text-sm text-gray-500">Emirates ID or Resident Card</p>
                         </div>
                         <input
                             type="radio"
-                            name="identification_type"
+                            name="secondary_identification_type"
                             value="resident_id"
-                            v-model="form.identification_type"
+                            v-model="form.secondary_identification_type"
                             class="absolute top-2 right-2"
+                            required
                         />
                     </div>
                 </div>
-                <InputError :message="form.errors.identification_type" />
+                <InputError :message="form.errors.secondary_identification_type" />
             </div>
 
-            <!-- Identification Details (shown based on selection) -->
-            <div v-if="form.identification_type === 'drivers_license'" class="grid grid-cols-2 gap-4">
-                <div class="space-y-2">
-                    <Label for="drivers_license_number">Driver's License Number *</Label>
-                    <Input
-                        id="drivers_license_number"
-                        v-model="form.drivers_license_number"
-                        type="text"
-                        required
-                        placeholder="Enter license number"
-                    />
-                    <InputError :message="form.errors.drivers_license_number" />
-                </div>
-                <div class="space-y-2">
-                    <Label for="drivers_license_expiry">License Expiry Date *</Label>
-                    <Input
-                        id="drivers_license_expiry"
-                        v-model="form.drivers_license_expiry"
-                        type="date"
-                        required
-                    />
-                    <InputError :message="form.errors.drivers_license_expiry" />
-                </div>
-            </div>
-
-            <div v-if="form.identification_type === 'passport'" class="grid grid-cols-2 gap-4">
+            <!-- Secondary Identification Details (shown based on selection) -->
+            <div v-if="form.secondary_identification_type === 'passport'" class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">
                     <Label for="passport_number">Passport Number *</Label>
                     <Input
                         id="passport_number"
                         v-model="form.passport_number"
                         type="text"
-                        required
+                        :required="form.secondary_identification_type === 'passport'"
                         placeholder="Enter passport number"
                     />
                     <InputError :message="form.errors.passport_number" />
@@ -239,20 +268,20 @@ const cancelForm = () => {
                         id="passport_expiry"
                         v-model="form.passport_expiry"
                         type="date"
-                        required
+                        :required="form.secondary_identification_type === 'passport'"
                     />
                     <InputError :message="form.errors.passport_expiry" />
                 </div>
             </div>
 
-            <div v-if="form.identification_type === 'resident_id'" class="grid grid-cols-2 gap-4">
+            <div v-if="form.secondary_identification_type === 'resident_id'" class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">
-                    <Label for="resident_id_number">Resident ID Number *</Label>
+                    <Label for="resident_id_number">Emirates / Resident ID *</Label>
                     <Input
                         id="resident_id_number"
                         v-model="form.resident_id_number"
                         type="text"
-                        required
+                        :required="form.secondary_identification_type === 'resident_id'"
                         placeholder="Enter Emirates ID or Resident Card number"
                     />
                     <InputError :message="form.errors.resident_id_number" />
@@ -263,7 +292,7 @@ const cancelForm = () => {
                         id="resident_id_expiry"
                         v-model="form.resident_id_expiry"
                         type="date"
-                        required
+                        :required="form.secondary_identification_type === 'resident_id'"
                     />
                     <InputError :message="form.errors.resident_id_expiry" />
                 </div>
