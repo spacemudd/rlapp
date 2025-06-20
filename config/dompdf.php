@@ -210,7 +210,7 @@ return [
          *
          * @var bool
          */
-        'enable_css_float' => false,
+        'enable_css_float' => true,
 
         /**
          * Enable remote file access
@@ -244,4 +244,4 @@ return [
          */
         'enable_html5_parser' => false,
     ]
-]; 
+];

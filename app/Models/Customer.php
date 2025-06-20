@@ -23,7 +23,7 @@ class Customer extends Model
         'email',
         'phone',
         'date_of_birth',
-        'identification_type',
+        'secondary_identification_type',
         'drivers_license_number',
         'drivers_license_expiry',
         'passport_number',
