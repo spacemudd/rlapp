@@ -727,22 +727,11 @@
                 <div style="font-size: 8px; margin-bottom: 10px;">Luxuria</div>
                 <div class="signature-line"></div>
 
-                <!-- QR Code placeholder -->
-                <div style="margin-top: 10px;">
-                    <svg width="50" height="50" style="border: 1px solid #000;">
-                        <rect x="5" y="5" width="5" height="5" fill="#000"/>
-                        <rect x="15" y="5" width="5" height="5" fill="#000"/>
-                        <rect x="25" y="5" width="5" height="5" fill="#000"/>
-                        <rect x="35" y="5" width="5" height="5" fill="#000"/>
-                        <rect x="5" y="15" width="5" height="5" fill="#000"/>
-                        <rect x="25" y="15" width="5" height="5" fill="#000"/>
-                        <rect x="5" y="25" width="5" height="5" fill="#000"/>
-                        <rect x="15" y="25" width="5" height="5" fill="#000"/>
-                        <rect x="35" y="25" width="5" height="5" fill="#000"/>
-                        <rect x="5" y="35" width="5" height="5" fill="#000"/>
-                        <rect x="25" y="35" width="5" height="5" fill="#000"/>
-                        <rect x="35" y="35" width="5" height="5" fill="#000"/>
-                    </svg>
+                <!-- QR Code -->
+                <div style="margin-top: 10px; text-align: center; display: block;">
+                    <div style="display: inline-block; margin: 0 auto;">
+                        {!! DNS2D::getBarcodeHTML('https://instagram.com/luxuria_uae', 'QRCODE', 2, 2) !!}
+                    </div>
                 </div>
             </div>
 
@@ -757,9 +746,9 @@
     <!-- Footer -->
     <div class="footer">
         <div class="contact-info">
-            <div class="contact-item">📞 +971 54 270 0030</div>
-            <div class="contact-item">📍 United Arab Of Emirates</div>
-            <div class="contact-item">✉ info@rentluxuria.com</div>
+            <div class="contact-item">+971 54 270 0030</div>
+            <div class="contact-item">United Arab Of Emirates</div>
+            <div class="contact-item">info@rentluxuria.com</div>
         </div>
     </div>
 </body>
