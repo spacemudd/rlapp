@@ -16,7 +16,7 @@
         }
 
         @page {
-            margin: 5mm;
+            margin: 0mm 5mm 5mm 5mm;
             size: A4;
         }
 
@@ -81,14 +81,44 @@
             margin-bottom: 8px;
         }
 
+        .header {
+            display: table;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .header-left {
+            display: table-cell;
+            width: 30%;
+            vertical-align: middle;
+        }
+
+        .header-center {
+            display: table-cell;
+            width: 40%;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .header-right {
+            display: table-cell;
+            width: 30%;
+            text-align: right;
+            vertical-align: middle;
+        }
+
+        .logo {
+            max-height: 60px;
+            max-width: 150px;
+        }
+
         .contract-title {
             font-size: 12px;
             font-weight: bold;
             margin-bottom: 5px;
-            float:left;
         }
         .contract-code {
-            float:right;
+            font-size: 10px;
         }
 
         .barcode-section {
@@ -210,13 +240,13 @@
         }
 
         .financial-table {
-            /*width: 100%;*/
+            width: 100%;
             border-collapse: collapse;
             margin-bottom: 4px;
         }
 
         .financial-table td {
-            width: 50%;
+            width: 33.33%;
             font-size: 8px;
             padding: 2px;
             vertical-align: top;
@@ -344,8 +374,15 @@
 <body>
     <!-- Header -->
     <div class="header">
-        <div class="contract-title">LUXURIA Cars Rental LLC - Vehicle Rental Contract</div>
-        <div class="contract-code">Contract ID: {{ $contract->contract_number }}</div>
+        <div class="header-left">
+            <img src="{{ public_path('img/logo.png') }}" alt="Luxuria Logo" class="logo">
+        </div>
+        <div class="header-center">
+            <div class="contract-title">LUXURIA Cars Rental LLC - Vehicle Rental Contract</div>
+        </div>
+        <div class="header-right">
+            <div class="contract-code">Contract ID: {{ $contract->contract_number }}</div>
+        </div>
     </div>
 
     <!-- Order Info and Barcode -->
@@ -357,7 +394,7 @@
 
     <!-- Main Content -->
     <div class="main-content">
-        <div class="main-content-left-side" style="background-color:purple;">
+        <div class="main-content-left-side">
             <!-- Date and Lessee Info -->
             <table class="left-table">
                 <tr>
@@ -368,7 +405,7 @@
             </table>
         </div>
 
-        <div class="main-content-right-side" style="background-color:orange;">
+        <div class="main-content-right-side">
             <table class="right-table">
                 <tr>
                     <td style="width:33.33%;">Client Information</td>
@@ -381,141 +418,141 @@
 
     <!-- Vehicle Information -->
     <div class="main-content">
-        <div class="main-content-left-side" style="background-color:red;">
+        <div class="main-content-left-side">
             <table class="left-table">
                 <tr>
                     <td style="width:33.33%">Date:</td>
                     <td style="width:33.33%;text-decoration: underline">{{ $contract->created_at->format('Y-m-d H:i:s') }}</td>
-                    <td style="width:33.33%;text-align: right;">التاريخ:</td>
+                    <td style="width:33.33%;text-align: right;" dir="rtl">التاريخ:</td>
                 </tr>
                 <tr>
                     <td style="width:33.33%">Make:</td>
                     <td style="width:33.33%; text-decoration: underline">{{ $vehicle->make }}</td>
-                    <td style="width:33.33%; text-align: right;">الصنع:</td>
+                    <td style="width:33.33%; text-align: right;" dir="rtl">الصنع:</td>
                 </tr>
                 <tr>
                     <td style="width:33.33%">Model:</td>
                     <td style="width:33.33%; text-decoration: underline">{{ $vehicle->model }}</td>
-                    <td style="width:33.33%; text-align: right;">الطراز:</td>
+                    <td style="width:33.33%; text-align: right;" dir="rtl">الطراز:</td>
                 </tr>
                 <tr>
                     <td style="width:33.33%">Color:</td>
                     <td style="width:33.33%; text-decoration: underline">{{ $vehicle->color }}</td>
-                    <td style="width:33.33%; text-align: right;">اللون:</td>
+                    <td style="width:33.33%; text-align: right;" dir="rtl">اللون:</td>
                 </tr>
                 <tr>
                     <td style="width:33.33%">Plate Number:</td>
                     <td style="width:33.33%; text-decoration: underline">{{ $vehicle->plate_number }}</td>
-                    <td style="width:33.33%; text-align: right;">رقم اللوحة:</td>
+                    <td style="width:33.33%; text-align: right;" dir="rtl">رقم اللوحة:</td>
                 </tr>
                 <tr>
                     <td style="width:33.33%">Departure Km:</td>
                     <td style="width:33.33%; text-decoration: underline">{{ $contract->mileage_limit ?? '0' }}</td>
-                    <td style="width:33.33%; text-align: right;">كم المغادرة:</td>
+                    <td style="width:33.33%; text-align: right;" dir="rtl">كم المغادرة:</td>
                 </tr>
                 <tr>
                     <td style="width:33.33%">Daily Km Limit:</td>
                     <td style="width:33.33%; text-decoration: underline">{{ $contract->mileage_limit ?? '250' }}</td>
-                    <td style="width:33.33%; text-align: right;">كم اليومي المسموح:</td>
+                    <td style="width:33.33%; text-align: right;" dir="rtl">كم اليومي المسموح:</td>
                 </tr>
                 <tr>
                     <td style="width:33.33%">Over KM Limit Charge:</td>
                     <td style="width:33.33%; text-decoration: underline">{{ $contract->excess_mileage_rate ?? '1' }}/km</td>
-                    <td style="width:33.33%; text-align: right;">تجاوز حد كم المسموح:</td>
+                    <td style="width:33.33%; text-align: right;" dir="rtl">تجاوز حد كم المسموح:</td>
                 </tr>
                 <tr>
                     <td style="width:33.33%">Departure Petrol:</td>
                     <td style="width:33.33%; text-decoration: underline">50</td>
-                    <td style="width:33.33%; text-align: right;">الوقود عند المغادرة:</td>
+                    <td style="width:33.33%; text-align: right;" dir="rtl">الوقود عند المغادرة:</td>
                 </tr>
                 <tr>
                     <td style="width:33.33%">Order Type:</td>
                     <td style="width:33.33%; text-decoration: underline">يومي</td>
-                    <td style="width:33.33%; text-align: right;">نوع الطلب:</td>
+                    <td style="width:33.33%; text-align: right;" dir="rtl">نوع الطلب:</td>
                 </tr>
                 <tr>
                     <td style="width:33.33%">Rate:</td>
                     <td style="width:33.33%; text-decoration: underline">{{ number_format($contract->daily_rate, 2) }} AED /Weekly</td>
-                    <td style="width:33.33%; text-align: right;">السعر:</td>
+                    <td style="width:33.33%; text-align: right;" dir="rtl">السعر:</td>
                 </tr>
                 <tr>
                     <td style="width:33.33%">Departure Date:</td>
                     <td style="width:33.33%; text-decoration: underline">{{ $contract->start_date->format('Y-m-d H:i:s') }}</td>
-                    <td style="width:33.33%; text-align: right;">تاريخ المغادرة:</td>
+                    <td style="width:33.33%; text-align: right;" dir="rtl">تاريخ المغادرة:</td>
                 </tr>
                 <tr>
                     <td style="width:33.33%">Agreed Return:</td>
                     <td style="width:33.33%; text-decoration: underline">{{ $contract->end_date->format('Y-m-d H:i:s') }}</td>
-                    <td style="width:33.33%; text-align: right;">الموعد المتفق عليه للعودة:</td>
+                    <td style="width:33.33%; text-align: right;" dir="rtl">الموعد المتفق عليه للعودة:</td>
                 </tr>
                 <tr>
                     <td style="width:33.33%">Return Date:</td>
                     <td style="width:33.33%; text-decoration: underline">{{ $contract->end_date->format('Y-m-d H:i:s') }}</td>
-                    <td style="width:33.33%; text-align: right;">تاريخ العودة:</td>
+                    <td style="width:33.33%; text-align: right;" dir="rtl">تاريخ العودة:</td>
                 </tr>
             </table>
         </div>
-        <div class="main-content-right-side" style="background-color:green;">
+        <div class="main-content-right-side">
                 <table class="right-table">
                     <tr>
-                        <td style="width:33.33%">Name:</td>
-                        <td style="width:33.33%; text-decoration: underline">{{ $customer->first_name }} {{ $customer->last_name }}</td>
                         <td style="width:33.33%; text-align: right;">الاسم:</td>
+                        <td style="width:33.33%; text-decoration: underline; text-align: left;direction:auto;">{{ $customer->first_name }} {{ $customer->last_name }}</td>
+                        <td style="width:33.33%; text-align: left; direction: ltr;">Name:</td>
                     </tr>
                     <tr>
-                        <td style="width:33.33%">Nationality:</td>
-                        <td style="width:33.33%; text-decoration: underline">{{ $customer->nationality ?? 'UAE' }}</td>
                         <td style="width:33.33%; text-align: right;">الجنسية:</td>
+                        <td style="width:33.33%; text-decoration: underline; text-align: left;">{{ $customer->nationality ?? 'UAE' }}</td>
+                        <td style="width:33.33%; text-align: left; direction: ltr;">Nationality:</td>
                     </tr>
                     <tr>
-                        <td style="width:33.33%">Date of Birth:</td>
-                        <td style="width:33.33%; text-decoration: underline">{{ $customer->date_of_birth ?? '1978-10-15' }}</td>
                         <td style="width:33.33%; text-align: right;">تاريخ الميلاد:</td>
+                        <td style="width:33.33%; text-decoration: underline; text-align: left;">{{ $customer->date_of_birth ?? '1978-10-15' }}</td>
+                        <td style="width:33.33%; text-align: left; direction: ltr;">Date of Birth:</td>
                     </tr>
                     <tr>
-                        <td style="width:33.33%">Phone:</td>
-                        <td style="width:33.33%; text-decoration: underline">{{ $customer->phone }}</td>
                         <td style="width:33.33%; text-align: right;">الهاتف:</td>
+                        <td style="width:33.33%; text-decoration: underline; text-align: left;">{{ $customer->phone }}</td>
+                        <td style="width:33.33%; text-align: left; direction: ltr;">Phone:</td>
                     </tr>
                     <tr>
-                        <td style="width:33.33%">Mobile:</td>
-                        <td style="width:33.33%; text-decoration: underline">{{ $customer->phone }}</td>
                         <td style="width:33.33%; text-align: right;">الجوال:</td>
+                        <td style="width:33.33%; text-decoration: underline; text-align: left;">{{ $customer->phone }}</td>
+                        <td style="width:33.33%; text-align: left; direction: ltr;">Mobile:</td>
                     </tr>
                     <tr>
-                        <td style="width:33.33%">Email:</td>
-                        <td style="width:33.33%; text-decoration: underline">{{ $customer->email ?? '' }}</td>
                         <td style="width:33.33%; text-align: right;">البريد الإلكتروني:</td>
+                        <td style="width:33.33%; text-decoration: underline; text-align: left;">{{ $customer->email ?? '' }}</td>
+                        <td style="width:33.33%; text-align: left; direction: ltr;">Email:</td>
                     </tr>
                     <tr>
-                        <td style="width:33.33%">License Number:</td>
-                        <td style="width:33.33%; text-decoration: underline">{{ $customer->drivers_license_number ?? '202826' }}</td>
                         <td style="width:33.33%; text-align: right;">رقم الرخصة:</td>
+                        <td style="width:33.33%; text-decoration: underline; text-align: left;">{{ $customer->drivers_license_number ?? '202826' }}</td>
+                        <td style="width:33.33%; text-align: left; direction: ltr;">License Number:</td>
                     </tr>
                     <tr>
-                        <td style="width:33.33%">License Issued by:</td>
-                        <td style="width:33.33%; text-decoration: underline">Ras Al Khaimah</td>
                         <td style="width:33.33%; text-align: right;">مصدر الرخصة:</td>
+                        <td style="width:33.33%; text-decoration: underline; text-align: left;">Ras Al Khaimah</td>
+                        <td style="width:33.33%; text-align: left; direction: ltr;">License Issued by:</td>
                     </tr>
                     <tr>
-                        <td style="width:33.33%">License Issued date:</td>
-                        <td style="width:33.33%; text-decoration: underline">{{ $customer->drivers_license_expiry ? \Carbon\Carbon::parse($customer->drivers_license_expiry)->format('Y-m-d') : '2018-02-08' }}</td>
                         <td style="width:33.33%; text-align: right;">تاريخ إصدار الرخصة:</td>
+                        <td style="width:33.33%; text-decoration: underline; text-align: left;">{{ $customer->drivers_license_expiry ? \Carbon\Carbon::parse($customer->drivers_license_expiry)->format('Y-m-d') : '2018-02-08' }}</td>
+                        <td style="width:33.33%; text-align: left; direction: ltr;">License Issued date:</td>
                     </tr>
                     <tr>
-                        <td style="width:33.33%">License Expiry Date:</td>
-                        <td style="width:33.33%; text-decoration: underline">{{ $customer->drivers_license_expiry ? \Carbon\Carbon::parse($customer->drivers_license_expiry)->format('Y-m-d') : '2026-03-28' }}</td>
                         <td style="width:33.33%; text-align: right;">تاريخ انتهاء الرخصة:</td>
+                        <td style="width:33.33%; text-decoration: underline; text-align: left;">{{ $customer->drivers_license_expiry ? \Carbon\Carbon::parse($customer->drivers_license_expiry)->format('Y-m-d') : '2026-03-28' }}</td>
+                        <td style="width:33.33%; text-align: left; direction: ltr;">License Expiry Date:</td>
                     </tr>
                     <tr>
-                        <td style="width:33.33%">Home address:</td>
-                        <td style="width:33.33%; text-decoration: underline">{{ $customer->country ?? 'Dubai' }}</td>
                         <td style="width:33.33%; text-align: right;">عنوان المنزل:</td>
+                        <td style="width:33.33%; text-decoration: underline; text-align: left;">{{ $customer->country ?? 'Dubai' }}</td>
+                        <td style="width:33.33%; text-align: left; direction: ltr;">Home address:</td>
                     </tr>
                     <tr>
-                        <td style="width:33.33%">Visa Number:</td>
-                        <td style="width:33.33%; text-decoration: underline"></td>
                         <td style="width:33.33%; text-align: right;">رقم التأشيرة:</td>
+                        <td style="width:33.33%; text-decoration: underline; text-align: left;"></td>
+                        <td style="width:33.33%; text-align: left; direction: ltr;">Visa Number:</td>
                     </tr>
                 </table>
         </div>
@@ -534,49 +571,49 @@
 
                 <table class="financial-table" style="width: 100%; border-spacing: 0; border-collapse: collapse;">
                     <tr style="height: 5px;">
-                        <td>Downpayment:</td>
-                        <td>_____________</td>
-                        <td class="arabic-text" dir="rtl">دفعة مقدمة</td>
+                        <td style="width:33.33%;">Downpayment:</td>
+                        <td style="width:33.33%;">_____________</td>
+                        <td class="arabic-text" dir="rtl" style="width:33.33%;">دفعة مقدمة</td>
                     </tr>
                     <tr style="height: 5px;">
-                        <td>Rental Charges | Days:</td>
-                        <td>_____________</td>
-                        <td class="arabic-text" dir="rtl">رسوم الايجار | الأيام</td>
+                        <td style="width:33.33%;">Rental Charges | Days:</td>
+                        <td style="width:33.33%;">_____________</td>
+                        <td class="arabic-text" dir="rtl" style="width:33.33%;">رسوم الايجار | الأيام</td>
                     </tr>
                     <tr style="height: 5px;">
-                        <td>Extra km /1km:</td>
-                        <td>_____________</td>
-                        <td class="arabic-text" dir="rtl">الكيلومترات الاضافية</td>
+                        <td style="width:33.33%;">Extra km /1km:</td>
+                        <td style="width:33.33%;">_____________</td>
+                        <td class="arabic-text" dir="rtl" style="width:33.33%;">الكيلومترات الاضافية</td>
                     </tr>
                     <tr style="height: 5px;">
-                        <td>Damages:</td>
-                        <td>_____________</td>
-                        <td class="arabic-text" dir="rtl">بدل أضرار</td>
+                        <td style="width:33.33%;">Damages:</td>
+                        <td style="width:33.33%;">_____________</td>
+                        <td class="arabic-text" dir="rtl" style="width:33.33%;">بدل أضرار</td>
                     </tr>
                     <tr style="height: 5px;">
-                        <td>Salik:</td>
-                        <td>_____________</td>
-                        <td class="arabic-text" dir="rtl">ساليك</td>
+                        <td style="width:33.33%;">Salik:</td>
+                        <td style="width:33.33%;">_____________</td>
+                        <td class="arabic-text" dir="rtl" style="width:33.33%;">ساليك</td>
                     </tr>
                     <tr style="height: 5px;">
-                        <td>Traffic Fines:</td>
-                        <td>_____________</td>
-                        <td class="arabic-text" dir="rtl">مخالفات مرورية</td>
+                        <td style="width:33.33%;">Traffic Fines:</td>
+                        <td style="width:33.33%;">_____________</td>
+                        <td class="arabic-text" dir="rtl" style="width:33.33%;">مخالفات مرورية</td>
                     </tr>
                     <tr style="height: 5px;">
-                        <td>Total Amount:</td>
-                        <td>{{ number_format($contract->total_amount, 2) }} AED</td>
-                        <td style="text-align:right;">المبلغ الاجمالي</td>
+                        <td style="width:33.33%;">Total Amount:</td>
+                        <td style="width:33.33%;">{{ number_format($contract->total_amount, 2) }} AED</td>
+                        <td class="arabic-text" dir="rtl" style="width:33.33%; text-align:right;">المبلغ الاجمالي</td>
                     </tr>
                     <tr style="height: 5px;">
-                        <td>Paid Amount:</td>
-                        <td>_____________</td>
-                        <td class="arabic-text" dir="rtl" style="text-align:right;">المبلغ المدفوع</td>
+                        <td style="width:33.33%;">Paid Amount:</td>
+                        <td style="width:33.33%;">_____________</td>
+                        <td class="arabic-text" dir="rtl" style="width:33.33%; text-align:right;">المبلغ المدفوع</td>
                     </tr>
                     <tr style="height: 5px;">
-                        <td>Remaining Amount:</td>
-                        <td>_____________</td>
-                        <td class="arabic-text" dir="rtl" style="text-align:right;">المبلغ المتبقي</td>
+                        <td style="width:33.33%;">Remaining Amount:</td>
+                        <td style="width:33.33%;">_____________</td>
+                        <td class="arabic-text" dir="rtl" style="width:33.33%; text-align:right;">المبلغ المتبقي</td>
                     </tr>
                 </table>
             </div>
@@ -687,7 +724,7 @@
                          <div class="signature-left">
                  <div class="signature-title">Office In-Charge &nbsp;&nbsp;&nbsp;&nbsp; <span class="arabic-inline" dir="rtl">مسؤول المكتب</span></div>
                  <div style="font-size: 8px; margin-bottom: 5px;">Employee Name: &nbsp;&nbsp;&nbsp;&nbsp; <span class="arabic-inline" dir="rtl">اسم الموظف</span></div>
-                <div style="font-size: 8px; margin-bottom: 10px;">luxuria Dubai</div>
+                <div style="font-size: 8px; margin-bottom: 10px;">Luxuria</div>
                 <div class="signature-line"></div>
 
                 <!-- QR Code placeholder -->
@@ -710,7 +747,7 @@
             </div>
 
                          <div class="signature-right">
-                 <div class="signature-title">lessee Signature &nbsp;&nbsp;&nbsp;&nbsp; <span class="arabic-inline" dir="rtl">توقيع المستأجر</span></div>
+                 <div class="signature-title">Lessee Signature &nbsp;&nbsp;&nbsp;&nbsp; <span class="arabic-inline" dir="rtl">توقيع المستأجر</span></div>
                  <div style="font-size: 8px; margin-bottom: 5px;">Name: &nbsp;&nbsp;&nbsp;&nbsp; <span class="arabic-inline" dir="rtl">الاسم</span></div>
                 <div style="font-size: 8px; margin-bottom: 10px;">{{ $customer->first_name }} {{ $customer->last_name }}</div>
                 <div class="signature-line"></div>
