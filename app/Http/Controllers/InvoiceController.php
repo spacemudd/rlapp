@@ -133,6 +133,12 @@ class InvoiceController extends Controller
                 'id' => $contract->id,
                 'contract_number' => $contract->contract_number,
                 'vehicle_id' => $contract->vehicle_id,
+                'vehicle' => $contract->vehicle ? [
+                    'make' => $contract->vehicle->make,
+                    'model' => $contract->vehicle->model,
+                    'year' => $contract->vehicle->year,
+                    'plate_number' => $contract->vehicle->plate_number,
+                ] : null,
                 'start_date' => $contract->start_date,
                 'end_date' => $contract->end_date,
                 'total_days' => $contract->total_days,

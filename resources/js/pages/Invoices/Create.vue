@@ -20,6 +20,12 @@ interface Props {
         vehicle_id: string;
         total_days: number;
         customer_id: string;
+        vehicle?: {
+            year: number;
+            make: string;
+            model: string;
+            plate_number: string;
+        };
     }>;
     nextInvoiceNumber: string;
 }
@@ -249,7 +255,7 @@ const handleCustomerSelected = (customer: any) => {
     selectedCustomer.value = customer;
 };
 
-// Handle vehicle selection  
+// Handle vehicle selection
 const handleVehicleSelected = (vehicle: any) => {
     selectedVehicle.value = vehicle;
     // Update the vehicle item in items array
@@ -261,6 +267,16 @@ const handleVehicleSelected = (vehicle: any) => {
         itemsArray.unshift({ description: vehicle.label, amount: 0, discount: 0, isVehicle: true });
     }
 };
+
+const selectedContractVehicleName = computed(() => {
+    if (!form.contract_id) return '';
+    const contract = props.contracts.find(c => c.id === form.contract_id);
+    if (!contract) return '';
+    if (contract.vehicle) {
+        return `${contract.vehicle.year} ${contract.vehicle.make} ${contract.vehicle.model} - ${contract.vehicle.plate_number}`;
+    }
+    return contract.vehicle_id || '';
+});
 </script>
 
 <template>
@@ -408,14 +424,24 @@ const handleVehicleSelected = (vehicle: any) => {
                                     <!-- Vehicle Dropdown -->
                                     <div class="space-y-2">
                                         <Label for="vehicle_id" class="text-sm font-medium">Vehicle</Label>
-                                        <AsyncCombobox
-                                            v-model="form.vehicle_id"
-                                            label="Vehicle"
-                                            placeholder="Search vehicles..."
-                                            search-url="/api/vehicles/search"
-                                            :required="true"
-                                            @option-selected="handleVehicleSelected"
-                                        />
+                                        <template v-if="form.contract_id">
+                                            <Input
+                                                id="vehicle_id"
+                                                :value="selectedContractVehicleName"
+                                                readonly
+                                                class="h-10 bg-gray-100 cursor-not-allowed"
+                                            />
+                                        </template>
+                                        <template v-else>
+                                            <AsyncCombobox
+                                                v-model="form.vehicle_id"
+                                                label="Vehicle"
+                                                placeholder="Search vehicles..."
+                                                search-url="/api/vehicles/search"
+                                                :required="true"
+                                                @option-selected="handleVehicleSelected"
+                                            />
+                                        </template>
                                     </div>
 
                                     <!-- Dates Grid -->
