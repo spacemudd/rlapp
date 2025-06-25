@@ -143,6 +143,8 @@ class InvoiceController extends Controller
                 'end_date' => $contract->end_date,
                 'total_days' => $contract->total_days,
                 'customer_id' => $contract->customer_id,
+                'daily_rate' => $contract->daily_rate,
+                'total_amount' => $contract->total_amount,
             ];
         });
 

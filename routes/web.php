@@ -12,9 +12,7 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/dashboard', function () {
-        return Inertia::render('Dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices');
     Route::get('/invoices/create', [InvoiceController::class, 'create'])->name('invoices.create');
@@ -41,24 +39,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/contracts/{contract}/void', [App\Http\Controllers\ContractController::class, 'void'])->name('contracts.void');
     Route::post('/contracts/{contract}/create-invoice', [App\Http\Controllers\ContractController::class, 'createInvoice'])->name('contracts.create-invoice');
     Route::get('/contracts/{contract}/pdf', [App\Http\Controllers\ContractController::class, 'downloadPdf'])->name('contracts.pdf');
-    
+
     // Test routes
     Route::get('/test-arabic', function() {
         return view('contracts.test-arabic');
     });
-    
+
     Route::get('/test-arabic-pdf', function() {
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('contracts.test-arabic');
-        
+
         // Configure PDF options for Arabic support
         $pdf->getDomPDF()->getOptions()->set('fontDir', storage_path('fonts/'));
         $pdf->getDomPDF()->getOptions()->set('fontCache', storage_path('fonts/'));
         $pdf->getDomPDF()->getOptions()->set('isRemoteEnabled', true);
         $pdf->getDomPDF()->getOptions()->set('defaultFont', 'Arial');
-        
+
         return $pdf->stream('arabic-test.pdf');
     });
-    
+
     // Search endpoints for async dropdowns
     Route::get('/api/customers/search', [App\Http\Controllers\ContractController::class, 'searchCustomers'])->name('api.customers.search');
     Route::get('/api/vehicles/search', [App\Http\Controllers\ContractController::class, 'searchVehicles'])->name('api.vehicles.search');
