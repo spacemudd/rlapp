@@ -26,6 +26,8 @@ interface Props {
             model: string;
             plate_number: string;
         };
+        daily_rate?: number;
+        total_amount?: number;
     }>;
     nextInvoiceNumber: string;
 }
@@ -76,6 +78,12 @@ const invoiceAmount = computed(() => {
 
 const remainingAmount = computed(() => {
     return invoiceAmount.value - Number(form.total_amount || 0);
+});
+
+const contractTotalAmount = computed(() => {
+    if (!form.contract_id) return null;
+    const selectedContract = props.contracts.find(c => c.id === form.contract_id);
+    return selectedContract && selectedContract.total_amount ? Number(selectedContract.total_amount) : null;
 });
 
 // Add watchers for automatic calculations
@@ -136,10 +144,11 @@ function toDatetimeLocal(dateString: string) {
     return date.toISOString().slice(0, 16);
 }
 
-// ووتشر لتعبئة التواريخ والسيارة عند اختيار عقد
+// Watch for contract selection and update vehicle item in items
 watch(
     () => form.contract_id,
     (newVal) => {
+        const itemsArray = form.items as InvoiceItem[];
         if (newVal) {
             const selectedContract = props.contracts.find(c => c.id === newVal);
             if (selectedContract) {
@@ -148,9 +157,32 @@ watch(
                 if (selectedContract.vehicle_id) form.vehicle_id = selectedContract.vehicle_id;
                 if (selectedContract.total_days) form.total_days = selectedContract.total_days;
                 if (selectedContract.customer_id) form.customer_id = selectedContract.customer_id;
+                // Add or update vehicle item in items
+                const carName = selectedContract.vehicle
+                    ? `${selectedContract.vehicle.year} ${selectedContract.vehicle.make} ${selectedContract.vehicle.model} - ${selectedContract.vehicle.plate_number}`
+                    : selectedContract.vehicle_id;
+                const carAmount = selectedContract.total_amount
+                    ? Number(selectedContract.total_amount)
+                    : (selectedContract.daily_rate && selectedContract.total_days
+                        ? Number(selectedContract.daily_rate) * Number(selectedContract.total_days)
+                        : 0);
+                const vehicleIndex = itemsArray.findIndex((item: InvoiceItem) => item.isVehicle);
+                if (vehicleIndex !== -1) {
+                    itemsArray[vehicleIndex].description = carName;
+                    itemsArray[vehicleIndex].amount = carAmount;
+                } else {
+                    itemsArray.unshift({ description: carName, amount: carAmount, discount: 0, isVehicle: true });
+                }
+            }
+        } else {
+            // Remove vehicle item if contract is unselected
+            const vehicleIndex = itemsArray.findIndex((item: InvoiceItem) => item.isVehicle);
+            if (vehicleIndex !== -1) {
+                itemsArray.splice(vehicleIndex, 1);
             }
         }
-    }
+    },
+    { immediate: true }
 );
 
 // ووتشر إضافي لضمان تعبئة البيانات عند توفر العقود بعد تحميل الصفحة
@@ -435,7 +467,6 @@ const selectedContractVehicleName = computed(() => {
                                         <template v-else>
                                             <AsyncCombobox
                                                 v-model="form.vehicle_id"
-                                                label="Vehicle"
                                                 placeholder="Search vehicles..."
                                                 search-url="/api/vehicles/search"
                                                 :required="true"
@@ -536,7 +567,7 @@ const selectedContractVehicleName = computed(() => {
                             />
                           </td>
                           <td class="px-4 py-2 text-right font-semibold">
-                            {{ (item.amount - item.discount).toFixed(2) }}
+                            {{ (Number(item.amount) - Number(item.discount)).toFixed(2) }}
                           </td>
                           <td class="px-2 py-2 text-center">
                             <button
@@ -585,7 +616,7 @@ const selectedContractVehicleName = computed(() => {
                                 <Label for="invoice_amount" class="text-sm font-medium">Invoice Amount</Label>
                                 <div class="relative">
                                     <DollarSign class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                                    <Input id="invoice_amount" :value="invoiceAmount.toFixed(2)" readonly class="h-10 pl-10 bg-gray-100 cursor-not-allowed" />
+                                    <Input id="invoice_amount" :value="contractTotalAmount !== null ? Number(contractTotalAmount).toFixed(2) : Number(invoiceAmount).toFixed(2)" readonly class="h-10 pl-10 bg-gray-100 cursor-not-allowed" />
                                 </div>
                             </div>
                             <div class="space-y-2">

@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Badge from '@/components/ui/badge/Badge.vue';
-import { 
-    DropdownMenu, 
-    DropdownMenuContent, 
-    DropdownMenuItem, 
-    DropdownMenuTrigger 
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { 
+import {
     Dialog,
     DialogContent,
     DialogDescription,
@@ -117,14 +117,15 @@ const toggleVehicleStatus = (vehicle: Vehicle) => {
 };
 
 const formatCurrency = (amount?: number) => {
-    if (!amount) return 'N/A';
-    return `AED ${amount.toFixed(2)}`;
+    const num = Number(amount);
+    if (isNaN(num) || num === 0) return 'N/A';
+    return `AED ${num.toFixed(2)}`;
 };
 </script>
 
 <template>
     <Head title="Vehicles" />
-    
+
     <AppLayout>
         <div class="py-6">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -287,18 +288,18 @@ const formatCurrency = (amount?: number) => {
                 <div v-if="vehicles.links && vehicles.links.length > 3" class="mt-6 flex justify-center">
                     <nav class="flex items-center space-x-1">
                         <template v-for="link in vehicles.links" :key="link.label">
-                            <Link 
+                            <Link
                                 v-if="link.url"
                                 :href="link.url"
                                 :class="[
                                     'px-3 py-2 text-sm font-medium rounded-md',
-                                    link.active 
-                                        ? 'bg-blue-600 text-white' 
+                                    link.active
+                                        ? 'bg-blue-600 text-white'
                                         : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                                 ]"
                                 v-html="link.label"
                             />
-                            <span 
+                            <span
                                 v-else
                                 :class="[
                                     'px-3 py-2 text-sm font-medium rounded-md opacity-50 cursor-not-allowed text-gray-400'
@@ -315,7 +316,7 @@ const formatCurrency = (amount?: number) => {
                         <DialogHeader>
                             <DialogTitle>Delete Vehicle</DialogTitle>
                             <DialogDescription>
-                                Are you sure you want to delete {{ vehicleToDelete?.make }} {{ vehicleToDelete?.model }} 
+                                Are you sure you want to delete {{ vehicleToDelete?.make }} {{ vehicleToDelete?.model }}
                                 ({{ vehicleToDelete?.plate_number }})? This action cannot be undone.
                             </DialogDescription>
                         </DialogHeader>
@@ -332,4 +333,4 @@ const formatCurrency = (amount?: number) => {
             </div>
         </div>
     </AppLayout>
-</template> 
+</template>

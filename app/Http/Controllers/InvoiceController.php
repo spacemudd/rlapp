@@ -13,6 +13,9 @@ use App\Models\InvoiceItem;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Contract;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\InvoicePdfMail;
+use Illuminate\Support\Facades\Storage;
 
 class InvoiceController extends Controller
 {
@@ -143,6 +146,8 @@ class InvoiceController extends Controller
                 'end_date' => $contract->end_date,
                 'total_days' => $contract->total_days,
                 'customer_id' => $contract->customer_id,
+                'daily_rate' => $contract->daily_rate,
+                'total_amount' => $contract->total_amount,
             ];
         });
 
@@ -245,5 +250,45 @@ class InvoiceController extends Controller
         $invoice = \App\Models\Invoice::findOrFail($id);
         $invoice->delete();
         return redirect()->route('invoices')->with('success', 'Invoice deleted successfully.');
+    }
+
+    /**
+     * Send the invoice PDF to the customer via email.
+     */
+    public function sendToCustomer(Request $request, $id)
+    {
+        $invoice = Invoice::with(['customer', 'vehicle', 'items'])->findOrFail($id);
+        $customer = $invoice->customer;
+        $vehicle = $invoice->vehicle;
+
+        // Use email from request if provided, otherwise use customer's email
+        $email = $request->input('email', $customer->email);
+
+        // Generate PDF
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.invoice', compact('invoice', 'customer', 'vehicle'));
+        $pdfContent = $pdf->output();
+
+        // Send email
+        Mail::to($email)->send(new InvoicePdfMail($invoice, $pdfContent));
+
+        return response()->json(['message' => 'Invoice sent to customer email!']);
+    }
+
+    /**
+     * Get a public PDF link for WhatsApp sharing.
+     */
+    public function getPublicPdfLink($id)
+    {
+        $invoice = Invoice::findOrFail($id);
+        $pdfPath = "invoices/invoice-{$invoice->invoice_number}.pdf";
+        if (!Storage::disk('public')->exists($pdfPath)) {
+            $invoice->load(['customer', 'vehicle', 'items']);
+            $customer = $invoice->customer;
+            $vehicle = $invoice->vehicle;
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.invoice', compact('invoice', 'customer', 'vehicle'));
+            Storage::disk('public')->put($pdfPath, $pdf->output());
+        }
+        $url = Storage::disk('public')->url($pdfPath);
+        return response()->json(['url' => $url]);
     }
 }
