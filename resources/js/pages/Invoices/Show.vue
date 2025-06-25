@@ -1,13 +1,19 @@
 <script setup lang="ts">
 import AppSidebarLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Download, DollarSign, Printer } from 'lucide-vue-next';
+import { ArrowLeft, Download, DollarSign, Printer, Mail, MessageCircle, Share2 } from 'lucide-vue-next';
 import { Link } from '@inertiajs/vue3';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { ref } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import { Dialog, DialogOverlay, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { toast } from 'vue3-toastify';
+import axios from 'axios';
+import DropdownMenu from '@/components/ui/dropdown-menu/DropdownMenu.vue';
+import DropdownMenuTrigger from '@/components/ui/dropdown-menu/DropdownMenuTrigger.vue';
+import DropdownMenuContent from '@/components/ui/dropdown-menu/DropdownMenuContent.vue';
+import DropdownMenuItem from '@/components/ui/dropdown-menu/DropdownMenuItem.vue';
 
 interface InvoiceItem {
     description: string;
@@ -78,13 +84,13 @@ const getStatusColor = (status: string) => {
 const formatCurrency = (amount: number) => {
     // List of valid currency codes
     const validCurrencies = ['USD', 'EUR', 'AED', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'SEK', 'NZD'];
-    
+
     // Use the invoice currency if it's valid, otherwise default to AED
     let currency = props.invoice.currency;
     if (!validCurrencies.includes(currency.toUpperCase())) {
         currency = 'AED'; // Default fallback currency
     }
-    
+
     try {
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
@@ -138,6 +144,67 @@ function getTransactionTypeLabel(type: string) {
     if (type === 'refund') return 'Refund';
     return 'Payment';
 }
+
+const sendingEmail = ref(false);
+const sendInvoiceToEmail = async () => {
+    sendingEmail.value = true;
+    try {
+        await axios.post(`/invoices/${props.invoice.id}/send`);
+        toast.success('تم إرسال الفاتورة للعميل عبر البريد الإلكتروني');
+    } catch (e) {
+        toast.error('حدث خطأ أثناء إرسال الفاتورة');
+    } finally {
+        sendingEmail.value = false;
+    }
+};
+
+const whatsappLink = ref('');
+const generateWhatsappLink = async () => {
+    try {
+        const res = await axios.get(`/invoices/${props.invoice.id}/public-pdf`);
+        const url = res.data.url;
+        const phone = props.invoice.customer.phone ? props.invoice.customer.phone.replace(/[^\d]/g, '') : '';
+        const message = encodeURIComponent(`فاتورتك من الشركة.\nرابط الفاتورة: ${url}`);
+        whatsappLink.value = phone ? `https://wa.me/${phone}?text=${message}` : `https://wa.me/?text=${message}`;
+    } catch (e) {
+        toast.error('تعذر توليد رابط واتساب');
+    }
+};
+
+const openWhatsapp = async () => {
+    try {
+        const res = await axios.get(`/invoices/${props.invoice.id}/public-pdf`);
+        const url = res.data.url;
+        let phone = props.invoice.customer.phone ? props.invoice.customer.phone.replace(/[^\d]/g, '') : '';
+        // If phone starts with 0, replace with UAE country code 971
+        if (phone.startsWith('0')) {
+            phone = '971' + phone.substring(1);
+        }
+        const message = encodeURIComponent(`فاتورتك من الشركة.\nرابط الفاتورة: ${url}`);
+        const whatsappUrl = phone ? `https://wa.me/${phone}?text=${message}` : `https://wa.me/?text=${message}`;
+        window.open(whatsappUrl, '_blank');
+    } catch (e) {
+        toast.error('تعذر فتح رابط واتساب');
+    }
+};
+
+const showEmailModal = ref(false);
+const emailToSend = ref(props.invoice.customer.email);
+
+function openEmailModal() {
+    emailToSend.value = props.invoice.customer.email;
+    showEmailModal.value = true;
+}
+
+async function sendEmail() {
+    try {
+        await axios.post(`/invoices/${props.invoice.id}/send`, { email: emailToSend.value });
+        toast.success('Invoice sent!');
+        showEmailModal.value = false;
+    } catch (e) {
+        toast.error('Failed to send invoice');
+    }
+}
 </script>
 
 <template>
@@ -161,13 +228,31 @@ function getTransactionTypeLabel(type: string) {
                         <Download class="h-4 w-4" />
                         Download PDF
                     </Button>
-                    <Button variant="outline" class="flex items-center gap-2" @click="printPaymentReceipt(payment.id)" v-for="payment in invoice.payments" :key="payment.id">
-                        <Printer class="h-4 w-4" />
-                        Print Receipt
-                    </Button>
                     <Button class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white" @click="openPaymentModal">
                         <DollarSign class="h-4 w-4" />
                         Add Payment
+                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger as-child>
+                            <Button variant="outline" class="flex items-center gap-2">
+                                <Share2 class="h-4 w-4" />
+                                Share
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuItem @click="openWhatsapp">
+                                <MessageCircle class="h-4 w-4 text-green-500" />
+                                Share via WhatsApp
+                            </DropdownMenuItem>
+                            <DropdownMenuItem @click="openEmailModal">
+                                <Mail class="h-4 w-4 text-blue-500" />
+                                Share via Email
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Button variant="outline" class="flex items-center gap-2" @click="printPaymentReceipt(payment.id)" v-for="payment in invoice.payments" :key="payment.id">
+                        <Printer class="h-4 w-4" />
+                        Print Receipt
                     </Button>
                 </div>
             </div>
@@ -370,6 +455,23 @@ function getTransactionTypeLabel(type: string) {
                 <div class="flex justify-end gap-2 mt-4">
                     <Button type="button" variant="outline" @click="closePaymentModal">Cancel</Button>
                     <Button type="submit" :disabled="paymentForm.processing">Save Payment</Button>
+                </div>
+            </form>
+        </DialogContent>
+    </Dialog>
+
+    <Dialog v-model:open="showEmailModal">
+        <DialogOverlay />
+        <DialogContent class="max-w-md w-full">
+            <DialogTitle>Send Invoice via Email</DialogTitle>
+            <form @submit.prevent="sendEmail" class="space-y-4 mt-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Email</label>
+                    <input v-model="emailToSend" type="email" required class="input w-full" />
+                </div>
+                <div class="flex justify-end gap-2 mt-4">
+                    <Button type="button" variant="outline" @click="showEmailModal = false">Cancel</Button>
+                    <Button type="submit">Send</Button>
                 </div>
             </form>
         </DialogContent>
