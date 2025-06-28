@@ -37,6 +37,11 @@ class VehicleController extends Controller
             $query->where('category', $request->category);
         }
 
+        // Filter by make
+        if ($request->has('make') && $request->make) {
+            $query->where('make', $request->make);
+        }
+
         $vehicles = $query->orderBy('created_at', 'desc')->paginate(15);
 
         return Inertia::render('Vehicles/Index', [
@@ -45,9 +50,11 @@ class VehicleController extends Controller
                 'search' => $request->search,
                 'status' => $request->status,
                 'category' => $request->category,
+                'make' => $request->make,
             ],
             'statuses' => ['available', 'rented', 'maintenance', 'out_of_service'],
             'categories' => Vehicle::distinct()->pluck('category')->filter()->values(),
+            'makes' => Vehicle::distinct()->pluck('make')->filter()->values(),
         ]);
     }
 

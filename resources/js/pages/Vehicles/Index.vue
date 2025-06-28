@@ -54,9 +54,11 @@ interface Props {
         search?: string;
         status?: string;
         category?: string;
+        make?: string;
     };
     statuses: string[];
     categories: string[];
+    makes: string[];
 }
 
 const props = defineProps<Props>();
@@ -66,17 +68,19 @@ const page = usePage();
 const search = ref(props.filters.search || '');
 const statusFilter = ref(props.filters.status || '');
 const categoryFilter = ref(props.filters.category || '');
+const makeFilter = ref(props.filters.make || '');
 
 // Delete confirmation dialog
 const showDeleteDialog = ref(false);
 const vehicleToDelete = ref<Vehicle | null>(null);
 
 // Watch for changes and update URL
-watch([search, statusFilter, categoryFilter], () => {
+watch([search, statusFilter, categoryFilter, makeFilter], () => {
     router.get('/vehicles', {
         search: search.value || undefined,
         status: statusFilter.value || undefined,
         category: categoryFilter.value || undefined,
+        make: makeFilter.value || undefined,
     }, {
         preserveState: true,
         replace: true,
@@ -178,6 +182,15 @@ const formatCurrency = (amount?: number) => {
                                     {{ category }}
                                 </option>
                             </select>
+                            <select
+                                v-model="makeFilter"
+                                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                            >
+                                <option value="">All Makes</option>
+                                <option v-for="make in makes" :key="make" :value="make">
+                                    {{ make }}
+                                </option>
+                            </select>
                             <div class="text-sm text-gray-500 flex items-center">
                                 {{ vehicles.meta?.total || 0 }} vehicle(s) found
                             </div>
@@ -185,103 +198,129 @@ const formatCurrency = (amount?: number) => {
                     </CardContent>
                 </Card>
 
-                <!-- Vehicles Grid -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <Card v-for="vehicle in vehicles.data" :key="vehicle.id" class="hover:shadow-lg transition-shadow">
-                        <CardHeader class="pb-3">
-                            <div class="flex items-start justify-between">
-                                <div class="flex items-center space-x-3">
-                                    <div class="p-2 bg-blue-100 rounded-lg">
-                                        <Car class="h-5 w-5 text-blue-600" />
-                                    </div>
-                                    <div>
-                                        <Link :href="`/vehicles/${vehicle.id}`" class="block">
-                                            <CardTitle class="text-lg hover:text-blue-600 transition-colors cursor-pointer">
-                                                {{ vehicle.make }} {{ vehicle.model }}
-                                            </CardTitle>
-                                        </Link>
-                                        <p class="text-sm text-gray-500">{{ vehicle.year }} • {{ vehicle.plate_number }}</p>
-                                    </div>
-                                </div>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger as-child>
-                                        <Button variant="ghost" size="sm">
-                                            <MoreVertical class="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem @click="router.visit(`/vehicles/${vehicle.id}`)">
-                                            <Car class="mr-2 h-4 w-4" />
-                                            View Details
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem @click="router.visit(`/vehicles/${vehicle.id}/edit`)">
-                                            <Edit class="mr-2 h-4 w-4" />
-                                            Edit
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem @click="toggleVehicleStatus(vehicle)">
-                                            <Power v-if="vehicle.status === 'out_of_service'" class="mr-2 h-4 w-4" />
-                                            <PowerOff v-else class="mr-2 h-4 w-4" />
-                                            {{ vehicle.status === 'out_of_service' ? 'Enable' : 'Disable' }}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem @click="confirmDelete(vehicle)" class="text-red-600">
-                                            <Trash2 class="mr-2 h-4 w-4" />
-                                            Delete
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                <!-- Vehicles Table -->
+                <Card>
+                    <CardContent class="p-0">
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-gray-50 border-b">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Vehicle
+                                        </th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Plate Number
+                                        </th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Status
+                                        </th>
+                                                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                             Category
+                                         </th>
+                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                             Details
+                                         </th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Odometer
+                                        </th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Daily Rate
+                                        </th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Actions
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    <tr v-for="vehicle in vehicles.data" :key="vehicle.id" class="hover:bg-gray-50">
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="flex items-center">
+                                                <div class="p-2 bg-blue-100 rounded-lg mr-3">
+                                                    <Car class="h-4 w-4 text-blue-600" />
+                                                </div>
+                                                <div>
+                                                    <Link :href="`/vehicles/${vehicle.id}`" class="block">
+                                                        <div class="text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors cursor-pointer">
+                                                            {{ vehicle.make }} {{ vehicle.model }}
+                                                        </div>
+                                                    </Link>
+                                                    <div class="text-sm text-gray-500">{{ vehicle.year }}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            {{ vehicle.plate_number }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <Badge :class="getStatusColor(vehicle.status)" class="text-white">
+                                                {{ vehicle.status.charAt(0).toUpperCase() + vehicle.status.slice(1).replace('_', ' ') }}
+                                            </Badge>
+                                        </td>
+                                                                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                             {{ vehicle.category }}
+                                         </td>
+                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            <div class="space-y-1">
+                                                <div>{{ vehicle.color }}</div>
+                                                <div v-if="vehicle.seats">{{ vehicle.seats }} seats</div>
+                                                <div v-if="vehicle.doors">{{ vehicle.doors }} doors</div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            {{ vehicle.odometer.toLocaleString() }} km
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            {{ formatCurrency(vehicle.price_daily) }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger as-child>
+                                                    <Button variant="ghost" size="sm">
+                                                        <MoreVertical class="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem @click="router.visit(`/vehicles/${vehicle.id}`)">
+                                                        <Car class="mr-2 h-4 w-4" />
+                                                        View Details
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem @click="router.visit(`/vehicles/${vehicle.id}/edit`)">
+                                                        <Edit class="mr-2 h-4 w-4" />
+                                                        Edit
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem @click="toggleVehicleStatus(vehicle)">
+                                                        <Power v-if="vehicle.status === 'out_of_service'" class="mr-2 h-4 w-4" />
+                                                        <PowerOff v-else class="mr-2 h-4 w-4" />
+                                                        {{ vehicle.status === 'out_of_service' ? 'Enable' : 'Disable' }}
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem @click="confirmDelete(vehicle)" class="text-red-600">
+                                                        <Trash2 class="mr-2 h-4 w-4" />
+                                                        Delete
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Empty state -->
+                        <div v-if="vehicles.data.length === 0" class="text-center py-12">
+                            <Car class="mx-auto h-12 w-12 text-gray-400" />
+                            <h3 class="mt-2 text-sm font-medium text-gray-900">No vehicles found</h3>
+                            <p class="mt-1 text-sm text-gray-500">Get started by adding a new vehicle.</p>
+                            <div class="mt-6">
+                                <Link :href="route('vehicles.create')">
+                                    <Button>
+                                        <Plus class="w-4 h-4 mr-2" />
+                                        Add Vehicle
+                                    </Button>
+                                </Link>
                             </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div class="space-y-3">
-                                <!-- Status Badge -->
-                                <div class="flex items-center justify-between">
-                                    <Badge :class="getStatusColor(vehicle.status)" class="text-white">
-                                        {{ vehicle.status.charAt(0).toUpperCase() + vehicle.status.slice(1).replace('_', ' ') }}
-                                    </Badge>
-                                    <span class="text-sm text-gray-500">{{ vehicle.category }}</span>
-                                </div>
-
-                                <!-- Vehicle Details -->
-                                <div class="grid grid-cols-2 gap-2 text-sm">
-                                    <div>
-                                        <span class="text-gray-500">Color:</span>
-                                        <span class="ml-1">{{ vehicle.color }}</span>
-                                    </div>
-                                    <div v-if="vehicle.seats">
-                                        <span class="text-gray-500">Seats:</span>
-                                        <span class="ml-1">{{ vehicle.seats }}</span>
-                                    </div>
-                                    <div>
-                                        <span class="text-gray-500">Odometer:</span>
-                                        <span class="ml-1">{{ vehicle.odometer.toLocaleString() }} km</span>
-                                    </div>
-                                    <div v-if="vehicle.current_location">
-                                        <span class="text-gray-500">Location:</span>
-                                        <span class="ml-1">{{ vehicle.current_location }}</span>
-                                    </div>
-                                </div>
-
-                                <!-- Pricing -->
-                                <div v-if="vehicle.price_daily" class="pt-2 border-t">
-                                    <div class="grid grid-cols-3 gap-2 text-xs">
-                                        <div>
-                                            <span class="text-gray-500 block">Daily</span>
-                                            <span class="font-medium">{{ formatCurrency(vehicle.price_daily) }}</span>
-                                        </div>
-                                        <div v-if="vehicle.price_weekly">
-                                            <span class="text-gray-500 block">Weekly</span>
-                                            <span class="font-medium">{{ formatCurrency(vehicle.price_weekly) }}</span>
-                                        </div>
-                                        <div v-if="vehicle.price_monthly">
-                                            <span class="text-gray-500 block">Monthly</span>
-                                            <span class="font-medium">{{ formatCurrency(vehicle.price_monthly) }}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 <!-- Pagination -->
                 <div v-if="vehicles.links && vehicles.links.length > 3" class="mt-6 flex justify-center">
