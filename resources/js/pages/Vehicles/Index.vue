@@ -20,7 +20,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Car, Plus, Search, MoreVertical, Edit, Trash2, Power, PowerOff } from 'lucide-vue-next';
+import { Car, Plus, Search, MoreVertical, Edit, Trash2, Power, PowerOff, Building2, Home } from 'lucide-vue-next';
 
 interface Vehicle {
     id: string;
@@ -31,6 +31,12 @@ interface Vehicle {
     color: string;
     category: string;
     status: string;
+    ownership_status: string;
+    borrowed_from_office?: string;
+    borrowing_terms?: string;
+    borrowing_start_date?: string;
+    borrowing_end_date?: string;
+    borrowing_notes?: string;
     price_daily?: number;
     price_weekly?: number;
     price_monthly?: number;
@@ -55,10 +61,12 @@ interface Props {
         status?: string;
         category?: string;
         make?: string;
+        ownership?: string;
     };
     statuses: string[];
     categories: string[];
     makes: string[];
+    ownershipStatuses: string[];
 }
 
 const props = defineProps<Props>();
@@ -69,18 +77,20 @@ const search = ref(props.filters.search || '');
 const statusFilter = ref(props.filters.status || '');
 const categoryFilter = ref(props.filters.category || '');
 const makeFilter = ref(props.filters.make || '');
+const ownershipFilter = ref(props.filters.ownership || '');
 
 // Delete confirmation dialog
 const showDeleteDialog = ref(false);
 const vehicleToDelete = ref<Vehicle | null>(null);
 
 // Watch for changes and update URL
-watch([search, statusFilter, categoryFilter, makeFilter], () => {
+watch([search, statusFilter, categoryFilter, makeFilter, ownershipFilter], () => {
     router.get('/vehicles', {
         search: search.value || undefined,
         status: statusFilter.value || undefined,
         category: categoryFilter.value || undefined,
         make: makeFilter.value || undefined,
+        ownership: ownershipFilter.value || undefined,
     }, {
         preserveState: true,
         replace: true,
@@ -155,7 +165,7 @@ const formatCurrency = (amount?: number) => {
                 <!-- Filters -->
                 <Card class="mb-6">
                     <CardContent class="pt-6">
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                             <div class="relative">
                                 <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                                 <Input
@@ -191,6 +201,15 @@ const formatCurrency = (amount?: number) => {
                                     {{ make }}
                                 </option>
                             </select>
+                            <select
+                                v-model="ownershipFilter"
+                                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                            >
+                                <option value="">All Ownership</option>
+                                <option v-for="ownership in ownershipStatuses" :key="ownership" :value="ownership">
+                                    {{ ownership.charAt(0).toUpperCase() + ownership.slice(1) }}
+                                </option>
+                            </select>
                             <div class="text-sm text-gray-500 flex items-center">
                                 {{ vehicles.meta?.total || 0 }} vehicle(s) found
                             </div>
@@ -214,12 +233,15 @@ const formatCurrency = (amount?: number) => {
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Status
                                         </th>
-                                                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                             Category
-                                         </th>
-                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                             Details
-                                         </th>
+                                                                                                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Category
+                                        </th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Ownership
+                                        </th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Details
+                                        </th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Odometer
                                         </th>
@@ -259,6 +281,16 @@ const formatCurrency = (amount?: number) => {
                                                                                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                              {{ vehicle.category }}
                                          </td>
+                                         <td class="px-6 py-4 whitespace-nowrap">
+                                             <div class="flex flex-col">
+                                                 <Badge :class="vehicle.ownership_status === 'owned' ? 'bg-blue-500' : 'bg-orange-500'" class="text-white text-xs w-fit">
+                                                     {{ vehicle.ownership_status.charAt(0).toUpperCase() + vehicle.ownership_status.slice(1) }}
+                                                 </Badge>
+                                                 <div v-if="vehicle.ownership_status === 'borrowed' && vehicle.borrowed_from_office" class="text-xs text-gray-500 mt-1">
+                                                     From: {{ vehicle.borrowed_from_office }}
+                                                 </div>
+                                             </div>
+                                         </td>
                                          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             <div class="space-y-1">
                                                 <div>{{ vehicle.color }}</div>
@@ -293,6 +325,11 @@ const formatCurrency = (amount?: number) => {
                                                         <PowerOff v-else class="mr-2 h-4 w-4" />
                                                         {{ vehicle.status === 'out_of_service' ? 'Enable' : 'Disable' }}
                                                     </DropdownMenuItem>
+                                                    <!-- Show borrowing info for borrowed vehicles -->
+                                                    <div v-if="vehicle.ownership_status === 'borrowed'" class="px-2 py-1 text-xs text-gray-500 border-t">
+                                                        <div v-if="vehicle.borrowed_from_office">From: {{ vehicle.borrowed_from_office }}</div>
+                                                        <div v-if="vehicle.borrowing_end_date">Until: {{ new Date(vehicle.borrowing_end_date).toLocaleDateString() }}</div>
+                                                    </div>
                                                     <DropdownMenuItem @click="confirmDelete(vehicle)" class="text-red-600">
                                                         <Trash2 class="mr-2 h-4 w-4" />
                                                         Delete
