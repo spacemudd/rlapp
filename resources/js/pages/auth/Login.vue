@@ -12,6 +12,7 @@ import { LoaderCircle } from 'lucide-vue-next';
 defineProps<{
     status?: string;
     canResetPassword: boolean;
+    showDevLogin?: boolean;
 }>();
 
 const form = useForm({
@@ -24,6 +25,10 @@ const submit = () => {
     form.post(route('login'), {
         onFinish: () => form.reset('password'),
     });
+};
+
+const devLogin = () => {
+    form.post(route('dev.login'));
 };
 </script>
 
@@ -81,6 +86,20 @@ const submit = () => {
                 <Button type="submit" class="mt-4 w-full" :tabindex="4" :disabled="form.processing">
                     <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin" />
                     Log in
+                </Button>
+
+                <!-- Dev Login Button - Only shown on localhost -->
+                <Button 
+                    v-if="showDevLogin" 
+                    type="button" 
+                    variant="outline" 
+                    class="w-full mt-2" 
+                    :tabindex="6"
+                    :disabled="form.processing"
+                    @click="devLogin"
+                >
+                    <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin" />
+                    🚀 Dev Login (First Admin)
                 </Button>
             </div>
 
