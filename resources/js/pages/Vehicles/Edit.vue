@@ -29,14 +29,22 @@ interface Vehicle {
     doors?: number;
     odometer: number;
     chassis_number: string;
-    current_location?: string;
+    location_id?: string;
     license_expiry_date: string;
     insurance_expiry_date: string;
     recent_note?: string;
 }
 
+interface Location {
+    id: string;
+    name: string;
+    city?: string;
+    country: string;
+}
+
 interface Props {
     vehicle: Vehicle;
+    locations: Location[];
 }
 
 const props = defineProps<Props>();
@@ -60,7 +68,7 @@ const form = useForm({
     price_daily: props.vehicle.price_daily,
     price_weekly: props.vehicle.price_weekly,
     price_monthly: props.vehicle.price_monthly,
-    current_location: props.vehicle.current_location || '',
+    location_id: props.vehicle.location_id || '',
     status: props.vehicle.status,
     ownership_status: props.vehicle.ownership_status || 'owned',
     borrowed_from_office: props.vehicle.borrowed_from_office || '',
@@ -317,15 +325,22 @@ const submit = () => {
                                         </div>
                                     </div>
                                     <div>
-                                        <Label for="current_location">Current Location</Label>
-                                        <Input
-                                            id="current_location"
-                                            v-model="form.current_location"
-                                            :class="{ 'border-red-500': form.errors.current_location }"
-                                            placeholder="e.g. Dubai Marina"
-                                        />
-                                        <div v-if="form.errors.current_location" class="text-red-500 text-sm mt-1">
-                                            {{ form.errors.current_location }}
+                                        <Label for="location_id">Current Location</Label>
+                                        <select
+                                            id="location_id"
+                                            v-model="form.location_id"
+                                            :class="[
+                                                'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+                                                { 'border-red-500': form.errors.location_id }
+                                            ]"
+                                        >
+                                            <option value="">Select Location</option>
+                                            <option v-for="location in locations" :key="location.id" :value="location.id">
+                                                {{ location.name }}{{ location.city ? ', ' + location.city : '' }}
+                                            </option>
+                                        </select>
+                                        <div v-if="form.errors.location_id" class="text-red-500 text-sm mt-1">
+                                            {{ form.errors.location_id }}
                                         </div>
                                     </div>
                                 </div>

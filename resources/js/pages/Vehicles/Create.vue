@@ -8,19 +8,32 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Save } from 'lucide-vue-next';
 
+interface Location {
+    id: string;
+    name: string;
+    city?: string;
+    country: string;
+}
+
+interface Props {
+    locations: Location[];
+}
+
+const { locations } = defineProps<Props>();
+
 const form = useForm({
     plate_number: '',
     make: '',
     model: '',
     year: new Date().getFullYear(),
     color: '',
-    seats: null as number | null,
-    doors: null as number | null,
+    seats: undefined as number | undefined,
+    doors: undefined as number | undefined,
     category: '',
-    price_daily: null as number | null,
-    price_weekly: null as number | null,
-    price_monthly: null as number | null,
-    current_location: '',
+    price_daily: undefined as number | undefined,
+    price_weekly: undefined as number | undefined,
+    price_monthly: undefined as number | undefined,
+    location_id: '',
     status: 'available',
     ownership_status: 'owned',
     borrowed_from_office: '',
@@ -197,7 +210,7 @@ if (!form.insurance_expiry_date) {
                                         <Label for="seats">Seats</Label>
                                         <Input
                                             id="seats"
-                                            v-model.number="form.seats"
+                                            v-model="form.seats"
                                             :class="{ 'border-red-500': form.errors.seats }"
                                             type="number"
                                             min="1"
@@ -289,15 +302,22 @@ if (!form.insurance_expiry_date) {
                                         </div>
                                     </div>
                                     <div>
-                                        <Label for="current_location">Current Location</Label>
-                                        <Input
-                                            id="current_location"
-                                            v-model="form.current_location"
-                                            :class="{ 'border-red-500': form.errors.current_location }"
-                                            placeholder="e.g. Dubai Marina"
-                                        />
-                                        <div v-if="form.errors.current_location" class="text-red-500 text-sm mt-1">
-                                            {{ form.errors.current_location }}
+                                        <Label for="location_id">Current Location</Label>
+                                        <select
+                                            id="location_id"
+                                            v-model="form.location_id"
+                                            :class="[
+                                                'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+                                                { 'border-red-500': form.errors.location_id }
+                                            ]"
+                                        >
+                                            <option value="">Select Location</option>
+                                            <option v-for="location in locations" :key="location.id" :value="location.id">
+                                                {{ location.name }}{{ location.city ? ', ' + location.city : '' }}
+                                            </option>
+                                        </select>
+                                        <div v-if="form.errors.location_id" class="text-red-500 text-sm mt-1">
+                                            {{ form.errors.location_id }}
                                         </div>
                                     </div>
                                 </div>

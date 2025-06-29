@@ -52,7 +52,13 @@ interface Vehicle {
     doors?: number;
     odometer: number;
     chassis_number: string;
-    current_location?: string;
+    location?: {
+        id: string;
+        name: string;
+        city?: string;
+        country: string;
+        full_address: string;
+    };
     license_expiry_date: string;
     insurance_expiry_date: string;
     recent_note?: string;
@@ -244,11 +250,11 @@ const isExpired = (dateString: string) => {
                                         <dt class="text-sm font-medium text-gray-500">Odometer</dt>
                                         <dd class="mt-1 text-sm text-gray-900">{{ vehicle.odometer.toLocaleString() }} km</dd>
                                     </div>
-                                    <div v-if="vehicle.current_location">
+                                    <div v-if="vehicle.location">
                                         <dt class="text-sm font-medium text-gray-500">Current Location</dt>
                                         <dd class="mt-1 text-sm text-gray-900 flex items-center">
                                             <MapPin class="w-4 h-4 mr-1 text-gray-400" />
-                                            {{ vehicle.current_location }}
+                                            {{ vehicle.location.name }}{{ vehicle.location.city ? ', ' + vehicle.location.city : '' }}
                                         </dd>
                                     </div>
                                 </div>

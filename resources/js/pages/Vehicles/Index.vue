@@ -44,7 +44,12 @@ interface Vehicle {
     doors?: number;
     odometer: number;
     chassis_number: string;
-    current_location?: string;
+    location?: {
+        id: string;
+        name: string;
+        city?: string;
+        country: string;
+    };
     license_expiry_date: string;
     insurance_expiry_date: string;
     recent_note?: string;

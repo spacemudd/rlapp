@@ -27,7 +27,7 @@ class Vehicle extends Model
         'price_daily',
         'price_weekly',
         'price_monthly',
-        'current_location',
+        'location_id',
         'status',
         'ownership_status',
         'borrowed_from_office',
@@ -176,5 +176,13 @@ class Vehicle extends Model
     public function contracts()
     {
         return $this->hasMany(Contract::class);
+    }
+
+    /**
+     * Get the location where this vehicle is currently stationed.
+     */
+    public function location()
+    {
+        return $this->belongsTo(Location::class);
     }
 }

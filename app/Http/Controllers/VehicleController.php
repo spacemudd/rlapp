@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Vehicle;
+use App\Models\Location;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -47,7 +48,9 @@ class VehicleController extends Controller
             $query->where('ownership_status', $request->ownership);
         }
 
-        $vehicles = $query->orderBy('created_at', 'desc')->paginate(15);
+        $vehicles = $query->with('location')
+                         ->orderBy('created_at', 'desc')
+                         ->paginate(15);
 
         return Inertia::render('Vehicles/Index', [
             'vehicles' => $vehicles,
@@ -70,7 +73,9 @@ class VehicleController extends Controller
      */
     public function create()
     {
-        return Inertia::render('Vehicles/Create');
+        return Inertia::render('Vehicles/Create', [
+            'locations' => Location::active()->orderBy('name')->get(['id', 'name', 'city', 'country']),
+        ]);
     }
 
     /**
@@ -90,7 +95,7 @@ class VehicleController extends Controller
             'price_daily' => 'nullable|numeric|min:0',
             'price_weekly' => 'nullable|numeric|min:0',
             'price_monthly' => 'nullable|numeric|min:0',
-            'current_location' => 'nullable|string|max:255',
+            'location_id' => 'nullable|uuid|exists:locations,id',
             'status' => 'required|in:available,rented,maintenance,out_of_service',
             'ownership_status' => 'required|in:owned,borrowed',
             'borrowed_from_office' => 'nullable|string|max:255|required_if:ownership_status,borrowed',
@@ -116,6 +121,8 @@ class VehicleController extends Controller
      */
     public function show(Vehicle $vehicle)
     {
+        $vehicle->load('location');
+        
         return Inertia::render('Vehicles/Show', [
             'vehicle' => $vehicle,
         ]);
@@ -128,6 +135,7 @@ class VehicleController extends Controller
     {
         return Inertia::render('Vehicles/Edit', [
             'vehicle' => $vehicle,
+            'locations' => Location::active()->orderBy('name')->get(['id', 'name', 'city', 'country']),
         ]);
     }
 
@@ -148,7 +156,7 @@ class VehicleController extends Controller
             'price_daily' => 'nullable|numeric|min:0',
             'price_weekly' => 'nullable|numeric|min:0',
             'price_monthly' => 'nullable|numeric|min:0',
-            'current_location' => 'nullable|string|max:255',
+            'location_id' => 'nullable|uuid|exists:locations,id',
             'status' => 'required|in:available,rented,maintenance,out_of_service',
             'ownership_status' => 'required|in:owned,borrowed',
             'borrowed_from_office' => 'nullable|string|max:255|required_if:ownership_status,borrowed',
