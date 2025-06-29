@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import AsyncCombobox from '@/components/ui/combobox/AsyncCombobox.vue';
 import CreateCustomerForm from '@/components/CreateCustomerForm.vue';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { ArrowLeft, Calendar, DollarSign, FileText, User, Car, Plus } from 'lucide-vue-next';
 
 interface Props {
@@ -36,6 +36,7 @@ const form = useForm({
 const selectedVehicle = ref<any>(null);
 const showCreateCustomerDialog = ref(false);
 const customerComboboxRef = ref<any>(null);
+const durationDays = ref<number>(1);
 
 const totalDays = computed(() => {
     if (!form.start_date || !form.end_date) return 0;
@@ -43,7 +44,7 @@ const totalDays = computed(() => {
     const end = new Date(form.end_date);
     const diffTime = Math.abs(end.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays + 1; // Include both start and end days
+    return diffDays; // Direct calculation of rental days
 });
 
 const totalAmount = computed(() => {
@@ -117,23 +118,106 @@ const formatCurrency = (amount: number, currency: string = 'AED') => {
     }).format(amount);
 };
 
-// Duration button functions
-const setDuration = (days: number) => {
-    if (!form.start_date) {
-        // If no start date, set it to today at current time
-        form.start_date = new Date().toISOString().slice(0, 16);
-    }
-    
-    const startDate = new Date(form.start_date);
-    const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + days - 1); // Subtract 1 because we include both start and end days
-    
-    form.end_date = endDate.toISOString().slice(0, 16);
+// Dubai timezone utilities (GMT+4)
+const DUBAI_TIMEZONE_OFFSET_FROM_UTC = 4 * 60; // 4 hours in minutes from UTC
+
+const getCurrentUTCTime = (): Date => {
+    const now = new Date();
+    // Convert local time to UTC
+    return new Date(now.getTime() + (now.getTimezoneOffset() * 60000));
 };
 
-const submit = () => {
-    form.post(route('contracts.store'));
+const convertUTCToDubai = (utcDate: Date): Date => {
+    // Add 4 hours to UTC to get Dubai time
+    return new Date(utcDate.getTime() + (DUBAI_TIMEZONE_OFFSET_FROM_UTC * 60000));
 };
+
+const convertDubaiToUTC = (dubaiDate: Date): Date => {
+    // Subtract 4 hours from Dubai time to get UTC
+    return new Date(dubaiDate.getTime() - (DUBAI_TIMEZONE_OFFSET_FROM_UTC * 60000));
+};
+
+const formatDateForInput = (date: Date): string => {
+    // Format date for datetime-local input (YYYY-MM-DDTHH:MM)
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+const getCurrentDubaiTime = (): string => {
+    // Get current UTC time, then convert to Dubai time
+    const utcNow = getCurrentUTCTime();
+    const dubaiTime = convertUTCToDubai(utcNow);
+    return formatDateForInput(dubaiTime);
+};
+
+// Duration and date management
+const updateEndDate = () => {
+    if (!form.start_date || !durationDays.value || durationDays.value < 1) return;
+    
+    // Parse the start date as Dubai time
+    const startDubaiDate = new Date(form.start_date);
+    
+    // Calculate end date by adding duration days
+    const endDubaiDate = new Date(startDubaiDate);
+    endDubaiDate.setDate(startDubaiDate.getDate() + durationDays.value); // Add full duration days
+    
+    // Set the end date
+    form.end_date = formatDateForInput(endDubaiDate);
+};
+
+// Initialize with current Dubai time if no start date is set
+const initializeStartDate = () => {
+    if (!form.start_date) {
+        form.start_date = getCurrentDubaiTime();
+        updateEndDate();
+    }
+};
+
+// Watch for changes in duration and start date
+watch(durationDays, () => {
+    if (form.start_date) {
+        updateEndDate();
+    }
+});
+
+watch(() => form.start_date, () => {
+    if (form.start_date && durationDays.value > 0) {
+        updateEndDate();
+    }
+});
+
+const submit = () => {
+    // Convert Dubai time to UTC for backend storage
+    const formData = { ...form.data() };
+    
+    if (formData.start_date) {
+        const startDubaiDate = new Date(formData.start_date);
+        const startUTCDate = convertDubaiToUTC(startDubaiDate);
+        formData.start_date = startUTCDate.toISOString();
+    }
+    
+    if (formData.end_date) {
+        const endDubaiDate = new Date(formData.end_date);
+        const endUTCDate = convertDubaiToUTC(endDubaiDate);
+        formData.end_date = endUTCDate.toISOString();
+    }
+    
+    // Submit with UTC timestamps
+    form.transform((data) => formData).post(route('contracts.store'));
+};
+
+// Initialize component
+onMounted(() => {
+    // Set default start date to current Dubai time if not already set
+    if (!form.start_date) {
+        form.start_date = getCurrentDubaiTime();
+        updateEndDate();
+    }
+});
 
 // Watch for newCustomer prop changes (when redirected back with customer data)
 watch(() => props.newCustomer, (customer) => {
@@ -276,110 +360,89 @@ watch(() => props.newCustomer, (customer) => {
                     </CardHeader>
                     <CardContent class="space-y-6">
                         <div class="grid gap-4 md:grid-cols-2">
-                            <div class="space-y-2">
-                                <Label for="start_date">Start Date & Time *</Label>
-                                <Input
-                                    id="start_date"
-                                    type="datetime-local"
-                                    v-model="form.start_date"
-                                    :min="new Date().toISOString().slice(0, 16)"
-                                    required
-                                />
-                                <div v-if="form.errors.start_date" class="text-sm text-red-600">
-                                    {{ form.errors.start_date }}
+                                                            <div class="space-y-2">
+                                    <Label for="start_date">Start Date & Time * <span class="text-xs text-gray-500">(Dubai Time GMT+4)</span></Label>
+                                    <Input
+                                        id="start_date"
+                                        type="datetime-local"
+                                        v-model="form.start_date"
+                                        required
+                                    />
+                                    <div v-if="form.errors.start_date" class="text-sm text-red-600">
+                                        {{ form.errors.start_date }}
+                                    </div>
+                                    <p class="text-xs text-gray-500">
+                                        Times are displayed in Dubai timezone (GMT+4)
+                                    </p>
                                 </div>
-                            </div>
 
                             <div class="space-y-2">
-                                <Label for="end_date">End Date & Time *</Label>
+                                <Label for="end_date">End Date & Time * <span class="text-xs text-gray-500">(Dubai Time GMT+4)</span></Label>
                                 <Input
                                     id="end_date"
                                     type="datetime-local"
                                     v-model="form.end_date"
-                                    :min="form.start_date || new Date().toISOString().slice(0, 16)"
+                                    :min="form.start_date"
                                     required
                                 />
                                 <div v-if="form.errors.end_date" class="text-sm text-red-600">
                                     {{ form.errors.end_date }}
                                 </div>
+                                <p class="text-xs text-gray-500">
+                                    Automatically calculated based on duration
+                                </p>
                             </div>
                         </div>
                         
-                        <!-- Quick Duration Buttons -->
+                        <!-- Duration Input -->
                         <div class="space-y-3">
-                            <p class="text-sm font-medium text-gray-700">Quick duration:</p>
-                            <div class="flex flex-wrap gap-2">
-                                <Button 
-                                    type="button" 
-                                    variant="outline" 
-                                    size="sm"
-                                    @click="setDuration(1)"
-                                    class="text-xs px-3 py-1"
-                                >
-                                    1 day
-                                </Button>
-                                <Button 
-                                    type="button" 
-                                    variant="outline" 
-                                    size="sm"
-                                    @click="setDuration(2)"
-                                    class="text-xs px-3 py-1"
-                                >
-                                    2 days
-                                </Button>
-                                <Button 
-                                    type="button" 
-                                    variant="outline" 
-                                    size="sm"
-                                    @click="setDuration(3)"
-                                    class="text-xs px-3 py-1"
-                                >
-                                    3 days
-                                </Button>
-                                <Button 
-                                    type="button" 
-                                    variant="outline" 
-                                    size="sm"
-                                    @click="setDuration(4)"
-                                    class="text-xs px-3 py-1"
-                                >
-                                    4 days
-                                </Button>
-                                <Button 
-                                    type="button" 
-                                    variant="outline" 
-                                    size="sm"
-                                    @click="setDuration(5)"
-                                    class="text-xs px-3 py-1"
-                                >
-                                    5 days
-                                </Button>
-                                <Button 
-                                    type="button" 
-                                    variant="outline" 
-                                    size="sm"
-                                    @click="setDuration(6)"
-                                    class="text-xs px-3 py-1"
-                                >
-                                    6 days
-                                </Button>
-                                <Button 
-                                    type="button" 
-                                    variant="outline" 
-                                    size="sm"
-                                    @click="setDuration(7)"
-                                    class="text-xs px-3 py-1"
-                                >
-                                    1 week
-                                </Button>
+                            <div class="grid gap-4 md:grid-cols-3">
+                                <div class="space-y-2">
+                                    <Label for="duration_days">Duration (Days) *</Label>
+                                    <Input
+                                        id="duration_days"
+                                        type="number"
+                                        min="1"
+                                        max="365"
+                                        v-model.number="durationDays"
+                                        @focus="initializeStartDate"
+                                        placeholder="Enter number of days"
+                                        required
+                                    />
+                                    <p class="text-xs text-gray-500">
+                                        Enter the number of rental days (minimum 1 day)
+                                    </p>
+                                </div>
+                                <div class="md:col-span-2 flex items-end">
+                                    <div class="p-3 bg-blue-50 rounded-md w-full">
+                                        <p class="text-sm text-blue-800">
+                                            <strong>Rental Period:</strong> {{ totalDays }} day{{ totalDays !== 1 ? 's' : '' }}
+                                            <span v-if="form.start_date && form.end_date" class="block text-xs mt-1">
+                                                {{ new Date(form.start_date).toLocaleDateString('en-AE', { 
+                                                    weekday: 'short', 
+                                                    year: 'numeric', 
+                                                    month: 'short', 
+                                                    day: 'numeric',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                }) }} 
+                                                → 
+                                                {{ new Date(form.end_date).toLocaleDateString('en-AE', { 
+                                                    weekday: 'short', 
+                                                    year: 'numeric', 
+                                                    month: 'short', 
+                                                    day: 'numeric',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                }) }}
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div v-if="totalDays > 0" class="p-3 bg-blue-50 rounded-md">
-                            <p class="text-sm text-blue-800">
-                                <strong>Rental Period:</strong> {{ totalDays }} day{{ totalDays !== 1 ? 's' : '' }}
-                            </p>
-                        </div>
+
                     </CardContent>
                 </Card>
 
