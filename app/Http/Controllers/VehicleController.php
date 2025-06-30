@@ -17,24 +17,28 @@ class VehicleController extends Controller
     {
         $query = Vehicle::query();
 
-        // Search functionality
-        if ($request->has('search') && $request->search) {
+        // Apply search filter
+        if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('plate_number', 'like', "%{$search}%")
-                  ->orWhere('make', 'like', "%{$search}%")
-                  ->orWhere('model', 'like', "%{$search}%")
-                  ->orWhere('chassis_number', 'like', "%{$search}%");
+                $q->where('make', 'like', "%$search%")
+                  ->orWhere('model', 'like', "%$search%")
+                  ->orWhere('plate_number', 'like', "%$search%")
+                  ->orWhere('chassis_number', 'like', "%$search%")
+                  ->orWhere('color', 'like', "%$search%")
+                  ->orWhere('current_location', 'like', "%$search%")
+                  ->orWhere('category', 'like', "%$search%")
+                  ;
             });
         }
 
-        // Filter by status
-        if ($request->has('status') && $request->status) {
+        // Apply status filter
+        if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        // Filter by category
-        if ($request->has('category') && $request->category) {
+        // Apply category filter
+        if ($request->filled('category')) {
             $query->where('category', $request->category);
         }
 

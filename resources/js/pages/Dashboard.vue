@@ -1,8 +1,20 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/vue3';
-import PlaceholderPattern from '../components/PlaceholderPattern.vue';
+import { Head, usePage } from '@inertiajs/vue3';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import {
+  AlertCircle,
+  Clock,
+  Car,
+  Users,
+  Truck,
+  CreditCard,
+  Plus,
+  Download,
+  FileText
+} from 'lucide-vue-next';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -10,27 +22,230 @@ const breadcrumbs: BreadcrumbItem[] = [
         href: '/dashboard',
     },
 ];
+
+const stats = usePage().props.stats as any ?? {};
+
+// Explicitly type lateInvoicesList to avoid linter errors
+interface LateInvoice {
+  id: number | string;
+  invoice_number: string;
+  due_date: string;
+  total_amount: number;
+  currency: string;
+  status: string;
+}
+const lateInvoicesList = (usePage().props.late_invoices_list ?? []) as LateInvoice[];
+
+const statCards = [
+  {
+    label: 'Late Invoices Amount',
+    value: (stats?.late_invoices_amount ?? 0).toLocaleString(),
+    badge: 'AED',
+    badgeColor: 'bg-red-100 text-red-700 border-red-200',
+    icon: CreditCard,
+    iconColor: 'text-red-600',
+    iconBg: 'bg-red-50',
+    valueColor: 'text-red-600',
+  },
+  {
+    label: 'Late Invoices',
+    value: stats?.late_invoices ?? 0,
+    badge: 'Overdue',
+    badgeColor: 'bg-red-100 text-red-700 border-red-200',
+    icon: AlertCircle,
+    iconColor: 'text-red-600',
+    iconBg: 'bg-red-50',
+    trend: 12,
+  },
+  {
+    label: 'Available Cars',
+    value: stats?.available_cars ?? 0,
+    badge: 'Available',
+    badgeColor: 'bg-blue-100 text-blue-700 border-blue-200',
+    icon: Car,
+    iconColor: 'text-blue-600',
+    iconBg: 'bg-blue-50',
+  },
+  {
+    label: 'Rented Cars',
+    value: stats?.rented_cars ?? 0,
+    badge: 'Rented',
+    badgeColor: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+    icon: Car,
+    iconColor: 'text-yellow-600',
+    iconBg: 'bg-yellow-50',
+  },
+  {
+    label: 'Total Cars',
+    value: stats?.total_cars ?? 0,
+    badge: 'Total',
+    badgeColor: 'bg-gray-100 text-gray-700 border-gray-200',
+    icon: Truck,
+    iconColor: 'text-gray-600',
+    iconBg: 'bg-gray-50',
+  },
+];
+
+function daysAgo(dueDate: string) {
+    const due = new Date(dueDate);
+    const now = new Date();
+    const diff = Math.floor((now.getTime() - due.getTime()) / (1000 * 60 * 60 * 24));
+    return diff > 0 ? diff : 0;
+}
 </script>
 
 <template>
     <Head title="Dashboard" />
 
-    <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-            <div class="grid auto-rows-min gap-4 md:grid-cols-3">
-                <div class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                    <PlaceholderPattern />
+    <AppLayout>
+        <div class="min-h-screen bg-gradient-to-br from-gray-50 to-white">
+            <div class="p-6 space-y-8">
+                <!-- Header Section -->
+                <div class="flex justify-between items-center">
+                    <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
+                    <Button class="bg-primary-600 hover:bg-primary-700 text-white transition-all duration-200 transform hover:scale-105">
+                        <Plus class="w-4 h-4 mr-2" />
+                        New Invoice
+                    </Button>
                 </div>
-                <div class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                    <PlaceholderPattern />
+
+                <!-- Stats Grid -->
+                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <Card
+                        v-for="stat in statCards"
+                        :key="stat.label"
+                        class="transform transition-all duration-200 hover:scale-102 hover:shadow-lg border border-gray-100"
+                    >
+                        <div class="p-3">
+                            <!-- Card Header with Icon and Badge -->
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <div
+                                        class="p-2 rounded-lg transition-colors duration-200"
+                                        :class="stat.iconBg || 'bg-primary-50'"
+                                    >
+                                        <component
+                                            :is="stat.icon"
+                                            class="w-5 h-5 transition-colors duration-200"
+                                            :class="stat.iconColor || 'text-primary-600'"
+                                        />
+                                    </div>
+                                    <span
+                                        class="px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize transition-colors duration-200"
+                                        :class="stat.badgeColor"
+                                    >
+                                        {{ stat.badge }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Card Content -->
+                            <div>
+                                <h3 class="text-xs font-medium text-gray-600 mb-1">{{ stat.label }}</h3>
+                                <div class="flex items-baseline gap-1">
+                                    <span
+                                        class="text-xl font-bold transition-colors duration-200"
+                                        :class="stat.valueColor || 'text-gray-900'"
+                                    >
+                                        {{ stat.value }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
                 </div>
-                <div class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                    <PlaceholderPattern />
+
+                <!-- Main Content Grid -->
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                    <!-- Late Invoices List -->
+                    <Card class="border border-gray-100">
+                        <div class="p-6">
+                            <div class="flex items-center justify-between mb-6">
+                                <div>
+                                    <h2 class="text-xl font-semibold text-gray-900">Late Invoices</h2>
+                                    <p class="text-sm text-gray-500 mt-1">Overdue payments requiring attention</p>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    class="text-primary-600 hover:text-primary-700 hover:bg-primary-50 transition-colors duration-200"
+                                >
+                                    View all
+                                </Button>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div v-if="lateInvoicesList.length === 0" class="flex flex-col items-center justify-center py-12 text-gray-500">
+                                    <AlertCircle class="w-12 h-12 mb-4 text-gray-400" />
+                                    <p class="text-lg font-medium">No Late Invoices</p>
+                                    <p class="text-sm">All payments are up to date</p>
+                                </div>
+
+                                <div
+                                    v-for="invoice in lateInvoicesList"
+                                    :key="invoice.id"
+                                    class="group p-4 bg-white rounded-xl border border-gray-100 hover:border-red-100 hover:bg-red-50/30 transition-all duration-200 cursor-pointer"
+                                >
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-4">
+                                            <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center group-hover:bg-red-200 transition-colors duration-200">
+                                                <AlertCircle class="w-5 h-5 text-red-600" />
+                                            </div>
+                                            <div>
+                                                <p class="font-medium text-gray-900 group-hover:text-red-600 transition-colors duration-200">
+                                                    {{ invoice.invoice_number }}
+                                                </p>
+                                                <p class="text-sm text-gray-500">
+                                                    Due {{ daysAgo(invoice.due_date) }} days ago
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="font-semibold text-gray-900 group-hover:text-red-600 transition-colors duration-200">
+                                                {{ Number(invoice.total_amount).toLocaleString() }} {{ invoice.currency }}
+                                            </p>
+                                            <p class="text-sm text-red-600 font-medium">
+                                                Overdue
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+
+                    <!-- Quick Actions -->
+                    <Card class="border border-gray-100">
+                        <div class="p-6">
+                            <div class="mb-6">
+                                <h2 class="text-xl font-semibold text-gray-900">Quick Actions</h2>
+                                <p class="text-sm text-gray-500 mt-1">Common tasks and operations</p>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <Button
+                                    variant="outline"
+                                    class="h-24 flex flex-col items-center justify-center gap-2 hover:border-primary-200 hover:bg-primary-50/30 transition-all duration-200 transform hover:scale-102"
+                                >
+                                    <Car class="w-6 h-6 text-primary-600" />
+                                    <span>Add Vehicle</span>
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    class="h-24 flex flex-col items-center justify-center gap-2 hover:border-primary-200 hover:bg-primary-50/30 transition-all duration-200 transform hover:scale-102"
+                                >
+                                    <FileText class="w-6 h-6 text-primary-600" />
+                                    <span>Create Contract</span>
+                                </Button>
+                            </div>
+                        </div>
+                    </Card>
                 </div>
-            </div>
-            <div class="relative min-h-[100vh] flex-1 rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border">
-                <PlaceholderPattern />
             </div>
         </div>
     </AppLayout>
 </template>
+
+<style>
+.hover\:scale-102:hover {
+    transform: scale(1.02);
+}
+</style>

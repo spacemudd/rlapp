@@ -45,10 +45,19 @@ interface Props {
 const props = defineProps<Props>();
 const page = usePage();
 
+console.log('PAGE PROPS:', page.props);
+console.log('COMPONENT PROPS:', props);
+
 const showInviteDialog = ref(false);
 const showRemoveDialog = ref(false);
 const memberToRemove = ref<Member | null>(null);
 const copiedUrls = ref<Set<string>>(new Set());
+const showStripeModal = ref(false);
+const stripeForm = ref({
+    public_key: '',
+    secret_key: '',
+    webhook_secret: '',
+});
 
 // Get current user email
 const currentUserEmail = computed(() => {
@@ -64,6 +73,11 @@ const inviteForm = useForm({
 // Form for updating user roles
 const updateRoleForm = useForm({
     role: '',
+});
+
+const isAdmin = computed(() => {
+    const roles = (page.props.auth?.user as any)?.roles || [];
+    return roles.some((role: any) => role.name === 'Admin');
 });
 
 const getRoleIcon = (role: string) => {
@@ -142,7 +156,7 @@ const copyToClipboard = async (url: string, identifier: string) => {
     try {
         await navigator.clipboard.writeText(url);
         copiedUrls.value.add(identifier);
-        
+
         // Reset the copied state after 2 seconds
         setTimeout(() => {
             copiedUrls.value.delete(identifier);
@@ -156,12 +170,18 @@ const copyToClipboard = async (url: string, identifier: string) => {
         textArea.select();
         document.execCommand('copy');
         document.body.removeChild(textArea);
-        
+
         copiedUrls.value.add(identifier);
         setTimeout(() => {
             copiedUrls.value.delete(identifier);
         }, 2000);
     }
+};
+
+const submitStripeForm = () => {
+    // Replace with actual API call to save Stripe settings
+    alert('Stripe settings saved!\n' + JSON.stringify(stripeForm.value, null, 2));
+    showStripeModal.value = false;
 };
 </script>
 
@@ -171,8 +191,8 @@ const copyToClipboard = async (url: string, identifier: string) => {
     <AppLayout>
         <div class="p-6 space-y-6">
             <!-- Success Message with Copy Link -->
-            <div 
-                v-if="$page.props.flash?.success && $page.props.flash?.invitationUrl" 
+            <div
+                v-if="$page.props.flash?.success && $page.props.flash?.invitationUrl"
                 class="bg-green-50 border border-green-200 rounded-lg p-4"
             >
                 <div class="flex items-start gap-3">
@@ -189,9 +209,9 @@ const copyToClipboard = async (url: string, identifier: string) => {
                                 @click="copyToClipboard($page.props.flash.invitationUrl, 'flash-invitation')"
                                 class="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                             >
-                                <CheckCircle 
-                                    v-if="copiedUrls.has('flash-invitation')" 
-                                    class="w-4 h-4 text-green-600" 
+                                <CheckCircle
+                                    v-if="copiedUrls.has('flash-invitation')"
+                                    class="w-4 h-4 text-green-600"
                                 />
                                 <Copy v-else class="w-4 h-4" />
                                 {{ copiedUrls.has('flash-invitation') ? 'Copied!' : 'Copy Invitation Link' }}
@@ -258,7 +278,7 @@ const copyToClipboard = async (url: string, identifier: string) => {
                                     <component :is="getRoleIcon(role)" class="w-3 h-3" />
                                     {{ role }}
                                 </div>
-                                
+
                                 <!-- Role Selector -->
                                 <div class="relative">
                                     <select
@@ -340,14 +360,14 @@ const copyToClipboard = async (url: string, identifier: string) => {
                                     @click="copyToClipboard(invitation.invitation_url, `invitation-${invitation.id}`)"
                                     class="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                 >
-                                    <CheckCircle 
-                                        v-if="copiedUrls.has(`invitation-${invitation.id}`)" 
-                                        class="w-4 h-4 text-green-600" 
+                                    <CheckCircle
+                                        v-if="copiedUrls.has(`invitation-${invitation.id}`)"
+                                        class="w-4 h-4 text-green-600"
                                     />
                                     <Copy v-else class="w-4 h-4" />
                                     {{ copiedUrls.has(`invitation-${invitation.id}`) ? 'Copied!' : 'Copy Link' }}
                                 </Button>
-                                
+
                                 <!-- Cancel Invitation Button -->
                                 <Button
                                     variant="outline"
@@ -445,6 +465,75 @@ const copyToClipboard = async (url: string, identifier: string) => {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <!-- Stripe Payment Gateway Setup (Admin only) -->
+            <Card v-if="isAdmin">
+                <CardHeader>
+                    <CardTitle class="flex items-center gap-2">
+                        <DollarSign class="w-5 h-5 text-purple-600" />
+                        Stripe Payment Gateway Setup
+                    </CardTitle>
+                    <CardDescription>
+                        Connect and configure your Stripe account to enable online payments for your team.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div class="space-y-4">
+                        <p class="text-gray-700">To accept payments online, you need to connect your Stripe account. Only admins can see and manage this section.</p>
+                        <Button variant="outline" class="text-purple-700 border-purple-300 hover:bg-purple-50" @click="showStripeModal = true">
+                            Connect Stripe Account
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <!-- Stripe Payment Gateway Setup Modal -->
+            <Dialog v-model:open="showStripeModal">
+                <DialogContent class="max-w-md w-full p-0">
+                    <Card class="shadow-none border-0">
+                        <CardHeader class="pb-0">
+                            <DialogHeader>
+                                <DialogTitle class="flex items-center gap-2">
+                                    <DollarSign class="w-5 h-5 text-purple-600" />
+                                    Stripe Payment Gateway Setup
+                                </DialogTitle>
+                                <DialogDescription>
+                                    Enter your Stripe API keys to enable online payments. You can find these in your Stripe dashboard.
+                                </DialogDescription>
+                            </DialogHeader>
+                        </CardHeader>
+                        <CardContent class="pt-0">
+                            <form @submit.prevent="submitStripeForm" class="space-y-5 mt-2">
+                                <div class="space-y-2">
+                                    <Label for="stripe-public-key">Stripe Public Key</Label>
+                                    <div class="relative">
+                                        <Input id="stripe-public-key" v-model="stripeForm.public_key" type="text" required placeholder="pk_live_..." class="pr-10" />
+                                        <DollarSign class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <Label for="stripe-secret-key">Stripe Secret Key</Label>
+                                    <div class="relative">
+                                        <Input id="stripe-secret-key" v-model="stripeForm.secret_key" type="text" required placeholder="sk_live_..." class="pr-10" />
+                                        <DollarSign class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <Label for="stripe-webhook-secret">Webhook Secret</Label>
+                                    <div class="relative">
+                                        <Input id="stripe-webhook-secret" v-model="stripeForm.webhook_secret" type="text" required placeholder="whsec_..." class="pr-10" />
+                                        <Mail class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                                    </div>
+                                </div>
+                                <DialogFooter class="flex justify-end gap-2 pt-4">
+                                    <Button type="button" variant="outline" @click="showStripeModal = false">Cancel</Button>
+                                    <Button type="submit">Save</Button>
+                                </DialogFooter>
+                            </form>
+                        </CardContent>
+                    </Card>
+                </DialogContent>
+            </Dialog>
         </div>
     </AppLayout>
-</template> 
+</template>
