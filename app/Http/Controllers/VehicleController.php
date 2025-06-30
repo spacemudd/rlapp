@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Vehicle;
+use App\Models\Location;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -41,7 +42,19 @@ class VehicleController extends Controller
             $query->where('category', $request->category);
         }
 
-        $vehicles = $query->orderBy('created_at', 'desc')->paginate(15);
+        // Filter by make
+        if ($request->has('make') && $request->make) {
+            $query->where('make', $request->make);
+        }
+
+        // Filter by ownership status
+        if ($request->has('ownership') && $request->ownership) {
+            $query->where('ownership_status', $request->ownership);
+        }
+
+        $vehicles = $query->with('location')
+                         ->orderBy('created_at', 'desc')
+                         ->paginate(15);
 
         return Inertia::render('Vehicles/Index', [
             'vehicles' => $vehicles,
@@ -49,9 +62,13 @@ class VehicleController extends Controller
                 'search' => $request->search,
                 'status' => $request->status,
                 'category' => $request->category,
+                'make' => $request->make,
+                'ownership' => $request->ownership,
             ],
             'statuses' => ['available', 'rented', 'maintenance', 'out_of_service'],
             'categories' => Vehicle::distinct()->pluck('category')->filter()->values(),
+            'makes' => Vehicle::distinct()->pluck('make')->filter()->values(),
+            'ownershipStatuses' => ['owned', 'borrowed'],
         ]);
     }
 
@@ -60,7 +77,9 @@ class VehicleController extends Controller
      */
     public function create()
     {
-        return Inertia::render('Vehicles/Create');
+        return Inertia::render('Vehicles/Create', [
+            'locations' => Location::active()->orderBy('name')->get(['id', 'name', 'city', 'country']),
+        ]);
     }
 
     /**
@@ -80,8 +99,14 @@ class VehicleController extends Controller
             'price_daily' => 'nullable|numeric|min:0',
             'price_weekly' => 'nullable|numeric|min:0',
             'price_monthly' => 'nullable|numeric|min:0',
-            'current_location' => 'nullable|string|max:255',
+            'location_id' => 'nullable|uuid|exists:locations,id',
             'status' => 'required|in:available,rented,maintenance,out_of_service',
+            'ownership_status' => 'required|in:owned,borrowed',
+            'borrowed_from_office' => 'nullable|string|max:255|required_if:ownership_status,borrowed',
+            'borrowing_terms' => 'nullable|string',
+            'borrowing_start_date' => 'nullable|date|required_if:ownership_status,borrowed',
+            'borrowing_end_date' => 'nullable|date|after_or_equal:borrowing_start_date',
+            'borrowing_notes' => 'nullable|string',
             'odometer' => 'required|integer|min:0',
             'chassis_number' => 'required|string|max:255|unique:vehicles',
             'license_expiry_date' => 'required|date',
@@ -100,6 +125,8 @@ class VehicleController extends Controller
      */
     public function show(Vehicle $vehicle)
     {
+        $vehicle->load('location');
+        
         return Inertia::render('Vehicles/Show', [
             'vehicle' => $vehicle,
         ]);
@@ -112,6 +139,7 @@ class VehicleController extends Controller
     {
         return Inertia::render('Vehicles/Edit', [
             'vehicle' => $vehicle,
+            'locations' => Location::active()->orderBy('name')->get(['id', 'name', 'city', 'country']),
         ]);
     }
 
@@ -132,8 +160,14 @@ class VehicleController extends Controller
             'price_daily' => 'nullable|numeric|min:0',
             'price_weekly' => 'nullable|numeric|min:0',
             'price_monthly' => 'nullable|numeric|min:0',
-            'current_location' => 'nullable|string|max:255',
+            'location_id' => 'nullable|uuid|exists:locations,id',
             'status' => 'required|in:available,rented,maintenance,out_of_service',
+            'ownership_status' => 'required|in:owned,borrowed',
+            'borrowed_from_office' => 'nullable|string|max:255|required_if:ownership_status,borrowed',
+            'borrowing_terms' => 'nullable|string',
+            'borrowing_start_date' => 'nullable|date|required_if:ownership_status,borrowed',
+            'borrowing_end_date' => 'nullable|date|after_or_equal:borrowing_start_date',
+            'borrowing_notes' => 'nullable|string',
             'odometer' => 'required|integer|min:0',
             'chassis_number' => 'required|string|max:255|unique:vehicles,chassis_number,' . $vehicle->id,
             'license_expiry_date' => 'required|date',

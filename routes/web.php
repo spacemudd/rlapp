@@ -64,6 +64,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/api/vehicles/search', [App\Http\Controllers\ContractController::class, 'searchVehicles'])->name('api.vehicles.search');
 });
 
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::resource('locations', App\Http\Controllers\LocationController::class);
+    Route::get('/api/locations', [App\Http\Controllers\LocationController::class, 'api'])->name('api.locations');
+});
+
 Route::resource('customers', App\Http\Controllers\CustomerController::class)
     ->except(['show', 'create', 'edit'])
     ->middleware(['auth', 'verified']);
