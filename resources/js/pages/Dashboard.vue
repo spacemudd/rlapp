@@ -84,6 +84,16 @@ const statCards = [
     iconColor: 'text-gray-600',
     iconBg: 'bg-gray-50',
   },
+  {
+    label: 'Overdue Contracts',
+    value: stats?.overdue_contracts ?? 0,
+    badge: 'Overdue',
+    badgeColor: 'bg-red-100 text-red-700 border-red-200',
+    icon: FileText,
+    iconColor: 'text-red-600',
+    iconBg: 'bg-red-50',
+    valueColor: 'text-red-600',
+  },
 ];
 
 function daysAgo(dueDate: string) {
@@ -209,32 +219,6 @@ function daysAgo(dueDate: string) {
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </Card>
-
-                    <!-- Quick Actions -->
-                    <Card class="border border-gray-100">
-                        <div class="p-6">
-                            <div class="mb-6">
-                                <h2 class="text-xl font-semibold text-gray-900">Quick Actions</h2>
-                                <p class="text-sm text-gray-500 mt-1">Common tasks and operations</p>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <Button
-                                    variant="outline"
-                                    class="h-24 flex flex-col items-center justify-center gap-2 hover:border-primary-200 hover:bg-primary-50/30 transition-all duration-200 transform hover:scale-102"
-                                >
-                                    <Car class="w-6 h-6 text-primary-600" />
-                                    <span>Add Vehicle</span>
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    class="h-24 flex flex-col items-center justify-center gap-2 hover:border-primary-200 hover:bg-primary-50/30 transition-all duration-200 transform hover:scale-102"
-                                >
-                                    <FileText class="w-6 h-6 text-primary-600" />
-                                    <span>Create Contract</span>
-                                </Button>
                             </div>
                         </div>
                     </Card>

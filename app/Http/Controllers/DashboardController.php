@@ -23,6 +23,9 @@ class DashboardController extends Controller
         $lateInvoicesAmount = $lateInvoicesList->sum('total_amount');
 
         $contractsCount = Contract::count();
+        $overdueContractsCount = Contract::where('status', 'active')
+            ->where('end_date', '<', now())
+            ->count();
         $availableCars = Vehicle::where('status', 'available')->count();
         $rentedCars = Vehicle::where('status', 'rented')->count();
         $totalCars = Vehicle::count();
@@ -33,6 +36,7 @@ class DashboardController extends Controller
                 'late_invoices' => $lateInvoicesCount,
                 'late_invoices_amount' => $lateInvoicesAmount,
                 'contracts' => $contractsCount,
+                'overdue_contracts' => $overdueContractsCount,
                 'available_cars' => $availableCars,
                 'rented_cars' => $rentedCars,
                 'total_cars' => $totalCars,
