@@ -115,7 +115,7 @@ const generatePageNumbers = () => {
     const current = props.customers.current_page;
     const last = props.customers.last_page;
     const pages: number[] = [];
-    
+
     // Simple approach: show all pages if 10 or fewer, otherwise show range around current
     if (last <= 10) {
         for (let i = 1; i <= last; i++) {
@@ -125,12 +125,12 @@ const generatePageNumbers = () => {
         // Show current page +/- 2 pages
         const start = Math.max(1, current - 2);
         const end = Math.min(last, current + 2);
-        
+
         for (let i = start; i <= end; i++) {
             pages.push(i);
         }
     }
-    
+
     return pages;
 };
 
@@ -140,7 +140,7 @@ const performSearch = () => {
     if (searchQuery.value.trim()) {
         params.append('search', searchQuery.value.trim());
     }
-    
+
     const url = `/customers${params.toString() ? '?' + params.toString() : ''}`;
     router.get(url, {}, {
         preserveState: true,
@@ -218,7 +218,7 @@ watch(searchQuery, (newValue, oldValue) => {
                                     {{ editingCustomer ? 'Update customer information below.' : 'Enter customer information below. All fields marked with * are required.' }}
                                 </DialogDescription>
                             </DialogHeader>
-                            
+
                             <CreateCustomerForm
                                 :editing-customer="editingCustomer"
                                 @submit="handleCustomerSubmit"
@@ -285,7 +285,7 @@ watch(searchQuery, (newValue, oldValue) => {
                                 {{ searchQuery ? 'No customers found' : 'No customers yet' }}
                             </h3>
                             <p class="mt-2 text-sm text-muted-foreground">
-                                {{ searchQuery 
+                                {{ searchQuery
                                     ? `No customers match your search for "${searchQuery}". Try adjusting your search terms.`
                                     : 'Get started by adding your first customer.'
                                 }}
@@ -383,14 +383,6 @@ watch(searchQuery, (newValue, oldValue) => {
                                                 >
                                                     <Edit class="h-4 w-4" />
                                                 </Button>
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    @click="deleteCustomer(customer)"
-                                                    class="text-red-600 hover:text-red-700"
-                                                >
-                                                    <Trash2 class="h-4 w-4" />
-                                                </Button>
                                             </div>
                                         </td>
                                     </tr>
@@ -403,7 +395,7 @@ watch(searchQuery, (newValue, oldValue) => {
                             <p class="text-sm text-muted-foreground">
                                 Showing {{ props.customers.from ?? 0 }} to {{ props.customers.to ?? 0 }} of {{ props.customers.total }} results
                             </p>
-                            
+
                             <div class="flex items-center gap-2">
                                 <!-- Previous Button -->
                                 <template v-if="props.customers.current_page > 1">
@@ -456,4 +448,4 @@ watch(searchQuery, (newValue, oldValue) => {
             </div>
         </div>
     </AppLayout>
-</template> 
+</template>

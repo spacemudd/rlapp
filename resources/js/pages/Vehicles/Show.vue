@@ -25,7 +25,9 @@ import {
     DollarSign,
     AlertTriangle,
     CheckCircle,
-    Clock
+    Clock,
+    Building2,
+    FileText
 } from 'lucide-vue-next';
 
 interface Vehicle {
@@ -37,6 +39,12 @@ interface Vehicle {
     color: string;
     category: string;
     status: string;
+    ownership_status: string;
+    borrowed_from_office?: string;
+    borrowing_terms?: string;
+    borrowing_start_date?: string;
+    borrowing_end_date?: string;
+    borrowing_notes?: string;
     price_daily?: number;
     price_weekly?: number;
     price_monthly?: number;
@@ -44,7 +52,13 @@ interface Vehicle {
     doors?: number;
     odometer: number;
     chassis_number: string;
-    current_location?: string;
+    location?: {
+        id: string;
+        name: string;
+        city?: string;
+        country: string;
+        full_address: string;
+    };
     license_expiry_date: string;
     insurance_expiry_date: string;
     recent_note?: string;
@@ -160,6 +174,9 @@ const isExpired = (dateString: string) => {
                                             <component :is="getStatusIcon(vehicle.status)" class="w-3 h-3 mr-1" />
                                             {{ vehicle.status.charAt(0).toUpperCase() + vehicle.status.slice(1).replace('_', ' ') }}
                                         </Badge>
+                                        <Badge :class="vehicle.ownership_status === 'owned' ? 'bg-blue-500' : 'bg-orange-500'" class="text-white">
+                                            {{ vehicle.ownership_status.charAt(0).toUpperCase() + vehicle.ownership_status.slice(1) }}
+                                        </Badge>
                                     </div>
                                 </div>
                             </div>
@@ -233,13 +250,68 @@ const isExpired = (dateString: string) => {
                                         <dt class="text-sm font-medium text-gray-500">Odometer</dt>
                                         <dd class="mt-1 text-sm text-gray-900">{{ vehicle.odometer.toLocaleString() }} km</dd>
                                     </div>
-                                    <div v-if="vehicle.current_location">
+                                    <div v-if="vehicle.location">
                                         <dt class="text-sm font-medium text-gray-500">Current Location</dt>
                                         <dd class="mt-1 text-sm text-gray-900 flex items-center">
                                             <MapPin class="w-4 h-4 mr-1 text-gray-400" />
-                                            {{ vehicle.current_location }}
+                                            {{ vehicle.location.name }}{{ vehicle.location.city ? ', ' + vehicle.location.city : '' }}
                                         </dd>
                                     </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <!-- Borrowing Information (only show if borrowed) -->
+                        <Card v-if="vehicle.ownership_status === 'borrowed'">
+                            <CardHeader>
+                                <CardTitle class="flex items-center">
+                                    <Building2 class="w-5 h-5 mr-2 text-orange-600" />
+                                    Borrowing Information
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div v-if="vehicle.borrowed_from_office">
+                                        <dt class="text-sm font-medium text-gray-500">Borrowed From</dt>
+                                        <dd class="mt-1 text-sm text-gray-900 flex items-center">
+                                            <Building2 class="w-4 h-4 mr-2 text-orange-500" />
+                                            {{ vehicle.borrowed_from_office }}
+                                        </dd>
+                                    </div>
+                                    <div v-if="vehicle.borrowing_start_date">
+                                        <dt class="text-sm font-medium text-gray-500">Borrowing Start Date</dt>
+                                        <dd class="mt-1 text-sm text-gray-900">{{ formatDate(vehicle.borrowing_start_date) }}</dd>
+                                    </div>
+                                    <div v-if="vehicle.borrowing_end_date" class="md:col-span-2">
+                                        <dt class="text-sm font-medium text-gray-500">Borrowing End Date</dt>
+                                        <dd class="mt-1 text-sm flex items-center">
+                                            <span :class="[
+                                                isExpired(vehicle.borrowing_end_date) ? 'text-red-600' :
+                                                isExpiringSoon(vehicle.borrowing_end_date) ? 'text-yellow-600' :
+                                                'text-gray-900'
+                                            ]">
+                                                {{ formatDate(vehicle.borrowing_end_date) }}
+                                            </span>
+                                            <AlertTriangle 
+                                                v-if="isExpired(vehicle.borrowing_end_date) || isExpiringSoon(vehicle.borrowing_end_date)"
+                                                class="w-4 h-4 ml-2"
+                                                :class="isExpired(vehicle.borrowing_end_date) ? 'text-red-500' : 'text-yellow-500'"
+                                            />
+                                        </dd>
+                                    </div>
+                                </div>
+                                
+                                <div v-if="vehicle.borrowing_terms" class="mt-4">
+                                    <dt class="text-sm font-medium text-gray-500 mb-2 flex items-center">
+                                        <FileText class="w-4 h-4 mr-1" />
+                                        Terms & Conditions
+                                    </dt>
+                                    <dd class="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg whitespace-pre-wrap">{{ vehicle.borrowing_terms }}</dd>
+                                </div>
+                                
+                                <div v-if="vehicle.borrowing_notes" class="mt-4">
+                                    <dt class="text-sm font-medium text-gray-500 mb-2">Additional Notes</dt>
+                                    <dd class="text-sm text-gray-900 bg-orange-50 p-3 rounded-lg whitespace-pre-wrap border border-orange-200">{{ vehicle.borrowing_notes }}</dd>
                                 </div>
                             </CardContent>
                         </Card>

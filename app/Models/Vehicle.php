@@ -27,8 +27,14 @@ class Vehicle extends Model
         'price_daily',
         'price_weekly',
         'price_monthly',
-        'current_location',
+        'location_id',
         'status',
+        'ownership_status',
+        'borrowed_from_office',
+        'borrowing_terms',
+        'borrowing_start_date',
+        'borrowing_end_date',
+        'borrowing_notes',
         'expected_return_date',
         'upcoming_reservations',
         'latest_return_date',
@@ -52,6 +58,8 @@ class Vehicle extends Model
         'odometer' => 'integer',
         'license_expiry_date' => 'date',
         'insurance_expiry_date' => 'date',
+        'borrowing_start_date' => 'date',
+        'borrowing_end_date' => 'date',
     ];
 
     /**
@@ -95,6 +103,50 @@ class Vehicle extends Model
     }
 
     /**
+     * Scope a query to only include owned vehicles.
+     */
+    public function scopeOwned($query)
+    {
+        return $query->where('ownership_status', 'owned');
+    }
+
+    /**
+     * Scope a query to only include borrowed vehicles.
+     */
+    public function scopeBorrowed($query)
+    {
+        return $query->where('ownership_status', 'borrowed');
+    }
+
+    /**
+     * Check if the vehicle is borrowed.
+     */
+    public function isBorrowed(): bool
+    {
+        return $this->ownership_status === 'borrowed';
+    }
+
+    /**
+     * Check if the vehicle is owned.
+     */
+    public function isOwned(): bool
+    {
+        return $this->ownership_status === 'owned';
+    }
+
+    /**
+     * Check if the borrowing period is expired (only applicable for borrowed vehicles).
+     */
+    public function isBorrowingExpired(): bool
+    {
+        if (!$this->isBorrowed() || !$this->borrowing_end_date) {
+            return false;
+        }
+        
+        return $this->borrowing_end_date->isPast();
+    }
+
+    /**
      * Check if the vehicle's license is expired.
      */
     public function isLicenseExpired(): bool
@@ -124,5 +176,13 @@ class Vehicle extends Model
     public function contracts()
     {
         return $this->hasMany(Contract::class);
+    }
+
+    /**
+     * Get the location where this vehicle is currently stationed.
+     */
+    public function location()
+    {
+        return $this->belongsTo(Location::class);
     }
 }

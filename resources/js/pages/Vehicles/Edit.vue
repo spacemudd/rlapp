@@ -16,6 +16,12 @@ interface Vehicle {
     color: string;
     category: string;
     status: string;
+    ownership_status: string;
+    borrowed_from_office?: string;
+    borrowing_terms?: string;
+    borrowing_start_date?: string;
+    borrowing_end_date?: string;
+    borrowing_notes?: string;
     price_daily?: number;
     price_weekly?: number;
     price_monthly?: number;
@@ -23,17 +29,32 @@ interface Vehicle {
     doors?: number;
     odometer: number;
     chassis_number: string;
-    current_location?: string;
+    location_id?: string;
     license_expiry_date: string;
     insurance_expiry_date: string;
     recent_note?: string;
 }
 
+interface Location {
+    id: string;
+    name: string;
+    city?: string;
+    country: string;
+}
+
 interface Props {
     vehicle: Vehicle;
+    locations: Location[];
 }
 
 const props = defineProps<Props>();
+
+// Helper function to format date for HTML date input (YYYY-MM-DD)
+const formatDateForInput = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0];
+};
 
 const form = useForm({
     plate_number: props.vehicle.plate_number,
@@ -47,12 +68,18 @@ const form = useForm({
     price_daily: props.vehicle.price_daily,
     price_weekly: props.vehicle.price_weekly,
     price_monthly: props.vehicle.price_monthly,
-    current_location: props.vehicle.current_location || '',
+    location_id: props.vehicle.location_id || '',
     status: props.vehicle.status,
+    ownership_status: props.vehicle.ownership_status || 'owned',
+    borrowed_from_office: props.vehicle.borrowed_from_office || '',
+    borrowing_terms: props.vehicle.borrowing_terms || '',
+    borrowing_start_date: formatDateForInput(props.vehicle.borrowing_start_date || ''),
+    borrowing_end_date: formatDateForInput(props.vehicle.borrowing_end_date || ''),
+    borrowing_notes: props.vehicle.borrowing_notes || '',
     odometer: props.vehicle.odometer,
     chassis_number: props.vehicle.chassis_number,
-    license_expiry_date: props.vehicle.license_expiry_date,
-    insurance_expiry_date: props.vehicle.insurance_expiry_date,
+    license_expiry_date: formatDateForInput(props.vehicle.license_expiry_date),
+    insurance_expiry_date: formatDateForInput(props.vehicle.insurance_expiry_date),
     recent_note: props.vehicle.recent_note || '',
 });
 
@@ -298,15 +325,130 @@ const submit = () => {
                                         </div>
                                     </div>
                                     <div>
-                                        <Label for="current_location">Current Location</Label>
+                                        <Label for="location_id">Current Location</Label>
+                                        <select
+                                            id="location_id"
+                                            v-model="form.location_id"
+                                            :class="[
+                                                'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+                                                { 'border-red-500': form.errors.location_id }
+                                            ]"
+                                        >
+                                            <option value="">Select Location</option>
+                                            <option v-for="location in locations" :key="location.id" :value="location.id">
+                                                {{ location.name }}{{ location.city ? ', ' + location.city : '' }}
+                                            </option>
+                                        </select>
+                                        <div v-if="form.errors.location_id" class="text-red-500 text-sm mt-1">
+                                            {{ form.errors.location_id }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <!-- Ownership & Borrowing -->
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Ownership & Borrowing</CardTitle>
+                            </CardHeader>
+                            <CardContent class="space-y-4">
+                                <div>
+                                    <Label for="ownership_status">Ownership Status *</Label>
+                                    <select
+                                        id="ownership_status"
+                                        v-model="form.ownership_status"
+                                        :class="[
+                                            'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+                                            { 'border-red-500': form.errors.ownership_status }
+                                        ]"
+                                        required
+                                    >
+                                        <option value="owned">Owned</option>
+                                        <option value="borrowed">Borrowed</option>
+                                    </select>
+                                    <div v-if="form.errors.ownership_status" class="text-red-500 text-sm mt-1">
+                                        {{ form.errors.ownership_status }}
+                                    </div>
+                                </div>
+
+                                <!-- Borrowing Details (show only when borrowed) -->
+                                <div v-if="form.ownership_status === 'borrowed'" class="space-y-4 p-4 bg-orange-50 rounded-lg border border-orange-200">
+                                    <h4 class="font-medium text-orange-900">Borrowing Details</h4>
+                                    
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <Label for="borrowed_from_office">Borrowed From Office *</Label>
+                                            <Input
+                                                id="borrowed_from_office"
+                                                v-model="form.borrowed_from_office"
+                                                :class="{ 'border-red-500': form.errors.borrowed_from_office }"
+                                                placeholder="e.g. Dubai Main Office"
+                                                required
+                                            />
+                                            <div v-if="form.errors.borrowed_from_office" class="text-red-500 text-sm mt-1">
+                                                {{ form.errors.borrowed_from_office }}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <Label for="borrowing_start_date">Borrowing Start Date *</Label>
+                                            <Input
+                                                id="borrowing_start_date"
+                                                v-model="form.borrowing_start_date"
+                                                :class="{ 'border-red-500': form.errors.borrowing_start_date }"
+                                                type="date"
+                                                required
+                                            />
+                                            <div v-if="form.errors.borrowing_start_date" class="text-red-500 text-sm mt-1">
+                                                {{ form.errors.borrowing_start_date }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <Label for="borrowing_end_date">Borrowing End Date</Label>
                                         <Input
-                                            id="current_location"
-                                            v-model="form.current_location"
-                                            :class="{ 'border-red-500': form.errors.current_location }"
-                                            placeholder="e.g. Dubai Marina"
+                                            id="borrowing_end_date"
+                                            v-model="form.borrowing_end_date"
+                                            :class="{ 'border-red-500': form.errors.borrowing_end_date }"
+                                            type="date"
                                         />
-                                        <div v-if="form.errors.current_location" class="text-red-500 text-sm mt-1">
-                                            {{ form.errors.current_location }}
+                                        <div v-if="form.errors.borrowing_end_date" class="text-red-500 text-sm mt-1">
+                                            {{ form.errors.borrowing_end_date }}
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <Label for="borrowing_terms">Borrowing Terms & Conditions</Label>
+                                        <textarea
+                                            id="borrowing_terms"
+                                            v-model="form.borrowing_terms"
+                                            :class="[
+                                                'flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                                                { 'border-red-500': form.errors.borrowing_terms }
+                                            ]"
+                                            placeholder="e.g. Return by end of month, responsible for maintenance..."
+                                            rows="2"
+                                        />
+                                        <div v-if="form.errors.borrowing_terms" class="text-red-500 text-sm mt-1">
+                                            {{ form.errors.borrowing_terms }}
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <Label for="borrowing_notes">Borrowing Notes</Label>
+                                        <textarea
+                                            id="borrowing_notes"
+                                            v-model="form.borrowing_notes"
+                                            :class="[
+                                                'flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                                                { 'border-red-500': form.errors.borrowing_notes }
+                                            ]"
+                                            placeholder="Any additional notes about the borrowing arrangement..."
+                                            rows="2"
+                                        />
+                                        <div v-if="form.errors.borrowing_notes" class="text-red-500 text-sm mt-1">
+                                            {{ form.errors.borrowing_notes }}
                                         </div>
                                     </div>
                                 </div>
