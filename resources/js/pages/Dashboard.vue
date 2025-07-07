@@ -154,7 +154,7 @@ function daysAgo(dueDate: string) {
                                 <h3 class="text-xs font-medium text-gray-600 mb-1">{{ stat.label }}</h3>
                                 <div class="flex items-baseline gap-1">
                                     <span
-                                        class="text-xl font-bold transition-colors duration-200"
+                                        class="text-3xl font-bold transition-colors duration-200"
                                         :class="stat.valueColor || 'text-gray-900'"
                                     >
                                         {{ stat.value }}
