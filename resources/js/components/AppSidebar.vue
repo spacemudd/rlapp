@@ -53,6 +53,11 @@ const mainNavItems = computed<NavItem[]>(() => {
             href: '/locations',
             icon: MapPin,
         },
+        {
+            title: 'Traffic violations',
+            href: '/traffic-violations',
+            icon: FileText,
+        },
     ];
 
     // Add Team link only for users with manage team settings permission

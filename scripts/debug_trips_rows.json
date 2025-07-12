@@ -1,0 +1,570 @@
+[
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "03:34:47 PM",
+    "plate": "DD 81307",
+    "toll_gate": "Al Mamzar North",
+    "direction": "Abu Dhabi",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "02:56:18 PM",
+    "plate": "CC 30526",
+    "toll_gate": "Al Garhoud New Bridge",
+    "direction": "Abu Dhabi",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "02:52:49 PM",
+    "plate": "CC 30529",
+    "toll_gate": "Al Mamzar North",
+    "direction": "Sharjah",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "02:51:47 PM",
+    "plate": "CC 30529",
+    "toll_gate": "Al Mamzar South",
+    "direction": "Sharjah",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "02:46:01 PM",
+    "plate": "CC 30529",
+    "toll_gate": "Al Garhoud New Bridge",
+    "direction": "Sharjah",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "02:18:00 PM",
+    "plate": "M 70479",
+    "toll_gate": "Al Barsha",
+    "direction": "Abu Dhabi",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "02:01:11 PM",
+    "plate": "Y 60125",
+    "toll_gate": "Al Barsha",
+    "direction": "Abu Dhabi",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "01:26:13 PM",
+    "plate": "DD 81307",
+    "toll_gate": "Al Mamzar North",
+    "direction": "Sharjah",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "01:25:13 PM",
+    "plate": "DD 81307",
+    "toll_gate": "Al Mamzar South",
+    "direction": "Sharjah",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "12:55:05 PM",
+    "plate": "CC 29420",
+    "toll_gate": "Business Bay Crossing",
+    "direction": "Sharjah",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "12:22:11 PM",
+    "plate": "CC 30529",
+    "toll_gate": "Al Garhoud New Bridge",
+    "direction": "Abu Dhabi",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "12:18:45 PM",
+    "plate": "DD 81308",
+    "toll_gate": "Al Maktoum Bridge",
+    "direction": "Abu Dhabi",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "12:14:06 PM",
+    "plate": "CC 30529",
+    "toll_gate": "Al Mamzar South",
+    "direction": "Abu Dhabi",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "12:11:42 PM",
+    "plate": "V 92135",
+    "toll_gate": "Al Garhoud New Bridge",
+    "direction": "Abu Dhabi",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "12:11:17 PM",
+    "plate": "CC 30529",
+    "toll_gate": "Al Mamzar North",
+    "direction": "Abu Dhabi",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "12:03:40 PM",
+    "plate": "V 92135",
+    "toll_gate": "Al Mamzar South",
+    "direction": "Abu Dhabi",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "12:00:22 PM",
+    "plate": "V 92135",
+    "toll_gate": "Al Mamzar North",
+    "direction": "Abu Dhabi",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "11:23:26 AM",
+    "plate": "Y 60125",
+    "toll_gate": "Al Barsha",
+    "direction": "Sharjah",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "11:21:58 AM",
+    "plate": "DD 37961",
+    "toll_gate": "Al Barsha",
+    "direction": "Abu Dhabi",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "11:16:56 AM",
+    "plate": "DD 37961",
+    "toll_gate": "Al Safa South",
+    "direction": "Abu Dhabi",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "10:58:36 AM",
+    "plate": "DD 38011",
+    "toll_gate": "Al Mamzar North",
+    "direction": "Sharjah",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "10:57:50 AM",
+    "plate": "DD 38011",
+    "toll_gate": "Al Mamzar South",
+    "direction": "Sharjah",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "05:43:26 AM",
+    "plate": "CC 98618",
+    "toll_gate": "Al Maktoum Bridge",
+    "direction": "Abu Dhabi",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "05:12:09 AM",
+    "plate": "CC 98618",
+    "toll_gate": "Al Mamzar South",
+    "direction": "Abu Dhabi",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "05:11:06 AM",
+    "plate": "CC 98618",
+    "toll_gate": "Al Mamzar North",
+    "direction": "Abu Dhabi",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "02:28:14 AM",
+    "plate": "CC 49639",
+    "toll_gate": "Al Barsha",
+    "direction": "Abu Dhabi",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "02:22:37 AM",
+    "plate": "CC 49639",
+    "toll_gate": "Al Safa South",
+    "direction": "Abu Dhabi",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "02:20:31 AM",
+    "plate": "CC 29422",
+    "toll_gate": "Al Barsha",
+    "direction": "Abu Dhabi",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "01:53:26 AM",
+    "plate": "CC 30529",
+    "toll_gate": "Al Mamzar North",
+    "direction": "Sharjah",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "01:52:39 AM",
+    "plate": "CC 30529",
+    "toll_gate": "Al Mamzar South",
+    "direction": "Sharjah",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "01:47:11 AM",
+    "plate": "CC 30529",
+    "toll_gate": "Al Garhoud New Bridge",
+    "direction": "Sharjah",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "01:43:21 AM",
+    "plate": "CC 49639",
+    "toll_gate": "Al Safa North",
+    "direction": "Sharjah",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "01:42:01 AM",
+    "plate": "CC 49639",
+    "toll_gate": "Al Safa South",
+    "direction": "Sharjah",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "01:37:09 AM",
+    "plate": "CC 49639",
+    "toll_gate": "Al Barsha",
+    "direction": "Sharjah",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "01:32:00 AM",
+    "plate": "CC 30529",
+    "toll_gate": "Al Safa North",
+    "direction": "Sharjah",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "01:30:23 AM",
+    "plate": "CC 30529",
+    "toll_gate": "Al Safa South",
+    "direction": "Sharjah",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "01:24:18 AM",
+    "plate": "CC 30529",
+    "toll_gate": "Al Barsha",
+    "direction": "Sharjah",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "12:34:46 AM",
+    "plate": "CC 30529",
+    "toll_gate": "Al Barsha",
+    "direction": "Abu Dhabi",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "12:29:14 AM",
+    "plate": "CC 30529",
+    "toll_gate": "Al Safa South",
+    "direction": "Abu Dhabi",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "12:27:46 AM",
+    "plate": "CC 30529",
+    "toll_gate": "Al Safa North",
+    "direction": "Abu Dhabi",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "12:20:53 AM",
+    "plate": "CC 30529",
+    "toll_gate": "Al Garhoud New Bridge",
+    "direction": "Abu Dhabi",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "10 Jul 2025",
+    "trip_time": "12:16:29 AM",
+    "plate": "J 93820",
+    "toll_gate": "Al Maktoum Bridge",
+    "direction": "Abu Dhabi",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "11:39:24 PM",
+    "plate": "CC 29422",
+    "toll_gate": "Al Barsha",
+    "direction": "Sharjah",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "11:11:59 PM",
+    "plate": "CC 30529",
+    "toll_gate": "Al Mamzar South",
+    "direction": "Abu Dhabi",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "11:11:03 PM",
+    "plate": "CC 30529",
+    "toll_gate": "Al Mamzar North",
+    "direction": "Abu Dhabi",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "10:57:47 PM",
+    "plate": "CC 49639",
+    "toll_gate": "Al Barsha",
+    "direction": "Abu Dhabi",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "10:51:47 PM",
+    "plate": "CC 49639",
+    "toll_gate": "Al Safa South",
+    "direction": "Abu Dhabi",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "10:17:15 PM",
+    "plate": "DD 38013",
+    "toll_gate": "Al Barsha",
+    "direction": "Abu Dhabi",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "10:11:39 PM",
+    "plate": "DD 38013",
+    "toll_gate": "Al Safa South",
+    "direction": "Abu Dhabi",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "09:26:16 PM",
+    "plate": "CC 29420",
+    "toll_gate": "Al Barsha",
+    "direction": "Sharjah",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "09:19:38 PM",
+    "plate": "CC 29420",
+    "toll_gate": "Al Barsha",
+    "direction": "Abu Dhabi",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "09:16:23 PM",
+    "plate": "M 70479",
+    "toll_gate": "Al Barsha",
+    "direction": "Abu Dhabi",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "09:11:14 PM",
+    "plate": "M 70479",
+    "toll_gate": "Al Safa South",
+    "direction": "Abu Dhabi",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "09:02:47 PM",
+    "plate": "J 93820",
+    "toll_gate": "Al Mamzar South",
+    "direction": "Abu Dhabi",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "09:01:55 PM",
+    "plate": "J 93820",
+    "toll_gate": "Al Mamzar North",
+    "direction": "Abu Dhabi",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "08:52:41 PM",
+    "plate": "DD 38013",
+    "toll_gate": "Al Safa South",
+    "direction": "Sharjah",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "08:46:53 PM",
+    "plate": "DD 38013",
+    "toll_gate": "Al Barsha",
+    "direction": "Sharjah",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "08:19:05 PM",
+    "plate": "DD 81308",
+    "toll_gate": "Al Maktoum Bridge",
+    "direction": "Sharjah",
+    "amount": "4.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "06:15:34 PM",
+    "plate": "CC 49639",
+    "toll_gate": "Al Safa South",
+    "direction": "Sharjah",
+    "amount": "6.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "06:01:37 PM",
+    "plate": "J 93820",
+    "toll_gate": "Al Mamzar North",
+    "direction": "Sharjah",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "05:58:21 PM",
+    "plate": "J 93820",
+    "toll_gate": "Al Mamzar South",
+    "direction": "Sharjah",
+    "amount": "6.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "05:48:42 PM",
+    "plate": "DD 81391",
+    "toll_gate": "Airport Tunnel",
+    "direction": "Sharjah",
+    "amount": "6.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "05:40:03 PM",
+    "plate": "DD 81391",
+    "toll_gate": "Business Bay Crossing",
+    "direction": "Sharjah",
+    "amount": "6.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "05:27:22 PM",
+    "plate": "CC 49639",
+    "toll_gate": "Al Barsha",
+    "direction": "Abu Dhabi",
+    "amount": "6.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "05:23:18 PM",
+    "plate": "CC 29420",
+    "toll_gate": "Al Safa North",
+    "direction": "Sharjah",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "05:22:42 PM",
+    "plate": "CC 49639",
+    "toll_gate": "Al Safa South",
+    "direction": "Abu Dhabi",
+    "amount": "0.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "05:21:41 PM",
+    "plate": "CC 29420",
+    "toll_gate": "Al Safa South",
+    "direction": "Sharjah",
+    "amount": "6.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "05:21:28 PM",
+    "plate": "CC 49639",
+    "toll_gate": "Al Safa North",
+    "direction": "Abu Dhabi",
+    "amount": "6.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "05:15:52 PM",
+    "plate": "CC 49639",
+    "toll_gate": "Al Garhoud New Bridge",
+    "direction": "Abu Dhabi",
+    "amount": "6.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "04:12:06 PM",
+    "plate": "CC 30528",
+    "toll_gate": "Al Maktoum Bridge",
+    "direction": "Sharjah",
+    "amount": "6.00"
+  },
+  {
+    "trip_date": "09 Jul 2025",
+    "trip_time": "5 Hrs",
+    "plate": "DD 81392",
+    "toll_gate": "Dubai Mall",
+    "direction": "Fashion",
+    "amount": "Amount20.00"
+  }
+]

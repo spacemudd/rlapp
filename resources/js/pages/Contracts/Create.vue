@@ -48,7 +48,39 @@ const totalDays = computed(() => {
 });
 
 const totalAmount = computed(() => {
-    return form.daily_rate * totalDays.value;
+    const days = totalDays.value;
+    if (!selectedVehicle.value || days <= 0) return 0;
+    if (days <= 7) {
+        return (selectedVehicle.value.price_daily || 0) * days;
+    } else if (days > 7 && days <= 28) {
+        const weeklyRate = selectedVehicle.value.price_weekly || 0;
+        return (weeklyRate / 7) * days;
+    } else if (days >= 30) {
+        const monthlyRate = selectedVehicle.value.price_monthly || 0;
+        return (monthlyRate / 30) * days;
+    }
+    return 0;
+});
+
+// Add a computed property for the effective daily rate
+const effectiveDailyRate = computed(() => {
+    const days = totalDays.value;
+    if (!selectedVehicle.value) return 0;
+    if (days <= 7) {
+        return selectedVehicle.value.price_daily || 0;
+    } else if (days > 7 && days <= 28) {
+        return (selectedVehicle.value.price_weekly || 0) / 7;
+    } else if (days >= 30) {
+        return (selectedVehicle.value.price_monthly || 0) / 30;
+    }
+    return 0;
+});
+
+// Watch for changes in effectiveDailyRate and update form.daily_rate
+watch([effectiveDailyRate, selectedVehicle, totalDays], ([newRate, vehicle, days]) => {
+    if (vehicle) {
+        form.daily_rate = newRate;
+    }
 });
 
 // Handle vehicle selection
@@ -64,20 +96,20 @@ const handleCustomerSubmit = (customerForm: any) => {
             console.log('Customer creation success, page:', page);
             console.log('Page props:', page.props);
             console.log('Flash data:', (page.props as any).flash);
-            
+
             // Try to get customer from different possible locations
-            const customer = (page.props as any).newCustomer || 
-                           (page.props as any).flash?.newCustomer || 
-                           (page.props as any).flash?.customer || 
+            const customer = (page.props as any).newCustomer ||
+                           (page.props as any).flash?.newCustomer ||
+                           (page.props as any).flash?.customer ||
                            (page.props as any).customer ||
                            null;
-            
+
             console.log('Found customer data:', customer);
-            
+
             if (customer) {
                 // Auto-select the newly created customer
                 form.customer_id = customer.id;
-                
+
                 // Update the combobox with the new customer data
                 if (customerComboboxRef.value) {
                     console.log('Calling selectOption with:', customer);
@@ -157,14 +189,14 @@ const getCurrentDubaiTime = (): string => {
 // Duration and date management
 const updateEndDate = () => {
     if (!form.start_date || !durationDays.value || durationDays.value < 1) return;
-    
+
     // Parse the start date as Dubai time
     const startDubaiDate = new Date(form.start_date);
-    
+
     // Calculate end date by adding duration days
     const endDubaiDate = new Date(startDubaiDate);
     endDubaiDate.setDate(startDubaiDate.getDate() + durationDays.value); // Add full duration days
-    
+
     // Set the end date
     form.end_date = formatDateForInput(endDubaiDate);
 };
@@ -193,19 +225,19 @@ watch(() => form.start_date, () => {
 const submit = () => {
     // Convert Dubai time to UTC for backend storage
     const formData = { ...form.data() };
-    
+
     if (formData.start_date) {
         const startDubaiDate = new Date(formData.start_date);
         const startUTCDate = convertDubaiToUTC(startDubaiDate);
         formData.start_date = startUTCDate.toISOString();
     }
-    
+
     if (formData.end_date) {
         const endDubaiDate = new Date(formData.end_date);
         const endUTCDate = convertDubaiToUTC(endDubaiDate);
         formData.end_date = endUTCDate.toISOString();
     }
-    
+
     // Submit with UTC timestamps
     form.transform((data) => formData).post(route('contracts.store'));
 };
@@ -225,7 +257,7 @@ watch(() => props.newCustomer, (customer) => {
     if (customer) {
         // Auto-select the newly created customer
         form.customer_id = customer.id;
-        
+
         // Update the combobox with the new customer data
         if (customerComboboxRef.value) {
             console.log('Auto-selecting customer from props:', customer);
@@ -237,7 +269,7 @@ watch(() => props.newCustomer, (customer) => {
 
 <template>
     <Head title="Create Contract" />
-    
+
     <AppLayout>
         <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
             <div class="space-y-6">
@@ -276,7 +308,7 @@ watch(() => props.newCustomer, (customer) => {
                                 :required="true"
                                 :error="form.errors.customer_id"
                             />
-                            
+
                             <div class="pt-4 border-t">
                                 <div class="flex items-center justify-between">
                                     <p class="text-sm text-gray-500">
@@ -296,7 +328,7 @@ watch(() => props.newCustomer, (customer) => {
                                                     Add a new customer to your database. All fields marked with * are required.
                                                 </DialogDescription>
                                             </DialogHeader>
-                                            
+
                                             <CreateCustomerForm
                                                 @submit="handleCustomerSubmit"
                                                 @cancel="handleCustomerCancel"
@@ -393,7 +425,7 @@ watch(() => props.newCustomer, (customer) => {
                                 </p>
                             </div>
                         </div>
-                        
+
                         <!-- Duration Input -->
                         <div class="space-y-3">
                             <div class="grid gap-4 md:grid-cols-3">
@@ -418,19 +450,19 @@ watch(() => props.newCustomer, (customer) => {
                                         <p class="text-sm text-blue-800">
                                             <strong>Rental Period:</strong> {{ totalDays }} day{{ totalDays !== 1 ? 's' : '' }}
                                             <span v-if="form.start_date && form.end_date" class="block text-xs mt-1">
-                                                {{ new Date(form.start_date).toLocaleDateString('en-AE', { 
-                                                    weekday: 'short', 
-                                                    year: 'numeric', 
-                                                    month: 'short', 
+                                                {{ new Date(form.start_date).toLocaleDateString('en-AE', {
+                                                    weekday: 'short',
+                                                    year: 'numeric',
+                                                    month: 'short',
                                                     day: 'numeric',
                                                     hour: '2-digit',
                                                     minute: '2-digit'
-                                                }) }} 
-                                                → 
-                                                {{ new Date(form.end_date).toLocaleDateString('en-AE', { 
-                                                    weekday: 'short', 
-                                                    year: 'numeric', 
-                                                    month: 'short', 
+                                                }) }}
+                                                →
+                                                {{ new Date(form.end_date).toLocaleDateString('en-AE', {
+                                                    weekday: 'short',
+                                                    year: 'numeric',
+                                                    month: 'short',
                                                     day: 'numeric',
                                                     hour: '2-digit',
                                                     minute: '2-digit'
@@ -465,6 +497,7 @@ watch(() => props.newCustomer, (customer) => {
                                     step="0.01"
                                     min="0"
                                     v-model="form.daily_rate"
+                                    :value="effectiveDailyRate"
                                     required
                                 />
                                 <div v-if="form.errors.daily_rate" class="text-sm text-red-600">
@@ -492,9 +525,6 @@ watch(() => props.newCustomer, (customer) => {
                                 <span class="text-green-800 font-medium">Total Rental Amount:</span>
                                 <span class="text-2xl font-bold text-green-900">{{ formatCurrency(totalAmount) }}</span>
                             </div>
-                            <p class="text-sm text-green-700 mt-1">
-                                {{ totalDays }} days × {{ formatCurrency(form.daily_rate) }}
-                            </p>
                         </div>
 
                         <div class="grid gap-4 md:grid-cols-2">
@@ -580,4 +610,4 @@ watch(() => props.newCustomer, (customer) => {
             </div>
         </div>
     </AppLayout>
-</template> 
+</template>
