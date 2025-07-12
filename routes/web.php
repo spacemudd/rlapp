@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PaymentController;
 use Illuminate\Support\Facades\Response;
+use App\Http\Controllers\SalikApiController;
+use App\Http\Controllers\TrafficViolationsController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome');
@@ -113,6 +115,26 @@ Route::get('/sync-progress', function () {
 
 Route::get('/traffic-violations', function () {
     return inertia('TrafficViolations');
+});
+
+Route::get('/traffic-violations/salik', function () {
+    return inertia('TrafficViolations/Salik');
+});
+
+Route::get('/api/salik-balance', function () {
+    $file = base_path('scripts/salik_balance.txt');
+    $balance = file_exists($file) ? trim(file_get_contents($file)) : null;
+    return response()->json(['balance' => $balance]);
+});
+
+// API route to return Salik trips data
+
+Route::get('/api/salik-trips', function () {
+    $path = base_path('scripts/salik_trips.json');
+    if (file_exists($path)) {
+        return response()->json(json_decode(file_get_contents($path)));
+    }
+    return response()->json([]);
 });
 
 require __DIR__.'/settings.php';

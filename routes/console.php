@@ -11,3 +11,4 @@ Artisan::command('inspire', function () {
 
 // جدولة أمر تشغيل سكريبت البايثون كل يوم الساعة 12 ظهراً
 Schedule::command('run:scrap-rta')->dailyAt('12:00');
+Schedule::command('app:update-salik-trips')->dailyAt('012:00');
