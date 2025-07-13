@@ -9,6 +9,7 @@ import CreateCustomerForm from '@/components/CreateCustomerForm.vue';
 import { Plus, Users, Edit, Trash2, Phone, Mail, Calendar, CreditCard, Search } from 'lucide-vue-next';
 import { ref, computed, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
+import { useI18n } from 'vue-i18n';
 
 interface Customer {
     id: string;
@@ -55,9 +56,11 @@ interface Props {
 
 const props = defineProps<Props>();
 
+const { t } = useI18n();
+
 const breadcrumbs = [
-    { title: 'Dashboard', href: '/dashboard' },
-    { title: 'Customers', href: '/customers' },
+    { title: t('dashboard'), href: '/dashboard' },
+    { title: t('customers'), href: '/customers' },
 ];
 
 const showAddDialog = ref(false);
@@ -98,7 +101,7 @@ const handleCustomerCancel = () => {
 };
 
 const deleteCustomer = (customer: Customer) => {
-    if (confirm('Are you sure you want to delete this customer?')) {
+    if (confirm(t('delete_customer_confirm'))) {
         useForm({}).delete(`/customers/${customer.id}`);
     }
 };
@@ -169,16 +172,16 @@ watch(searchQuery, (newValue, oldValue) => {
 </script>
 
 <template>
-    <Head title="Customers" />
+    <Head :title="t('customers')" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
             <div class="space-y-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-3xl font-bold tracking-tight">Customers</h1>
+                    <h1 class="text-3xl font-bold tracking-tight">{{ t('customers') }}</h1>
                     <p class="text-muted-foreground">
-                        Manage your customer database and relationships
+                        {{ t('manage_customers') }}
                     </p>
                 </div>
 
@@ -188,7 +191,7 @@ watch(searchQuery, (newValue, oldValue) => {
                         <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             v-model="searchQuery"
-                            placeholder="Search customers..."
+                            :placeholder="t('search_customers')"
                             class="pl-10 w-64"
                         />
                         <Button
@@ -206,16 +209,16 @@ watch(searchQuery, (newValue, oldValue) => {
                         <DialogTrigger as-child>
                             <Button @click="openAddDialog">
                                 <Plus class="mr-2 h-4 w-4" />
-                                Add Customer
+                                {{ t('add_customer') }}
                             </Button>
                         </DialogTrigger>
                         <DialogContent class="max-w-2xl max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
                                 <DialogTitle>
-                                    {{ editingCustomer ? 'Edit Customer' : 'Add New Customer' }}
+                                    {{ editingCustomer ? t('edit_customer') : t('add_customer') }}
                                 </DialogTitle>
                                 <DialogDescription>
-                                    {{ editingCustomer ? 'Update customer information below.' : 'Enter customer information below. All fields marked with * are required.' }}
+                                    {{ editingCustomer ? t('update_profile_info') : t('customer_information') }}
                                 </DialogDescription>
                             </DialogHeader>
 
@@ -232,39 +235,39 @@ watch(searchQuery, (newValue, oldValue) => {
             <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 <Card>
                     <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle class="text-sm font-medium">Total Customers</CardTitle>
+                        <CardTitle class="text-sm font-medium">{{ t('total_customers') }}</CardTitle>
                         <Users class="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                         <div class="text-2xl font-bold">{{ props.stats.total }}</div>
                         <p class="text-xs text-muted-foreground">
-                            {{ props.stats.total === 0 ? 'No customers added yet' : 'Total registered customers' }}
+                            {{ props.stats.total === 0 ? t('no_data') : t('total_customers') }}
                         </p>
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle class="text-sm font-medium">Active Customers</CardTitle>
+                        <CardTitle class="text-sm font-medium">{{ t('active_customers') }}</CardTitle>
                         <Users class="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                         <div class="text-2xl font-bold">{{ props.stats.active }}</div>
                         <p class="text-xs text-muted-foreground">
-                            Currently active
+                            {{ t('active') }}
                         </p>
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle class="text-sm font-medium">New This Month</CardTitle>
+                        <CardTitle class="text-sm font-medium">{{ t('new_this_month') }}</CardTitle>
                         <Users class="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                         <div class="text-2xl font-bold">{{ props.stats.new_this_month }}</div>
                         <p class="text-xs text-muted-foreground">
-                            Added this month
+                            {{ t('new_this_month') }}
                         </p>
                     </CardContent>
                 </Card>
@@ -272,9 +275,9 @@ watch(searchQuery, (newValue, oldValue) => {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Customer List</CardTitle>
+                    <CardTitle>{{ t('customers') }}</CardTitle>
                     <CardDescription>
-                        A list of all your customers and their information.
+                        {{ t('manage_customers') }}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -282,21 +285,21 @@ watch(searchQuery, (newValue, oldValue) => {
                         <div class="text-center">
                             <Users class="mx-auto h-16 w-16 text-muted-foreground/50" />
                             <h3 class="mt-4 text-lg font-semibold">
-                                {{ searchQuery ? 'No customers found' : 'No customers yet' }}
+                                {{ searchQuery ? t('no_results') : t('no_data') }}
                             </h3>
                             <p class="mt-2 text-sm text-muted-foreground">
-                                {{ searchQuery
-                                    ? `No customers match your search for "${searchQuery}". Try adjusting your search terms.`
-                                    : 'Get started by adding your first customer.'
+                                {{ searchQuery 
+                                    ? `${t('no_results')} "${searchQuery}"`
+                                    : t('manage_customers')
                                 }}
                             </p>
                             <div class="mt-4 flex gap-2 justify-center">
                                 <Button v-if="searchQuery" variant="outline" @click="clearSearch">
-                                    Clear Search
+                                    {{ t('clear_search') }}
                                 </Button>
                                 <Button @click="openAddDialog">
                                     <Plus class="mr-2 h-4 w-4" />
-                                    Add Customer
+                                    {{ t('add_customer') }}
                                 </Button>
                             </div>
                         </div>
@@ -308,11 +311,11 @@ watch(searchQuery, (newValue, oldValue) => {
                             <div class="flex items-center gap-2">
                                 <Search class="h-4 w-4 text-muted-foreground" />
                                 <span class="text-sm text-muted-foreground">
-                                    Showing {{ props.customers.total }} result{{ props.customers.total !== 1 ? 's' : '' }} for "{{ searchQuery }}"
+                                    {{ t('showing') }} {{ props.customers.total }} {{ t('results') }} "{{ searchQuery }}"
                                 </span>
                             </div>
                             <Button variant="ghost" size="sm" @click="clearSearch">
-                                Clear Search
+                                {{ t('clear_search') }}
                             </Button>
                         </div>
 
@@ -321,11 +324,11 @@ watch(searchQuery, (newValue, oldValue) => {
                             <table class="w-full">
                                 <thead>
                                     <tr class="border-b bg-muted/50">
-                                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Name</th>
-                                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Contact</th>
-                                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">License</th>
-                                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Status</th>
-                                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Actions</th>
+                                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground rtl:text-right">{{ t('name') }}</th>
+                                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground rtl:text-right">{{ t('phone') }}</th>
+                                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground rtl:text-right">{{ t('drivers_license') }}</th>
+                                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground rtl:text-right">{{ t('status') }}</th>
+                                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground rtl:text-right">{{ t('actions') }}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -360,7 +363,7 @@ watch(searchQuery, (newValue, oldValue) => {
                                             </div>
                                             <div class="flex items-center gap-2 text-sm text-muted-foreground">
                                                 <Calendar class="h-4 w-4" />
-                                                Expires: {{ formatDate(customer.drivers_license_expiry) }}
+                                                {{ t('license_expiry') }}: {{ formatDate(customer.drivers_license_expiry) }}
                                             </div>
                                         </td>
                                         <td class="p-4 align-middle">
@@ -371,7 +374,7 @@ watch(searchQuery, (newValue, oldValue) => {
                                                     'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20': customer.status === 'inactive'
                                                 }"
                                             >
-                                                {{ customer.status === 'active' ? 'Active' : 'Inactive' }}
+                                                {{ customer.status === 'active' ? t('active') : t('inactive') }}
                                             </span>
                                         </td>
                                         <td class="p-4 align-middle">

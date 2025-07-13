@@ -15,10 +15,14 @@ import {
   Download,
   FileText
 } from 'lucide-vue-next';
+import PlaceholderPattern from '../components/PlaceholderPattern.vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Dashboard',
+        title: t('dashboard'),
         href: '/dashboard',
     },
 ];
@@ -105,7 +109,7 @@ function daysAgo(dueDate: string) {
 </script>
 
 <template>
-    <Head title="Dashboard" />
+    <Head :title="t('dashboard')" />
 
     <AppLayout>
         <div class="min-h-screen bg-gradient-to-br from-gray-50 to-white">

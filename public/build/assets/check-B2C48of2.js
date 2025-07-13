@@ -1,0 +1,14 @@
+<<<<<<< Updated upstream:public/build/assets/check-wj6Wr-pL.js
+<<<<<<<< HEAD:public/build/assets/check-B1RX-UpZ.js
+import{c}from"./AppLogoIcon.vue_vue_type_script_setup_true_lang-Bte1hcA2.js";/**
+========
+import{c}from"./AppLogoIcon.vue_vue_type_script_setup_true_lang-BqggL-pA.js";/**
+>>>>>>>> develop:public/build/assets/check-wj6Wr-pL.js
+=======
+import{c}from"./AppLogoIcon.vue_vue_type_script_setup_true_lang-STRE1Pnw.js";/**
+>>>>>>> Stashed changes:public/build/assets/check-B2C48of2.js
+ * @license lucide-vue-next v0.468.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const o=c("CheckIcon",[["path",{d:"M20 6 9 17l-5-5",key:"1gmf2c"}]]);export{o as C};

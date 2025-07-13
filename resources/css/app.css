@@ -6,6 +6,8 @@
 @source '../../storage/framework/views/*.php';
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant rtl (&:is([dir="rtl"] *));
+@custom-variant ltr (&:is([dir="ltr"] *));
 
 @theme inline {
     --font-sans: Instrument Sans, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
@@ -163,5 +165,176 @@
     }
     body {
         @apply bg-background text-foreground;
+    }
+    
+    /* RTL Support */
+    [dir="rtl"] {
+        text-align: right;
+        direction: rtl;
+    }
+    
+    [dir="ltr"] {
+        text-align: left;
+        direction: ltr;
+    }
+    
+    /* RTL Layout Support */
+    [dir="rtl"] .flex-row {
+        flex-direction: row-reverse;
+    }
+    
+    /* RTL Sidebar positioning - Dynamic side handling */
+    [dir="rtl"] .group[data-side="left"] .fixed {
+        right: 0 !important;
+        left: auto !important;
+    }
+    
+    [dir="rtl"] .group-data-collapsible-offcanvas .fixed {
+        right: calc(var(--sidebar-width) * -1) !important;
+        left: auto !important;
+    }
+    
+    /* RTL Content positioning */
+    [dir="rtl"] .peer ~ * {
+        margin-right: 0;
+        margin-left: auto;
+    }
+    
+    /* RTL specific sidebar content adjustments */
+    [dir="rtl"] .sidebar-content {
+        text-align: right;
+    }
+    
+    /* RTL navigation menu alignment */
+    [dir="rtl"] nav a {
+        text-align: right;
+        justify-content: flex-end;
+    }
+    
+    /* RTL button content alignment */
+    [dir="rtl"] button {
+        text-align: right;
+    }
+    
+    /* RTL sidebar menu items - text alignment */
+    [dir="rtl"] [data-sidebar="menu-button"] {
+        text-align: right;
+    }
+    
+    /* RTL sidebar menu button text alignment */
+    [dir="rtl"] [data-sidebar="menu-button"] span {
+        text-align: right !important;
+        direction: rtl;
+        width: 100%;
+        display: block;
+    }
+    
+    /* RTL sidebar links text alignment */
+    [dir="rtl"] [data-sidebar="menu-button"] a {
+        text-align: right;
+        direction: rtl;
+    }
+    
+    /* RTL sidebar group labels */
+    [dir="rtl"] [data-sidebar="group-label"] {
+        text-align: right;
+        direction: rtl;
+    }
+    
+    /* RTL all sidebar text content */
+    [dir="rtl"] [data-sidebar] {
+        text-align: right;
+        direction: rtl;
+    }
+    
+    /* RTL User info text alignment */
+    [dir="rtl"] .grid.flex-1 {
+        text-align: right;
+        direction: rtl;
+    }
+    
+    /* RTL navigation text - ensure all spans are right-aligned */
+    [dir="rtl"] nav span,
+    [dir="rtl"] [data-sidebar="menu-button"] span,
+    [dir="rtl"] [data-sidebar] span {
+        text-align: right !important;
+        direction: rtl;
+    }
+    
+    /* RTL sidebar content area */
+    [dir="rtl"] [data-sidebar="content"] {
+        text-align: right;
+        direction: rtl;
+    }
+    
+    /* RTL flex items alignment - general */
+    [dir="rtl"] .flex.items-center:not([data-sidebar="menu-button"]) {
+        flex-direction: row-reverse;
+    }
+    
+    /* RTL gap adjustments */
+    [dir="rtl"] .gap-2 > * + * {
+        margin-left: 0.5rem;
+        margin-right: 0;
+    }
+    
+    /* RTL Text alignment for specific elements */
+    [dir="rtl"] p,
+    [dir="rtl"] div,
+    [dir="rtl"] span,
+    [dir="rtl"] label {
+        text-align: right;
+    }
+    
+    [dir="rtl"] input,
+    [dir="rtl"] textarea,
+    [dir="rtl"] select {
+        text-align: right;
+    }
+    
+    /* RTL Navigation */
+    [dir="rtl"] nav {
+        text-align: right;
+    }
+    
+    /* RTL Breadcrumbs */
+    [dir="rtl"] .breadcrumb {
+        flex-direction: row-reverse;
+    }
+    
+    /* RTL Cards and content containers */
+    [dir="rtl"] .card,
+    [dir="rtl"] .content {
+        direction: rtl;
+    }
+    
+    /* RTL specific utility overrides */
+    [dir="rtl"] .text-left {
+        text-align: right !important;
+    }
+    
+    [dir="rtl"] .text-right {
+        text-align: left !important;
+    }
+    
+    /* RTL padding and margin adjustments */
+    [dir="rtl"] .pl-8 {
+        padding-left: 0;
+        padding-right: 2rem;
+    }
+    
+    [dir="rtl"] .pr-2 {
+        padding-right: 0;
+        padding-left: 0.5rem;
+    }
+    
+    [dir="rtl"] .ml-auto {
+        margin-left: 0;
+        margin-right: auto;
+    }
+    
+    [dir="rtl"] .mr-auto {
+        margin-right: 0;
+        margin-left: auto;
     }
 }

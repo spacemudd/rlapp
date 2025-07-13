@@ -2,6 +2,9 @@
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -143,8 +146,8 @@ const formatCurrency = (amount?: number) => {
 </script>
 
 <template>
-    <Head title="Vehicles" />
-
+    <Head :title="t('vehicles')" />
+    
     <AppLayout>
         <div class="py-6">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -152,17 +155,17 @@ const formatCurrency = (amount?: number) => {
                 <div class="md:flex md:items-center md:justify-between mb-6">
                     <div class="flex-1 min-w-0">
                         <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
-                            Vehicles
+                            {{ t('vehicles') }}
                         </h2>
                         <p class="mt-1 text-sm text-gray-500">
-                            Manage your fleet of rental vehicles
+                            {{ t('manage_vehicles') }}
                         </p>
                     </div>
-                    <div class="mt-4 flex md:mt-0 md:ml-4">
+                    <div class="mt-4 flex md:mt-0 md:ml-4 rtl:md:mr-4 rtl:md:ml-0">
                         <Link :href="route('vehicles.create')">
                             <Button>
-                                <Plus class="w-4 h-4 mr-2" />
-                                Add Vehicle
+                                <Plus class="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                                {{ t('add_vehicle') }}
                             </Button>
                         </Link>
                     </div>
@@ -173,11 +176,11 @@ const formatCurrency = (amount?: number) => {
                     <CardContent class="pt-6">
                         <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                             <div class="relative">
-                                <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                                <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 rtl:left-auto rtl:right-3" />
                                 <Input
                                     v-model="search"
-                                    placeholder="Search vehicles..."
-                                    class="pl-10"
+                                    :placeholder="t('search_vehicles')"
+                                    class="pl-10 rtl:pr-10 rtl:pl-3"
                                 />
                             </div>
                             <select

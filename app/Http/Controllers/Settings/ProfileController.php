@@ -21,6 +21,10 @@ class ProfileController extends Controller
         return Inertia::render('settings/Profile', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => $request->session()->get('status'),
+            'availableLanguages' => [
+                'en' => 'English',
+                'ar' => 'العربية'
+            ],
         ]);
     }
 
@@ -33,6 +37,11 @@ class ProfileController extends Controller
 
         if ($request->user()->isDirty('email')) {
             $request->user()->email_verified_at = null;
+        }
+
+        // Set app locale if language changed
+        if ($request->user()->isDirty('language')) {
+            app()->setLocale($request->validated('language'));
         }
 
         $request->user()->save();

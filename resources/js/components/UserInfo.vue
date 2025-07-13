@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useInitials } from '@/composables/useInitials';
+import { useDirection } from '@/composables/useDirection';
 import type { User } from '@/types';
 import { computed } from 'vue';
 
@@ -14,6 +15,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const { getInitials } = useInitials();
+const { marginClasses } = useDirection();
 
 // Compute whether we should show the avatar image
 const showAvatar = computed(() => props.user.avatar && props.user.avatar !== '');
@@ -27,7 +29,7 @@ const showAvatar = computed(() => props.user.avatar && props.user.avatar !== '')
         </AvatarFallback>
     </Avatar>
 
-    <div class="grid flex-1 text-left text-sm leading-tight">
+    <div :class="[marginClasses.textLeft().value, 'grid flex-1 text-sm leading-tight']">
         <span class="truncate font-medium">{{ user.name }}</span>
         <span v-if="showEmail" class="truncate text-xs text-muted-foreground">{{ user.email }}</span>
     </div>

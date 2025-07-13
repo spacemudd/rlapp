@@ -8,8 +8,12 @@ import { Link, usePage } from '@inertiajs/vue3';
 import { BookOpen, Folder, LayoutGrid, Users, Receipt, Settings, Car, FileText, MapPin } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useDirection } from '@/composables/useDirection';
 
 const page = usePage();
+const { t } = useI18n();
+const { sidebarSide } = useDirection();
 
 // Get user permissions from page props
 const userPermissions = computed(() => {
@@ -24,32 +28,32 @@ const canManageTeam = computed(() => {
 const mainNavItems = computed<NavItem[]>(() => {
     const items: NavItem[] = [
         {
-            title: 'Dashboard',
+            title: t('dashboard'),
             href: '/dashboard',
             icon: LayoutGrid,
         },
         {
-            title: 'Customers',
+            title: t('customers'),
             href: '/customers',
             icon: Users,
         },
         {
-            title: 'Invoices',
+            title: t('invoices'),
             href: '/invoices',
             icon: Receipt,
         },
         {
-            title: 'Vehicles',
+            title: t('vehicles'),
             href: '/vehicles',
             icon: Car,
         },
         {
-            title: 'Contracts',
+            title: t('contracts'),
             href: '/contracts',
             icon: FileText,
         },
         {
-            title: 'Locations',
+            title: t('locations'),
             href: '/locations',
             icon: MapPin,
         },
@@ -63,7 +67,7 @@ const mainNavItems = computed<NavItem[]>(() => {
     // Add Team link only for users with manage team settings permission
     if (canManageTeam.value) {
         items.push({
-            title: 'Team',
+            title: t('team_management'),
             href: '/team',
             icon: Settings,
         });
@@ -82,7 +86,7 @@ const footerNavItems: NavItem[] = [
 </script>
 
 <template>
-    <Sidebar collapsible="icon" variant="inset">
+    <Sidebar collapsible="icon" variant="inset" :side="sidebarSide">
         <SidebarHeader>
             <SidebarMenu>
                 <SidebarMenuItem>
