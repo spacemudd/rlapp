@@ -13,7 +13,14 @@ base_dir = os.path.dirname(os.path.abspath(__file__))
 
 # قراءة البيانات من violations_details.xlsx (من نفس مجلد السكريبت)
 details_excel_path = os.path.join(base_dir, 'violations_details.xlsx')
-df = pd.read_excel(details_excel_path)
+
+# التحقق من وجود الملف
+if not os.path.exists(details_excel_path):
+    print(f"File {details_excel_path} not found. Creating empty DataFrame.")
+    # إنشاء DataFrame فارغ مع العمود المطلوب
+    df = pd.DataFrame(columns=['Details'])
+else:
+    df = pd.read_excel(details_excel_path)
 
 # قائمة لتجميع النتائج
 clean_data = []
@@ -74,10 +81,17 @@ for idx, row in enumerate(df.iterrows()):
             pf.write(str(percent))
 
 # إنشاء DataFrame جديد وحفظه في نفس مجلد السكريبت
-clean_df = pd.DataFrame(clean_data, columns=columns_needed)
-clean_excel_path = os.path.join(base_dir, 'Clean.xlsx')
-clean_df.to_excel(clean_excel_path, index=False)
-print(f'Clean.xlsx created at {clean_excel_path}')
+if clean_data:
+    clean_df = pd.DataFrame(clean_data, columns=columns_needed)
+    clean_excel_path = os.path.join(base_dir, 'Clean.xlsx')
+    clean_df.to_excel(clean_excel_path, index=False)
+    print(f'Clean.xlsx created at {clean_excel_path}')
+else:
+    print('No data to process. Creating empty Clean.xlsx file.')
+    clean_df = pd.DataFrame(columns=columns_needed)
+    clean_excel_path = os.path.join(base_dir, 'Clean.xlsx')
+    clean_df.to_excel(clean_excel_path, index=False)
+    print(f'Empty Clean.xlsx created at {clean_excel_path}')
 
 # استيراد فقط المخالفات الجديدة من Clean.xlsx
 artisan_cmd = [
@@ -114,3 +128,16 @@ finally:
             print(f"Preserved: {f}")
         else:
             print(f"Not found: {f}")
+            # إنشاء ملف فارغ إذا لم يكن موجوداً
+            if f.endswith('violations.xlsx'):
+                empty_df = pd.DataFrame(columns=['Violation'])
+                empty_df.to_excel(f, index=False)
+                print(f"Created empty: {f}")
+            elif f.endswith('violations_details.xlsx'):
+                empty_df = pd.DataFrame(columns=['Details'])
+                empty_df.to_excel(f, index=False)
+                print(f"Created empty: {f}")
+            elif f.endswith('Clean.xlsx'):
+                empty_df = pd.DataFrame(columns=columns_needed)
+                empty_df.to_excel(f, index=False)
+                print(f"Created empty: {f}")
