@@ -11,6 +11,11 @@ columns_needed = [
 # احصل على مسار مجلد السكريبت
 base_dir = os.path.dirname(os.path.abspath(__file__))
 
+# تغيير المجلد إلى مجلد المشروع (أعلى مستوى)
+project_dir = os.path.dirname(base_dir)
+os.chdir(project_dir)
+print(f"Changed working directory to: {project_dir}")
+
 # قراءة البيانات من violations_details.xlsx (من نفس مجلد السكريبت)
 details_excel_path = os.path.join(base_dir, 'violations_details.xlsx')
 
@@ -94,9 +99,10 @@ else:
     print(f'Empty Clean.xlsx created at {clean_excel_path}')
 
 # استيراد فقط المخالفات الجديدة من Clean.xlsx
+# استخدام المسار النسبي بدلاً من المسار المطلق
 artisan_cmd = [
     "php",
-    "/Applications/XAMPP/xamppfiles/htdocs/rlapp/artisan",
+    "artisan",
     "import:fines",
     clean_excel_path
 ]
@@ -104,6 +110,13 @@ artisan_cmd = [
 print(f"Running command: {' '.join(artisan_cmd)}")
 print(f"Clean.xlsx path: {clean_excel_path}")
 print(f"File exists: {os.path.exists(clean_excel_path)}")
+print(f"Number of rows in Clean.xlsx: {len(clean_data)}")
+
+# طباعة أول 3 صفوف للتحقق
+if clean_data:
+    print("\nFirst 3 rows of data to be imported:")
+    for i, row in enumerate(clean_data[:3]):
+        print(f"Row {i+1}: {row}")
 
 try:
     result = subprocess.run(artisan_cmd, capture_output=True, text=True, check=True)
@@ -114,13 +127,24 @@ try:
     # تحليل الرسالة لمعرفة عدد المخالفات الجديدة
     if "لا توجد مخالفات جديدة" in result.stdout or "No new fines" in result.stdout:
         print("No new fines were added.")
-    else:
+    elif "تم إضافة" in result.stdout:
         import re
-        match = re.search(r"تم إضافة (\d+) مخالفة جديدة", result.stdout)
+        match = re.search(r"تم إضافة (\d+) مخالفة", result.stdout)
         if match:
-            print(f"{match.group(1)} new fines have been added!")
+            print(f"{match.group(1)} fines have been added to database!")
         else:
             print("Could not determine number of fines added from output.")
+    else:
+        print("Import completed but could not determine result from output.")
+
+    # التحقق من قاعدة البيانات بعد الاستيراد
+    print("\nVerifying database import...")
+    try:
+        verify_cmd = ["php", "artisan", "tinker", "--execute='echo \"Total fines in database: \" . App\\Models\\Fine::count();'"]
+        verify_result = subprocess.run(verify_cmd, capture_output=True, text=True, timeout=30)
+        print("Database verification result:", verify_result.stdout)
+    except Exception as verify_err:
+        print("Database verification failed:", verify_err)
 
 except subprocess.CalledProcessError as e:
     print("Import failed!")
@@ -132,7 +156,7 @@ except subprocess.CalledProcessError as e:
     print("\nTrying to get more diagnostic information...")
     try:
         # فحص حالة قاعدة البيانات
-        db_check_cmd = ["php", "/Applications/XAMPP/xamppfiles/htdocs/rlapp/artisan", "tinker", "--execute='echo \"DB Connection: \" . config(\"database.default\"); echo \"DB Host: \" . config(\"database.connections.mysql.host\"); echo \"DB Database: \" . config(\"database.connections.mysql.database\");'"]
+        db_check_cmd = ["php", "artisan", "tinker", "--execute='echo \"DB Connection: \" . config(\"database.default\"); echo \"DB Host: \" . config(\"database.connections.mysql.host\"); echo \"DB Database: \" . config(\"database.connections.mysql.database\");'"]
         db_result = subprocess.run(db_check_cmd, capture_output=True, text=True, timeout=30)
         print("Database check result:", db_result.stdout)
     except Exception as db_err:
