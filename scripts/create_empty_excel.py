@@ -100,10 +100,17 @@ artisan_cmd = [
     "import:fines",
     clean_excel_path
 ]
+
+print(f"Running command: {' '.join(artisan_cmd)}")
+print(f"Clean.xlsx path: {clean_excel_path}")
+print(f"File exists: {os.path.exists(clean_excel_path)}")
+
 try:
     result = subprocess.run(artisan_cmd, capture_output=True, text=True, check=True)
     print("Import finished successfully!")
-    print(result.stdout)
+    print("STDOUT:", result.stdout)
+    print("STDERR:", result.stderr)
+
     # تحليل الرسالة لمعرفة عدد المخالفات الجديدة
     if "لا توجد مخالفات جديدة" in result.stdout or "No new fines" in result.stdout:
         print("No new fines were added.")
@@ -112,9 +119,24 @@ try:
         match = re.search(r"تم إضافة (\d+) مخالفة جديدة", result.stdout)
         if match:
             print(f"{match.group(1)} new fines have been added!")
+        else:
+            print("Could not determine number of fines added from output.")
+
 except subprocess.CalledProcessError as e:
     print("Import failed!")
-    print(e.stderr)
+    print("Error code:", e.returncode)
+    print("STDOUT:", e.stdout)
+    print("STDERR:", e.stderr)
+
+    # محاولة تشغيل الأمر مع معلومات إضافية للتشخيص
+    print("\nTrying to get more diagnostic information...")
+    try:
+        # فحص حالة قاعدة البيانات
+        db_check_cmd = ["php", "/Applications/XAMPP/xamppfiles/htdocs/rlapp/artisan", "tinker", "--execute='echo \"DB Connection: \" . config(\"database.default\"); echo \"DB Host: \" . config(\"database.connections.mysql.host\"); echo \"DB Database: \" . config(\"database.connections.mysql.database\");'"]
+        db_result = subprocess.run(db_check_cmd, capture_output=True, text=True, timeout=30)
+        print("Database check result:", db_result.stdout)
+    except Exception as db_err:
+        print("Database check failed:", db_err)
 finally:
     # الاحتفاظ بملفات الإكسل كما هي بدون حذف
     print("Excel files have been preserved:")
