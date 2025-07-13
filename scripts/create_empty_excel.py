@@ -122,6 +122,49 @@ if clean_data:
     for i, row in enumerate(clean_data[:3]):
         print(f"Row {i+1}: {row}")
 
+# فحص إعدادات قاعدة البيانات قبل الاستيراد
+print("\n=== Database Connection Diagnostics ===")
+
+# فحص ملف .env
+print("Checking .env file...")
+env_path = os.path.join(project_dir, '.env')
+if os.path.exists(env_path):
+    print(f".env file found at: {env_path}")
+    try:
+        with open(env_path, 'r') as f:
+            env_content = f.read()
+            # البحث عن إعدادات قاعدة البيانات
+            db_lines = [line for line in env_content.split('\n') if line.startswith('DB_')]
+            print("Database settings in .env:")
+            for line in db_lines:
+                if 'PASSWORD' in line:
+                    print(f"  {line.split('=')[0]}=***HIDDEN***")
+                else:
+                    print(f"  {line}")
+    except Exception as env_err:
+        print(f"Error reading .env file: {env_err}")
+else:
+    print(f".env file not found at: {env_path}")
+
+try:
+    # فحص إعدادات قاعدة البيانات
+    db_config_cmd = ["php", "artisan", "tinker", "--execute='echo \"DB Connection: \" . config(\"database.default\"); echo \"DB Host: \" . config(\"database.connections.mysql.host\"); echo \"DB Port: \" . config(\"database.connections.mysql.port\"); echo \"DB Database: \" . config(\"database.connections.mysql.database\"); echo \"DB Username: \" . config(\"database.connections.mysql.username\");'"]
+    db_config_result = subprocess.run(db_config_cmd, capture_output=True, text=True, timeout=30)
+    print("Database configuration:", db_config_result.stdout)
+
+    # اختبار الاتصال بقاعدة البيانات
+    db_test_cmd = ["php", "artisan", "tinker", "--execute='try { DB::connection()->getPdo(); echo \"Database connection: SUCCESS\"; } catch (Exception \$e) { echo \"Database connection: FAILED - \" . \$e->getMessage(); }'"]
+    db_test_result = subprocess.run(db_test_cmd, capture_output=True, text=True, timeout=30)
+    print("Database connection test:", db_test_result.stdout)
+
+    # فحص عدد المخالفات الموجودة حالياً
+    db_count_cmd = ["php", "artisan", "tinker", "--execute='echo \"Current fines count: \" . App\\Models\\Fine::count();'"]
+    db_count_result = subprocess.run(db_count_cmd, capture_output=True, text=True, timeout=30)
+    print("Current database state:", db_count_result.stdout)
+
+except Exception as db_err:
+    print("Database diagnostics failed:", db_err)
+
 try:
     result = subprocess.run(artisan_cmd, capture_output=True, text=True, check=True)
     print("Import finished successfully!")
