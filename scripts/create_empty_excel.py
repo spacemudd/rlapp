@@ -102,16 +102,15 @@ except subprocess.CalledProcessError as e:
     print("Import failed!")
     print(e.stderr)
 finally:
-    # حذف الملفات بعد انتهاء الاستيراد سواء وُجدت مخالفات جديدة أم لا
-    files_to_delete = [
+    # الاحتفاظ بملفات الإكسل كما هي بدون حذف
+    print("Excel files have been preserved:")
+    excel_files = [
         os.path.join(base_dir, 'violations.xlsx'),
         os.path.join(base_dir, 'violations_details.xlsx'),
         os.path.join(base_dir, 'Clean.xlsx'),
     ]
-    for f in files_to_delete:
-        try:
-            if os.path.exists(f):
-                os.remove(f)
-                print(f"Deleted: {f}")
-        except Exception as del_err:
-            print(f"Failed to delete {f}: {del_err}")
+    for f in excel_files:
+        if os.path.exists(f):
+            print(f"Preserved: {f}")
+        else:
+            print(f"Not found: {f}")
