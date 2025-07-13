@@ -103,6 +103,10 @@ Route::post('/fines/sync', [\App\Http\Controllers\FinesController::class, 'sync'
 Route::post('/run-script', [App\Http\Controllers\ScriptController::class, 'run']);
 Route::get('/script-log', [App\Http\Controllers\ScriptController::class, 'log']);
 
+// Routes للـ FineController الجديد
+Route::post('/fines/run-script', [App\Http\Controllers\FineController::class, 'runScript'])->name('fines.run-script');
+Route::get('/fines/last-sync', [App\Http\Controllers\FineController::class, 'getLastSync'])->name('fines.last-sync');
+
 // Route لإرجاع نسبة التقدم في ملف progress.txt
 Route::get('/sync-progress', function () {
     $progressFile = base_path('scripts/progress.txt');

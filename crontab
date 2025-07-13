@@ -1,1 +1,2 @@
-
+# Laravel Scheduler - تشغيل كل دقيقة لتنفيذ المهام المجدولة
+* * * * * cd /home/forge/rlapp.rentluxuria.com && php artisan schedule:run >> /dev/null 2>&1

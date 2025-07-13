@@ -15,6 +15,29 @@ import os
 # Enter file number here
 file_number = "51564893"  # You can change it to any file number
 
+# مسح ملفات الإكسل الموجودة في بداية السكريبت
+print("=== Cleaning up existing Excel files ===")
+base_dir = os.path.dirname(os.path.abspath(__file__))
+excel_files_to_clean = [
+    'violations.xlsx',
+    'violations_details.xlsx',
+    'Clean.xlsx'
+]
+
+for excel_file in excel_files_to_clean:
+    file_path = os.path.join(base_dir, excel_file)
+    if os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+            print(f"Deleted: {excel_file}")
+        except Exception as e:
+            print(f"Failed to delete {excel_file}: {e}")
+    else:
+        print(f"Not found: {excel_file}")
+
+print("=== Excel files cleanup completed ===")
+print()
+
 # Set up the browser
 options = webdriver.ChromeOptions()
 options.add_argument('--headless')  # Run without graphical interface (automated)
@@ -141,29 +164,72 @@ try:
     # After navigating to results page
     print("Collecting all rows from the table...")
     time.sleep(2)
-    # Collect only the actual rows
+
+    # تحسين العثور على الصفوف - محاولة عدة طرق
+    rows = []
+
+    # الطريقة الأولى: البحث عن الصفوف القابلة للنقر
     rows = driver.find_elements(By.CSS_SELECTOR, '#Id_FinesResultTable .p-selectable-row')
+    print(f"Method 1 - p-selectable-row: Found {len(rows)} rows")
+
+    # الطريقة الثانية: البحث عن قائمة المخالفات
     if not rows:
         rows = driver.find_elements(By.CSS_SELECTOR, '#Id_FinesResultTable .fines_violation_list')
+        print(f"Method 2 - fines_violation_list: Found {len(rows)} rows")
+
+    # الطريقة الثالثة: البحث عن جميع صفوف الجدول
     if not rows:
         all_trs = driver.find_elements(By.CSS_SELECTOR, '#Id_FinesResultTable tr')
-        rows = all_trs[1:] if len(all_trs) > 1 else []
-    print(f"Number of rows to click: {len(rows)}")
+        rows = all_trs[1:] if len(all_trs) > 1 else []  # تجاهل صف العنوان
+        print(f"Method 3 - all tr elements: Found {len(rows)} rows")
+
+    # الطريقة الرابعة: البحث عن أي صف يحتوي على بيانات
+    if not rows:
+        rows = driver.find_elements(By.CSS_SELECTOR, '#Id_FinesResultTable tr:not(:first-child)')
+        print(f"Method 4 - all tr except header: Found {len(rows)} rows")
+
+    # الطريقة الخامسة: البحث في جميع العناصر داخل الجدول
+    if not rows:
+        table = driver.find_element(By.ID, "Id_FinesResultTable")
+        all_elements = table.find_elements(By.XPATH, './/tr[position()>1]')
+        rows = [elem for elem in all_elements if elem.text.strip()]
+        print(f"Method 5 - XPath all tr elements: Found {len(rows)} rows")
+
+    print(f"Final number of rows to process: {len(rows)}")
+
+    # طباعة معلومات عن الصفوف الموجودة
+    for i, row in enumerate(rows[:5]):  # طباعة أول 5 صفوف فقط
+        try:
+            row_text = row.text.strip()
+            print(f"Row {i+1} preview: {row_text[:100]}...")
+        except:
+            print(f"Row {i+1}: Could not read text")
+
+    if len(rows) > 5:
+        print(f"... and {len(rows) - 5} more rows")
 
     details_list = []
     page_num = 1
+    processed_rows = 0
+
     while True:
         print(f"Collecting all rows from the table on page {page_num}...")
         time.sleep(2)
-        rows = driver.find_elements(By.CSS_SELECTOR, '#Id_FinesResultTable .p-selectable-row')
-        if not rows:
-            rows = driver.find_elements(By.CSS_SELECTOR, '#Id_FinesResultTable .fines_violation_list')
-        if not rows:
-            all_trs = driver.find_elements(By.CSS_SELECTOR, '#Id_FinesResultTable tr')
-            rows = all_trs[1:] if len(all_trs) > 1 else []
-        print(f"Number of rows to click: {len(rows)}")
 
-        for idx, row in enumerate(rows):
+        # استخدام نفس منطق العثور على الصفوف
+        current_rows = []
+        current_rows = driver.find_elements(By.CSS_SELECTOR, '#Id_FinesResultTable .p-selectable-row')
+        if not current_rows:
+            current_rows = driver.find_elements(By.CSS_SELECTOR, '#Id_FinesResultTable .fines_violation_list')
+        if not current_rows:
+            all_trs = driver.find_elements(By.CSS_SELECTOR, '#Id_FinesResultTable tr')
+            current_rows = all_trs[1:] if len(all_trs) > 1 else []
+        if not current_rows:
+            current_rows = driver.find_elements(By.CSS_SELECTOR, '#Id_FinesResultTable tr:not(:first-child)')
+
+        print(f"Page {page_num}: Found {len(current_rows)} rows to process")
+
+        for idx, row in enumerate(current_rows):
             try:
                 row_text = row.text.strip()
                 print(f"Row {idx+1}: {row_text}")
@@ -186,8 +252,10 @@ try:
                     details_text = ''
                     print(f"Failed to retrieve details for Row {idx+1}: {e}")
                 details_list.append({'Details': details_text})
+                processed_rows += 1
+                print(f"Successfully processed row {processed_rows} on page {page_num}")
             except Exception as e:
-                print(f"Error processing Row {idx+1}: {e}")
+                print(f"Error processing Row {idx+1} on page {page_num}: {e}")
                 continue
 
         # Try to click the next button
@@ -203,7 +271,11 @@ try:
             print(f"Next button not found or error: {e}")
             break
 
-    print(f"Collected details for {len(details_list)} violations.")
+    print(f"=== FINAL SUMMARY ===")
+    print(f"Total rows processed: {processed_rows}")
+    print(f"Total violations collected: {len(details_list)}")
+    print(f"Pages processed: {page_num}")
+
     if details_list:
         df = pd.DataFrame(details_list)
         base_dir = os.path.dirname(os.path.abspath(__file__))

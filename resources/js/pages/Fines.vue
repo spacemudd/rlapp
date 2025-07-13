@@ -2,7 +2,7 @@
 import AppSidebarLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { usePage } from '@inertiajs/vue3';
 import { ref, onUnmounted, computed } from 'vue';
-import { RefreshCw, FileText } from 'lucide-vue-next';
+import { RefreshCw, FileText, Clock, Calendar } from 'lucide-vue-next';
 
 interface Fine {
   id: number;
@@ -19,6 +19,99 @@ interface Fine {
 }
 
 const fines = (usePage().props.fines as Fine[]) || [];
+
+// الحصول على آخر تاريخ تحديث من آخر مخالفة
+const lastUpdated = computed(() => {
+  if (fines.length === 0) return null;
+
+  // ترتيب المخالفات حسب تاريخ الإنشاء (الأحدث أولاً)
+  const sortedFines = [...fines].sort((a, b) => {
+    const dateA = new Date(a.dateandtime || 0);
+    const dateB = new Date(b.dateandtime || 0);
+    return dateB.getTime() - dateA.getTime();
+  });
+
+  return sortedFines[0].dateandtime;
+});
+
+// تنسيق التاريخ بشكل جميل
+const formattedLastUpdated = computed(() => {
+  if (!lastUpdated.value) return 'N/A';
+
+  const date = new Date(lastUpdated.value);
+  const now = new Date();
+  const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+
+  if (diffInHours < 1) {
+    return 'Just now';
+  } else if (diffInHours < 24) {
+    return `${diffInHours} hours ago`;
+  } else {
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays} days ago`;
+  }
+});
+
+// متغير لتخزين آخر تحديث من السيرفر
+const serverLastSync = ref(null);
+
+// دالة لجلب آخر تحديث من السيرفر
+const fetchLastSync = async () => {
+  try {
+    const response = await fetch('/fines/last-sync');
+    const data = await response.json();
+    if (data.last_sync) {
+      serverLastSync.value = data.last_sync;
+    }
+  } catch (error) {
+    console.error('Failed to fetch last sync:', error);
+  }
+};
+
+// جلب آخر تحديث عند تحميل الصفحة
+fetchLastSync();
+
+// تحديث آخر تحديث كل دقيقة
+setInterval(fetchLastSync, 60000);
+
+// تنسيق آخر تحديث من السيرفر
+const formattedServerLastSync = computed(() => {
+  if (!serverLastSync.value) return 'N/A';
+
+  const date = new Date(serverLastSync.value);
+  const now = new Date();
+  const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+
+  if (diffInMinutes < 1) {
+    return 'Just now';
+  } else if (diffInMinutes < 60) {
+    return `${diffInMinutes} minutes ago`;
+  } else if (diffInMinutes < 1440) { // أقل من يوم
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    return `${diffInHours} hours ago`;
+  } else {
+    const diffInDays = Math.floor(diffInMinutes / 1440);
+    return `${diffInDays} days ago`;
+  }
+});
+
+// حساب إجمالي مبلغ المخالفات
+const totalAmount = computed(() => {
+  return fines.reduce((total, fine) => {
+    const amount = parseFloat(fine.amount?.toString() || '0');
+    return total + amount;
+  }, 0);
+});
+
+// تنسيق إجمالي المبلغ بشكل جميل
+const formattedTotalAmount = computed(() => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'AED',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(totalAmount.value);
+});
 
 const columns = [
   { key: 'row_number', label: '#' },
@@ -108,9 +201,47 @@ onUnmounted(() => {
     <div class="p-8">
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold">Check Fines With RTA</h1>
+
+        <!-- Last Updated Label على اليمين -->
+        <div class="flex items-center space-x-4">
+          <!-- Total Amount -->
+          <div class="flex items-center space-x-2 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg px-4 py-3 shadow-sm">
+            <div class="flex items-center justify-center w-8 h-8 bg-green-100 rounded-full">
+              <FileText class="w-4 h-4 text-green-600" />
+            </div>
+            <div class="flex flex-col">
+              <span class="text-xs font-medium text-green-900">Total Amount</span>
+              <span class="text-sm font-semibold text-green-700">{{ formattedTotalAmount }}</span>
+            </div>
+          </div>
+
+          <!-- Last Sync -->
+          <div class="flex items-center space-x-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg px-4 py-3 shadow-sm">
+            <div class="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
+              <Clock class="w-4 h-4 text-blue-600" />
+            </div>
+            <div class="flex flex-col">
+              <span class="text-xs font-medium text-blue-900">Last Sync</span>
+              <span class="text-sm font-semibold text-blue-700">{{ formattedServerLastSync }}</span>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="mb-2 text-xs text-gray-500">
-        Last updated: {{ lastUpdated ? new Date(lastUpdated).toLocaleString() : 'N/A' }}
+
+      <!-- معلومات إضافية -->
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center space-x-4 text-sm text-gray-600">
+          <div class="flex items-center space-x-1">
+            <Calendar class="w-4 h-4" />
+            <span>Total Fines: {{ fines.length }}</span>
+          </div>
+          <div class="flex items-center space-x-1">
+            <FileText class="w-4 h-4" />
+            <span>Showing: {{ filteredFines.length }}</span>
+          </div>
+        </div>
+
+
       </div>
       <!-- فلاتر التواريخ -->
       <div class="flex flex-wrap gap-4 mb-6 items-end">
