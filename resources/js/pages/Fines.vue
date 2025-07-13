@@ -124,7 +124,6 @@ const columns = [
   { key: 'amount', label: 'Amount' },
   { key: 'fine_number', label: 'Fine Number' },
   { key: 'details', label: 'Details' },
-  { key: 'dispute', label: 'Dispute' },
 ];
 
 const syncing = ref(false);
@@ -279,10 +278,6 @@ onUnmounted(() => {
               <td class="px-2 py-1 text-[10px]">{{ fine.amount }}</td>
               <td class="px-2 py-1 text-[10px]">{{ fine.fine_number }}</td>
               <td class="px-2 py-1 text-[10px]">{{ fine.details }}</td>
-              <td class="px-2 py-1 text-[10px]">
-                <span v-if="fine.dispute" class="text-green-600 font-bold">Yes</span>
-                <span v-else class="text-gray-400">No</span>
-              </td>
             </tr>
             <tr v-if="!filteredFines.length">
               <td :colspan="columns.length" class="text-center py-8 text-gray-400">No fines found.</td>
