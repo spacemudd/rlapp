@@ -21,9 +21,9 @@ details_excel_path = os.path.join(base_dir, 'violations_details.xlsx')
 
 # التحقق من وجود الملف
 if not os.path.exists(details_excel_path):
-    print(f"File {details_excel_path} not found. Creating empty DataFrame.")
-    # إنشاء DataFrame فارغ مع العمود المطلوب
-    df = pd.DataFrame(columns=['Details'])
+    print(f"File {details_excel_path} not found.")
+    print("No violations details to process. Exiting script.")
+    exit(0)
 else:
     df = pd.read_excel(details_excel_path)
 
@@ -92,11 +92,15 @@ if clean_data:
     clean_df.to_excel(clean_excel_path, index=False)
     print(f'Clean.xlsx created at {clean_excel_path}')
 else:
-    print('No data to process. Creating empty Clean.xlsx file.')
-    clean_df = pd.DataFrame(columns=columns_needed)
+    print('No data to process. Skipping Clean.xlsx creation.')
     clean_excel_path = os.path.join(base_dir, 'Clean.xlsx')
-    clean_df.to_excel(clean_excel_path, index=False)
-    print(f'Empty Clean.xlsx created at {clean_excel_path}')
+    if os.path.exists(clean_excel_path):
+        print(f'Using existing Clean.xlsx at {clean_excel_path}')
+    else:
+        print('No Clean.xlsx file found and no data to create one.')
+        # خروج من السكريبت إذا لم تكن هناك بيانات
+        print("Exiting script due to no data to process.")
+        exit(0)
 
 # استيراد فقط المخالفات الجديدة من Clean.xlsx
 # استخدام المسار النسبي بدلاً من المسار المطلق
@@ -162,8 +166,8 @@ except subprocess.CalledProcessError as e:
     except Exception as db_err:
         print("Database check failed:", db_err)
 finally:
-    # الاحتفاظ بملفات الإكسل كما هي بدون حذف
-    print("Excel files have been preserved:")
+    # الاحتفاظ بملفات الإكسل الموجودة فقط
+    print("Excel files status:")
     excel_files = [
         os.path.join(base_dir, 'violations.xlsx'),
         os.path.join(base_dir, 'violations_details.xlsx'),
@@ -171,19 +175,6 @@ finally:
     ]
     for f in excel_files:
         if os.path.exists(f):
-            print(f"Preserved: {f}")
+            print(f"Found: {f}")
         else:
             print(f"Not found: {f}")
-            # إنشاء ملف فارغ إذا لم يكن موجوداً
-            if f.endswith('violations.xlsx'):
-                empty_df = pd.DataFrame(columns=['Violation'])
-                empty_df.to_excel(f, index=False)
-                print(f"Created empty: {f}")
-            elif f.endswith('violations_details.xlsx'):
-                empty_df = pd.DataFrame(columns=['Details'])
-                empty_df.to_excel(f, index=False)
-                print(f"Created empty: {f}")
-            elif f.endswith('Clean.xlsx'):
-                empty_df = pd.DataFrame(columns=columns_needed)
-                empty_df.to_excel(f, index=False)
-                print(f"Created empty: {f}")
