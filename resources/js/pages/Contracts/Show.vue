@@ -9,7 +9,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ref } from 'vue';
+import { Input } from '@/components/ui/input';
+import { ref, watch } from 'vue';
 
 interface Contract {
     id: string;
@@ -56,6 +57,19 @@ interface Contract {
         total_amount: number;
         invoice_date: string;
     }>;
+    extensions?: Array<{
+        id: string;
+        extension_number: number;
+        extension_days: number;
+        daily_rate: number;
+        total_amount: number;
+        original_end_date: string;
+        new_end_date: string;
+        reason?: string;
+        status: string;
+        approved_by?: string;
+        created_at: string;
+    }>;
     void_reason?: string;
 }
 
@@ -70,8 +84,16 @@ const voidForm = useForm({
     void_reason: '',
 });
 
+// Form for extension action
+const extensionForm = useForm({
+    days: 1,
+    reason: '',
+});
+
 // Dialog state
 const showVoidDialog = ref(false);
+const showExtendDialog = ref(false);
+const extensionPricing = ref<any>(null);
 
 // Action handlers
 const activateContract = () => {
@@ -99,6 +121,61 @@ const submitVoid = () => {
             voidForm.reset();
         }
     });
+};
+
+const submitExtension = () => {
+    extensionForm.post(route('contracts.extend', props.contract.id), {
+        onSuccess: () => {
+            showExtendDialog.value = false;
+            extensionForm.reset();
+            extensionPricing.value = null;
+        }
+    });
+};
+
+const calculateExtensionPricing = async () => {
+    if (!extensionForm.days || extensionForm.days < 1) {
+        extensionPricing.value = null;
+        return;
+    }
+
+    try {
+        const url = route('contracts.extension-pricing', props.contract.id) + `?days=${extensionForm.days}`;
+        
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Failed to calculate extension pricing: ${response.status}`);
+        }
+
+        const data = await response.json();
+        extensionPricing.value = data.success ? data : null;
+    } catch (error) {
+        console.error('Error calculating extension pricing:', error);
+        extensionPricing.value = null;
+    }
+};
+
+// Watch for changes in extension days
+watch(() => extensionForm.days, () => {
+    calculateExtensionPricing();
+});
+
+// Method to open extend dialog
+const openExtendDialog = () => {
+    showExtendDialog.value = true;
+    // Reset form and set default values
+    extensionForm.reset();
+    extensionForm.days = 1;
+    extensionForm.reason = '';
+    // Trigger initial pricing calculation
+    calculateExtensionPricing();
 };
 
 const downloadPdf = () => {
@@ -284,6 +361,16 @@ function goToCreateInvoice() {
                                     >
                                         <Receipt class="w-4 h-4 mr-2" />
                                         Create Invoice
+                                    </DropdownMenuItem>
+
+                                    <!-- Extend Contract -->
+                                    <DropdownMenuItem
+                                        v-if="contract.status === 'active'"
+                                        @click="openExtendDialog"
+                                        class="cursor-pointer"
+                                    >
+                                        <Calendar class="w-4 h-4 mr-2" />
+                                        Extend Contract
                                     </DropdownMenuItem>
 
                                     <DropdownMenuSeparator v-if="contract.status !== 'completed' && contract.status !== 'void'" />
@@ -512,6 +599,45 @@ function goToCreateInvoice() {
                     </CardContent>
                 </Card>
 
+                <!-- Contract Extensions -->
+                <Card v-if="contract.extensions && contract.extensions.length > 0">
+                    <CardHeader>
+                        <CardTitle class="flex items-center gap-2">
+                            <Calendar class="w-5 h-5" />
+                            Contract Extensions ({{ contract.extensions.length }})
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="space-y-3">
+                            <div
+                                v-for="extension in contract.extensions"
+                                :key="extension.id"
+                                class="flex items-center justify-between p-3 border rounded-lg"
+                                :class="extension.status === 'approved' ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'"
+                            >
+                                <div class="flex items-center gap-3">
+                                    <Calendar class="w-4 h-4" :class="extension.status === 'approved' ? 'text-green-600' : 'text-yellow-600'" />
+                                    <div>
+                                        <p class="font-medium">Extension #{{ extension.extension_number }}</p>
+                                        <p class="text-sm text-gray-500">
+                                            +{{ extension.extension_days }} days 
+                                            ({{ formatDate(extension.original_end_date) }} → {{ formatDate(extension.new_end_date) }})
+                                        </p>
+                                        <p v-if="extension.reason" class="text-sm text-gray-600 mt-1">{{ extension.reason }}</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="font-medium">{{ formatCurrency(extension.total_amount) }}</p>
+                                    <p class="text-sm text-gray-500">{{ formatCurrency(extension.daily_rate) }}/day</p>
+                                    <Badge :class="extension.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'" class="text-xs mt-1">
+                                        {{ extension.status.toUpperCase() }}
+                                    </Badge>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
                 <!-- Void Reason (if applicable) -->
                 <Card v-if="contract.status === 'void' && contract.void_reason">
                     <CardHeader>
@@ -555,6 +681,81 @@ function goToCreateInvoice() {
                         </Button>
                         <Button type="submit" variant="destructive" :disabled="voidForm.processing">
                             {{ voidForm.processing ? 'Voiding...' : 'Void Contract' }}
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+
+        <!-- Extend Contract Dialog -->
+        <Dialog v-model:open="showExtendDialog">
+            <DialogContent class="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Extend Contract</DialogTitle>
+                    <DialogDescription>
+                        Extend the contract duration with automatic pricing calculation based on current vehicle rates.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <form @submit.prevent="submitExtension" class="space-y-4">
+                    <div class="space-y-2">
+                        <Label for="extension_days">Additional Days *</Label>
+                        <Input
+                            id="extension_days"
+                            v-model.number="extensionForm.days"
+                            type="number"
+                            min="1"
+                            max="365"
+                            required
+                            placeholder="Enter number of days"
+                        />
+                        <div v-if="extensionForm.errors.days" class="text-sm text-red-600">
+                            {{ extensionForm.errors.days }}
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <Label for="extension_reason">Reason for Extension</Label>
+                        <Textarea
+                            id="extension_reason"
+                            v-model="extensionForm.reason"
+                            placeholder="Enter reason for extending the contract..."
+                            rows="3"
+                        />
+                        <div v-if="extensionForm.errors.reason" class="text-sm text-red-600">
+                            {{ extensionForm.errors.reason }}
+                        </div>
+                    </div>
+
+                    <!-- Pricing Preview -->
+                    <div v-if="extensionPricing" class="p-4 bg-green-50 border border-green-200 rounded-md">
+                        <h4 class="font-medium text-green-800 mb-2">Extension Pricing Preview:</h4>
+                        <div class="space-y-1 text-sm text-green-700">
+                            <div class="flex justify-between">
+                                <span>Duration:</span>
+                                <span>{{ extensionForm.days }} days</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Rate:</span>
+                                <span>{{ formatCurrency(extensionPricing.daily_rate) }}/day</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Pricing Tier:</span>
+                                <span class="capitalize">{{ extensionPricing.pricing_tier }}</span>
+                            </div>
+                            <div class="flex justify-between font-bold border-t border-green-300 pt-1 mt-2">
+                                <span>Total Extension Cost:</span>
+                                <span>{{ formatCurrency(extensionPricing.total_amount) }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button type="button" variant="outline" @click="showExtendDialog = false">
+                            Cancel
+                        </Button>
+                        <Button type="submit" :disabled="extensionForm.processing || !extensionPricing">
+                            {{ extensionForm.processing ? 'Extending...' : 'Extend Contract' }}
                         </Button>
                     </DialogFooter>
                 </form>

@@ -2,6 +2,7 @@
 import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { useI18n } from 'vue-i18n';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -47,6 +48,8 @@ const page = usePage();
 
 console.log('PAGE PROPS:', page.props);
 console.log('COMPONENT PROPS:', props);
+
+const { t } = useI18n();
 
 const showInviteDialog = ref(false);
 const showRemoveDialog = ref(false);
@@ -186,7 +189,7 @@ const submitStripeForm = () => {
 </script>
 
 <template>
-    <Head title="Team Management" />
+    <Head :title="t('team_management')" />
 
     <AppLayout>
         <div class="p-6 space-y-6">
@@ -200,7 +203,7 @@ const submitStripeForm = () => {
                     <div class="flex-1">
                         <h3 class="text-green-800 font-medium">{{ $page.props.flash.success }}</h3>
                         <p class="text-green-700 text-sm mt-1">
-                            Invitation sent to <strong>{{ $page.props.flash.invitationEmail }}</strong>
+                            {{ t('send_invitation') }} <strong>{{ $page.props.flash.invitationEmail }}</strong>
                         </p>
                         <div class="mt-3 flex items-center gap-2">
                             <Button
@@ -214,7 +217,7 @@ const submitStripeForm = () => {
                                     class="w-4 h-4 text-green-600"
                                 />
                                 <Copy v-else class="w-4 h-4" />
-                                {{ copiedUrls.has('flash-invitation') ? 'Copied!' : 'Copy Invitation Link' }}
+                                {{ copiedUrls.has('flash-invitation') ? t('success') : t('send_invitation') }}
                             </Button>
                         </div>
                     </div>
@@ -224,14 +227,14 @@ const submitStripeForm = () => {
             <!-- Header -->
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-3xl font-bold">Team Management</h1>
+                    <h1 class="text-3xl font-bold">{{ t('team_management') }}</h1>
                     <p class="text-gray-600 mt-1">
-                        Manage your team members and their roles for {{ team.name }}
+                        {{ t('manage_team') }} {{ team.name }}
                     </p>
                 </div>
                 <Button v-if="canInviteUsers" @click="showInviteDialog = true" class="flex items-center gap-2">
                     <UserPlus class="w-4 h-4" />
-                    Invite Member
+                    {{ t('invite_member') }}
                 </Button>
             </div>
 
@@ -240,10 +243,10 @@ const submitStripeForm = () => {
                 <CardHeader>
                     <CardTitle class="flex items-center gap-2">
                         <User class="w-5 h-5" />
-                        Team Members ({{ members.length }})
+                        {{ t('team_members') }} ({{ members.length }})
                     </CardTitle>
                     <CardDescription>
-                        Current members of your team and their assigned roles
+                        {{ t('manage_team') }}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -365,7 +368,7 @@ const submitStripeForm = () => {
                                         class="w-4 h-4 text-green-600"
                                     />
                                     <Copy v-else class="w-4 h-4" />
-                                    {{ copiedUrls.has(`invitation-${invitation.id}`) ? 'Copied!' : 'Copy Link' }}
+                                    {{ copiedUrls.has(`invitation-${invitation.id}`) ? t('copied') : t('copy_link') }}
                                 </Button>
 
                                 <!-- Cancel Invitation Button -->

@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 </script>
 
 <template>
-    <Head title="Welcome">
+    <Head :title="t('welcome')">
         <link rel="preconnect" href="https://rsms.me/" />
         <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
     </Head>
@@ -15,14 +18,14 @@ import { Head, Link } from '@inertiajs/vue3';
                     :href="route('dashboard')"
                     class="inline-block rounded-sm border border-[#19140035] px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#1915014a] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b]"
                 >
-                    Dashboard
+                    {{ t('dashboard') }}
                 </Link>
                 <template v-else>
                     <Link
                         :href="route('login')"
                         class="inline-block rounded-sm border border-[#19140035] px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#1915014a] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b]"
                     >
-                        Log in
+                        {{ t('login') }}
                     </Link>
                 </template>
             </nav>
@@ -30,8 +33,11 @@ import { Head, Link } from '@inertiajs/vue3';
         <div class="flex w-full items-center justify-center lg:grow">
             <main class="text-center">
                 <h1 class="text-4xl font-bold lg:text-6xl">
-                    Luxuria Cars Rental Application
+                    {{ t('app_name') }}
                 </h1>
+                <p class="mt-4 text-lg text-gray-600 dark:text-gray-300">
+                    {{ t('welcome_message') }}
+                </p>
             </main>
         </div>
     </div>

@@ -44,6 +44,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/contracts/{contract}/void', [App\Http\Controllers\ContractController::class, 'void'])->name('contracts.void');
     Route::post('/contracts/{contract}/create-invoice', [App\Http\Controllers\ContractController::class, 'createInvoice'])->name('contracts.create-invoice');
     Route::get('/contracts/{contract}/pdf', [App\Http\Controllers\ContractController::class, 'downloadPdf'])->name('contracts.pdf');
+    Route::post('/contracts/{contract}/extend', [App\Http\Controllers\ContractController::class, 'extend'])->name('contracts.extend');
+    Route::get('/contracts/{contract}/extension-pricing', [App\Http\Controllers\ContractController::class, 'calculateExtensionPricing'])->name('contracts.extension-pricing');
 
     // Test routes
     Route::get('/test-arabic', function() {
@@ -65,6 +67,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Search endpoints for async dropdowns
     Route::get('/api/customers/search', [App\Http\Controllers\ContractController::class, 'searchCustomers'])->name('api.customers.search');
     Route::get('/api/vehicles/search', [App\Http\Controllers\ContractController::class, 'searchVehicles'])->name('api.vehicles.search');
+    Route::get('/api/pricing/calculate', [App\Http\Controllers\ContractController::class, 'calculatePricing'])->name('api.pricing.calculate');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {

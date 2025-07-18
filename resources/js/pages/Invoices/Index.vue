@@ -4,6 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Plus, Search, Filter, Download, Eye, MoreVertical } from 'lucide-vue-next';
 import { Link, router } from '@inertiajs/vue3';
 import { format } from 'date-fns';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 interface Invoice {
     id: string;
@@ -37,11 +40,11 @@ const getStatusColor = (status: string) => {
 const getStatusText = (status: string) => {
     switch (status) {
         case 'paid':
-            return 'Paid';
+            return t('paid');
         case 'unpaid':
-            return 'Unpaid';
+            return t('unpaid');
         case 'partial':
-            return 'Partial';
+            return t('partial');
         default:
             return status;
     }
@@ -58,14 +61,14 @@ const formatDate = (date: string) => {
     return format(new Date(date), 'MMM dd, yyyy');
 };
 
-function openPdf(id) {
+function openPdf(id: string) {
     if (typeof window !== 'undefined' && window.open) {
         window.open(`/invoices/${id}/pdf`, '_blank');
     }
 }
 
-function deleteInvoice(id) {
-    if (confirm('Are you sure you want to delete this invoice?')) {
+function deleteInvoice(id: string) {
+    if (confirm(t('delete_invoice_confirm'))) {
         router.delete(`/invoices/${id}`);
     }
 }
@@ -77,26 +80,26 @@ function deleteInvoice(id) {
             <!-- Header Section -->
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                 <div>
-                    <h1 class="text-2xl font-semibold text-gray-900">Invoices</h1>
-                    <p class="text-sm text-gray-500 mt-1">Manage and track all your invoices</p>
+                    <h1 class="text-2xl font-semibold text-gray-900">{{ t('invoices') }}</h1>
+                    <p class="text-sm text-gray-500 mt-1">{{ t('manage_invoices') }}</p>
                 </div>
                 <div class="flex items-center gap-3">
                     <div class="relative">
-                        <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 rtl:left-auto rtl:right-3" />
                         <input
                             type="text"
-                            placeholder="Search invoices..."
-                            class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            :placeholder="t('search_invoices')"
+                            class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rtl:pr-10 rtl:pl-4"
                         />
                     </div>
                     <Button variant="outline" class="flex items-center gap-2">
                         <Filter class="h-4 w-4" />
-                        Filter
+                        {{ t('filter') }}
                     </Button>
                     <Button as-child class="flex items-center gap-2">
                         <Link :href="route('invoices.create')">
                             <Plus class="h-4 w-4" />
-                            Create Invoice
+                            {{ t('create_invoice') }}
                         </Link>
                     </Button>
                 </div>
@@ -107,7 +110,7 @@ function deleteInvoice(id) {
                 <div class="bg-white rounded-lg shadow p-6 border border-gray-100">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm font-medium text-gray-600">Total Invoices</p>
+                            <p class="text-sm font-medium text-gray-600">{{ t('total_invoices') }}</p>
                             <p class="text-2xl font-semibold text-gray-900">{{ invoices.length }}</p>
                         </div>
                         <div class="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
@@ -118,7 +121,7 @@ function deleteInvoice(id) {
                 <div class="bg-white rounded-lg shadow p-6 border border-gray-100">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm font-medium text-gray-600">Paid Invoices</p>
+                            <p class="text-sm font-medium text-gray-600">{{ t('paid_invoices') }}</p>
                             <p class="text-2xl font-semibold text-gray-900">
                                 {{ invoices.filter(i => i.status === 'paid').length }}
                             </p>
@@ -131,7 +134,7 @@ function deleteInvoice(id) {
                 <div class="bg-white rounded-lg shadow p-6 border border-gray-100">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm font-medium text-gray-600">Total Amount</p>
+                            <p class="text-sm font-medium text-gray-600">{{ t('total_amount') }}</p>
                             <p class="text-2xl font-semibold text-gray-900">
                                 {{ formatCurrency(invoices.reduce((sum, inv) => sum + inv.total_amount, 0)) }}
                             </p>
@@ -149,12 +152,12 @@ function deleteInvoice(id) {
                     <table class="w-full">
                         <thead>
                             <tr class="bg-gray-50 border-b border-gray-100">
-                                <th class="py-3 px-4 text-left text-sm font-semibold text-gray-600">Invoice</th>
-                                <th class="py-3 px-4 text-left text-sm font-semibold text-gray-600">Customer</th>
-                                <th class="py-3 px-4 text-left text-sm font-semibold text-gray-600">Date</th>
-                                <th class="py-3 px-4 text-left text-sm font-semibold text-gray-600">Status</th>
-                                <th class="py-3 px-4 text-right text-sm font-semibold text-gray-600">Amount</th>
-                                <th class="py-3 px-4 text-right text-sm font-semibold text-gray-600">Actions</th>
+                                <th class="py-3 px-4 text-left text-sm font-semibold text-gray-600 rtl:text-right">{{ t('invoice_number') }}</th>
+                                <th class="py-3 px-4 text-left text-sm font-semibold text-gray-600 rtl:text-right">{{ t('customer') }}</th>
+                                <th class="py-3 px-4 text-left text-sm font-semibold text-gray-600 rtl:text-right">{{ t('date') }}</th>
+                                <th class="py-3 px-4 text-left text-sm font-semibold text-gray-600 rtl:text-right">{{ t('status') }}</th>
+                                <th class="py-3 px-4 text-right text-sm font-semibold text-gray-600 rtl:text-left">{{ t('amount') }}</th>
+                                <th class="py-3 px-4 text-right text-sm font-semibold text-gray-600 rtl:text-left">{{ t('actions') }}</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
@@ -177,22 +180,22 @@ function deleteInvoice(id) {
                                         {{ getStatusText(invoice.status) }}
                                     </span>
                                 </td>
-                                <td class="py-4 px-4 text-right">
+                                <td class="py-4 px-4 text-right rtl:text-left">
                                     <span class="font-medium text-gray-900">{{ formatCurrency(invoice.total_amount) }}</span>
                                 </td>
                                 <td class="py-4 px-4">
-                                    <div class="flex items-center justify-end gap-2">
+                                    <div class="flex items-center justify-end gap-2 rtl:justify-start">
                                         <Link
                                             :href="route('invoices.show', invoice.id)"
                                             class="h-8 px-3 flex items-center justify-center text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 rounded-full"
-                                            title="Open Invoice"
+                                            :title="t('open')"
                                         >
-                                            Open
+                                            {{ t('open') }}
                                         </Link>
                                         <button
                                             @click="openPdf(invoice.id)"
-                                            class="h-8 w-8 flex items-center justify-center text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-800 rounded-full ml-1 transition"
-                                            title="Download PDF"
+                                            class="h-8 w-8 flex items-center justify-center text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-800 rounded-full ml-1 transition rtl:ml-0 rtl:mr-1"
+                                            :title="t('download_pdf')"
                                         >
                                             <span class="font-bold text-xs">PDF</span>
                                         </button>

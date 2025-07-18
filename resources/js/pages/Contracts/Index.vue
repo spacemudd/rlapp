@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, watch } from 'vue';
 import { Plus, Search, MoreVertical, FileText, Eye, Edit, Trash2, Play, CheckCircle, XCircle, Receipt } from 'lucide-vue-next';
+import { useI18n } from 'vue-i18n';
 
 interface Contract {
     id: string;
@@ -59,6 +60,8 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+
+const { t } = useI18n();
 
 const search = ref(props.filters.search || '');
 const status = ref(props.filters.status || 'all');
@@ -170,7 +173,7 @@ function goToCreateInvoice(contract: Contract) {
 </script>
 
 <template>
-    <Head title="Contracts" />
+    <Head :title="t('contracts')" />
 
     <AppLayout>
         <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
@@ -178,13 +181,13 @@ function goToCreateInvoice(contract: Contract) {
             <!-- Header -->
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-2xl font-semibold text-gray-900">Contracts</h1>
-                    <p class="text-gray-600 mt-1">Manage rental contracts and their lifecycle</p>
+                    <h1 class="text-2xl font-semibold text-gray-900">{{ t('contracts') }}</h1>
+                    <p class="text-gray-600 mt-1">{{ t('manage_contracts') }}</p>
                 </div>
                 <Link :href="route('contracts.create')">
                     <Button>
                         <Plus class="w-4 h-4 mr-2" />
-                        New Contract
+                        {{ t('new_contract') }}
                     </Button>
                 </Link>
             </div>

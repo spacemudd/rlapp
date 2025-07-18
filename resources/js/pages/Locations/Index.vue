@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MapPin, Plus, Search, MoreHorizontal, Edit, Eye, Trash2, Filter } from 'lucide-vue-next';
+import { useI18n } from 'vue-i18n';
 
 interface Location {
     id: string;
@@ -43,6 +44,8 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+
+const { t } = useI18n();
 
 // Reactive filters
 const search = ref(props.filters.search || '');
@@ -110,7 +113,7 @@ const hasActiveFilters = computed(() => {
 </script>
 
 <template>
-    <Head title="Locations" />
+    <Head :title="t('locations')" />
     
     <AppLayout>
         <div class="py-6">
@@ -120,17 +123,17 @@ const hasActiveFilters = computed(() => {
                     <div class="sm:flex sm:items-center sm:justify-between">
                         <div>
                             <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl">
-                                Locations
+                                {{ t('locations') }}
                             </h2>
                             <p class="mt-1 text-sm text-gray-500">
-                                Manage your office locations and vehicle stations
+                                {{ t('manage_locations') }}
                             </p>
                         </div>
                         <div class="mt-4 sm:mt-0">
                             <Link :href="route('locations.create')">
                                 <Button>
                                     <Plus class="w-4 h-4 mr-2" />
-                                    Add Location
+                                    {{ t('add_location') }}
                                 </Button>
                             </Link>
                         </div>

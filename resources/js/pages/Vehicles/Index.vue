@@ -2,6 +2,9 @@
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -143,8 +146,8 @@ const formatCurrency = (amount?: number) => {
 </script>
 
 <template>
-    <Head title="Vehicles" />
-
+    <Head :title="t('vehicles')" />
+    
     <AppLayout>
         <div class="py-6">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -152,17 +155,17 @@ const formatCurrency = (amount?: number) => {
                 <div class="md:flex md:items-center md:justify-between mb-6">
                     <div class="flex-1 min-w-0">
                         <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
-                            Vehicles
+                            {{ t('vehicles') }}
                         </h2>
                         <p class="mt-1 text-sm text-gray-500">
-                            Manage your fleet of rental vehicles
+                            {{ t('manage_vehicles') }}
                         </p>
                     </div>
-                    <div class="mt-4 flex md:mt-0 md:ml-4">
+                    <div class="mt-4 flex md:mt-0 md:ml-4 rtl:md:mr-4 rtl:md:ml-0">
                         <Link :href="route('vehicles.create')">
                             <Button>
-                                <Plus class="w-4 h-4 mr-2" />
-                                Add Vehicle
+                                <Plus class="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                                {{ t('add_vehicle') }}
                             </Button>
                         </Link>
                     </div>
@@ -173,11 +176,11 @@ const formatCurrency = (amount?: number) => {
                     <CardContent class="pt-6">
                         <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                             <div class="relative">
-                                <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                                <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 rtl:left-auto rtl:right-3" />
                                 <Input
                                     v-model="search"
-                                    placeholder="Search vehicles..."
-                                    class="pl-10"
+                                    :placeholder="t('search_vehicles')"
+                                    class="pl-10 rtl:pr-10 rtl:pl-3"
                                 />
                             </div>
                             <select
@@ -230,32 +233,32 @@ const formatCurrency = (amount?: number) => {
                             <table class="w-full">
                                 <thead class="bg-gray-50 border-b">
                                     <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Vehicle
+                                                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            {{ t('vehicles') }}
                                         </th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Plate Number
+                                            {{ t('plate_number') }}
                                         </th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Status
-                                        </th>
-                                                                                                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Category
+                                            {{ t('status') }}
                                         </th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Ownership
+                                            {{ t('category') }}
                                         </th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Details
+                                            {{ t('ownership_status') }}
                                         </th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Odometer
+                                            {{ t('vehicle_details') }}
                                         </th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Daily Rate
+                                            {{ t('odometer') }}
+                                        </th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            {{ t('daily_rate') }}
                                         </th>
                                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Actions
+                                            {{ t('actions') }}
                                         </th>
                                     </tr>
                                 </thead>
@@ -320,16 +323,16 @@ const formatCurrency = (amount?: number) => {
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuItem @click="router.visit(`/vehicles/${vehicle.id}`)">
                                                         <Car class="mr-2 h-4 w-4" />
-                                                        View Details
+                                                        {{ t('view') }}
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem @click="router.visit(`/vehicles/${vehicle.id}/edit`)">
                                                         <Edit class="mr-2 h-4 w-4" />
-                                                        Edit
+                                                        {{ t('edit') }}
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem @click="toggleVehicleStatus(vehicle)">
                                                         <Power v-if="vehicle.status === 'out_of_service'" class="mr-2 h-4 w-4" />
                                                         <PowerOff v-else class="mr-2 h-4 w-4" />
-                                                        {{ vehicle.status === 'out_of_service' ? 'Enable' : 'Disable' }}
+                                                        {{ vehicle.status === 'out_of_service' ? t('enable') : t('disable') }}
                                                     </DropdownMenuItem>
                                                     <!-- Show borrowing info for borrowed vehicles -->
                                                     <div v-if="vehicle.ownership_status === 'borrowed'" class="px-2 py-1 text-xs text-gray-500 border-t">
@@ -351,8 +354,8 @@ const formatCurrency = (amount?: number) => {
                         <!-- Empty state -->
                         <div v-if="vehicles.data.length === 0" class="text-center py-12">
                             <Car class="mx-auto h-12 w-12 text-gray-400" />
-                            <h3 class="mt-2 text-sm font-medium text-gray-900">No vehicles found</h3>
-                            <p class="mt-1 text-sm text-gray-500">Get started by adding a new vehicle.</p>
+                            <h3 class="mt-2 text-sm font-medium text-gray-900">{{ t('no_results') }}</h3>
+                            <p class="mt-1 text-sm text-gray-500">{{ t('get_started_add_vehicle') }}</p>
                             <div class="mt-6">
                                 <Link :href="route('vehicles.create')">
                                     <Button>

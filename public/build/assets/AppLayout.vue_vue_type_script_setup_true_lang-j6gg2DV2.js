@@ -1,0 +1,1 @@
+import{e as r}from"./AppSidebarLayout.vue_vue_type_script_setup_true_lang-DjycHvFz.js";import{d as a,n as s,b as o,f as t,E as m}from"./app-B4CXrxA6.js";const d=a({__name:"AppLayout",props:{breadcrumbs:{default:()=>[]}},setup(n){return(e,p)=>(o(),s(r,{breadcrumbs:e.breadcrumbs},{default:t(()=>[m(e.$slots,"default")]),_:3},8,["breadcrumbs"]))}});export{d as _};
