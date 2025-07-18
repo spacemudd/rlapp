@@ -18,6 +18,16 @@ interface Props {
     newCustomer?: any;
 }
 
+interface PricingBreakdown {
+    days?: number;
+    daily_cost?: number;
+    complete_weeks?: number;
+    complete_months?: number;
+    remaining_days?: number;
+    weekly_cost?: number;
+    monthly_cost?: number;
+}
+
 const props = defineProps<Props>();
 
 const form = useForm({
@@ -47,46 +57,81 @@ const totalDays = computed(() => {
     return diffDays; // Direct calculation of rental days
 });
 
-const totalAmount = computed(() => {
-    const days = totalDays.value;
-    if (!selectedVehicle.value || days <= 0) return 0;
-    if (days <= 7) {
-        return (selectedVehicle.value.price_daily || 0) * days;
-    } else if (days > 7 && days <= 28) {
-        const weeklyRate = selectedVehicle.value.price_weekly || 0;
-        return (weeklyRate / 7) * days;
-    } else if (days >= 30) {
-        const monthlyRate = selectedVehicle.value.price_monthly || 0;
-        return (monthlyRate / 30) * days;
-    }
-    return 0;
-});
+// Reactive refs for pricing
+const totalAmount = ref(0);
+const effectiveDailyRate = ref(0);
+const pricingTier = ref('');
+const rateType = ref('');
+const pricingBreakdown = ref<PricingBreakdown | null>(null);
+const isCalculatingPricing = ref(false);
 
-// Add a computed property for the effective daily rate
-const effectiveDailyRate = computed(() => {
-    const days = totalDays.value;
-    if (!selectedVehicle.value) return 0;
-    if (days <= 7) {
-        return selectedVehicle.value.price_daily || 0;
-    } else if (days > 7 && days <= 28) {
-        return (selectedVehicle.value.price_weekly || 0) / 7;
-    } else if (days >= 30) {
-        return (selectedVehicle.value.price_monthly || 0) / 30;
+// Function to calculate pricing via API
+const calculatePricing = async () => {
+    if (!form.vehicle_id || !form.start_date || !form.end_date) {
+        totalAmount.value = 0;
+        effectiveDailyRate.value = 0;
+        pricingTier.value = '';
+        rateType.value = '';
+        pricingBreakdown.value = null;
+        form.daily_rate = 0;
+        return;
     }
-    return 0;
-});
 
-// Watch for changes in effectiveDailyRate and update form.daily_rate
-watch([effectiveDailyRate, selectedVehicle, totalDays], ([newRate, vehicle, days]) => {
-    if (vehicle) {
-        form.daily_rate = newRate;
+    isCalculatingPricing.value = true;
+    
+    try {
+        const params = new URLSearchParams({
+            vehicle_id: form.vehicle_id,
+            start_date: form.start_date,
+            end_date: form.end_date,
+        });
+
+        const response = await fetch(`/api/pricing/calculate?${params}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to calculate pricing');
+        }
+
+        const pricing = await response.json();
+        
+        totalAmount.value = pricing.total_amount;
+        effectiveDailyRate.value = pricing.daily_rate;
+        pricingTier.value = pricing.pricing_tier;
+        rateType.value = pricing.rate_type;
+        pricingBreakdown.value = pricing.breakdown;
+        
+        // Update the form daily rate
+        form.daily_rate = pricing.daily_rate;
+        
+    } catch (error) {
+        console.error('Error calculating pricing:', error);
+        totalAmount.value = 0;
+        effectiveDailyRate.value = 0;
+        pricingTier.value = '';
+        rateType.value = '';
+        pricingBreakdown.value = null;
+        form.daily_rate = 0;
+    } finally {
+        isCalculatingPricing.value = false;
     }
+};
+
+// Watch for changes that require pricing recalculation
+watch([() => form.vehicle_id, () => form.start_date, () => form.end_date], async () => {
+    await calculatePricing();
 });
 
 // Handle vehicle selection
 const handleVehicleSelected = (vehicle: any) => {
     selectedVehicle.value = vehicle;
-    form.daily_rate = vehicle.price_daily;
+    form.vehicle_id = vehicle.id;
+    // Pricing will be calculated automatically via the watch
 };
 
 // Create customer
@@ -497,7 +542,6 @@ watch(() => props.newCustomer, (customer) => {
                                     step="0.01"
                                     min="0"
                                     v-model="form.daily_rate"
-                                    :value="effectiveDailyRate"
                                     required
                                 />
                                 <div v-if="form.errors.daily_rate" class="text-sm text-red-600">
@@ -520,10 +564,62 @@ watch(() => props.newCustomer, (customer) => {
                             </div>
                         </div>
 
-                        <div v-if="totalAmount > 0" class="p-4 bg-green-50 border border-green-200 rounded-md">
+                        <!-- Loading indicator -->
+                        <div v-if="isCalculatingPricing" class="p-4 bg-blue-50 border border-blue-200 rounded-md">
+                            <div class="flex items-center justify-center">
+                                <span class="text-blue-800">Calculating pricing...</span>
+                            </div>
+                        </div>
+
+                        <!-- Pricing display -->
+                        <div v-else-if="totalAmount > 0" class="p-4 bg-green-50 border border-green-200 rounded-md">
                             <div class="flex justify-between items-center">
                                 <span class="text-green-800 font-medium">Total Rental Amount:</span>
                                 <span class="text-2xl font-bold text-green-900">{{ formatCurrency(totalAmount) }}</span>
+                            </div>
+                            <div class="flex justify-between items-center text-sm text-green-700 mt-2">
+                                <span>Pricing Tier: {{ pricingTier }} ({{ rateType }})</span>
+                                <span>Effective Daily Rate: {{ formatCurrency(effectiveDailyRate) }}</span>
+                            </div>
+                            
+                            <!-- Pricing breakdown -->
+                            <div v-if="pricingBreakdown" class="mt-3 pt-3 border-t border-green-200">
+                                <h4 class="text-sm font-medium text-green-800 mb-2">Pricing Breakdown:</h4>
+                                <div class="space-y-1 text-sm text-green-700">
+                                    <!-- Daily pricing -->
+                                    <div v-if="pricingBreakdown?.days" class="flex justify-between">
+                                        <span>{{ pricingBreakdown.days }} days @ {{ formatCurrency(form.daily_rate) }}/day</span>
+                                        <span>{{ formatCurrency(pricingBreakdown.daily_cost || 0) }}</span>
+                                    </div>
+                                    
+                                    <!-- Weekly + days pricing -->
+                                    <template v-if="pricingBreakdown?.complete_weeks !== undefined">
+                                        <div v-if="(pricingBreakdown.complete_weeks || 0) > 0" class="flex justify-between">
+                                            <span>{{ pricingBreakdown.complete_weeks }} week(s) @ {{ formatCurrency(selectedVehicle?.price_weekly || 0) }}/week</span>
+                                            <span>{{ formatCurrency(pricingBreakdown.weekly_cost || 0) }}</span>
+                                        </div>
+                                        <div v-if="(pricingBreakdown.remaining_days || 0) > 0" class="flex justify-between">
+                                            <span>{{ pricingBreakdown.remaining_days }} day(s) @ {{ formatCurrency(selectedVehicle?.price_daily || 0) }}/day</span>
+                                            <span>{{ formatCurrency(pricingBreakdown.daily_cost || 0) }}</span>
+                                        </div>
+                                    </template>
+                                    
+                                    <!-- Monthly + weekly + days pricing -->
+                                    <template v-if="pricingBreakdown?.complete_months !== undefined">
+                                        <div v-if="(pricingBreakdown.complete_months || 0) > 0" class="flex justify-between">
+                                            <span>{{ pricingBreakdown.complete_months }} month(s) @ {{ formatCurrency(selectedVehicle?.price_monthly || 0) }}/month</span>
+                                            <span>{{ formatCurrency(pricingBreakdown.monthly_cost || 0) }}</span>
+                                        </div>
+                                        <div v-if="(pricingBreakdown.complete_weeks || 0) > 0" class="flex justify-between">
+                                            <span>{{ pricingBreakdown.complete_weeks }} week(s) @ {{ formatCurrency(selectedVehicle?.price_weekly || 0) }}/week</span>
+                                            <span>{{ formatCurrency(pricingBreakdown.weekly_cost || 0) }}</span>
+                                        </div>
+                                        <div v-if="(pricingBreakdown.remaining_days || 0) > 0" class="flex justify-between">
+                                            <span>{{ pricingBreakdown.remaining_days }} day(s) @ {{ formatCurrency(selectedVehicle?.price_daily || 0) }}/day</span>
+                                            <span>{{ formatCurrency(pricingBreakdown.daily_cost || 0) }}</span>
+                                        </div>
+                                    </template>
+                                </div>
                             </div>
                         </div>
 

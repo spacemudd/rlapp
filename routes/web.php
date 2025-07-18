@@ -65,6 +65,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Search endpoints for async dropdowns
     Route::get('/api/customers/search', [App\Http\Controllers\ContractController::class, 'searchCustomers'])->name('api.customers.search');
     Route::get('/api/vehicles/search', [App\Http\Controllers\ContractController::class, 'searchVehicles'])->name('api.vehicles.search');
+    Route::get('/api/pricing/calculate', [App\Http\Controllers\ContractController::class, 'calculatePricing'])->name('api.pricing.calculate');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {

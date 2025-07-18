@@ -151,6 +151,29 @@ class ContractController extends Controller
     }
 
     /**
+     * Calculate rental pricing for a vehicle and date range
+     */
+    public function calculatePricing(Request $request)
+    {
+        $validated = $request->validate([
+            'vehicle_id' => 'required|exists:vehicles,id',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after:start_date',
+        ]);
+
+        $vehicle = Vehicle::find($validated['vehicle_id']);
+        $pricingService = new \App\Services\PricingService();
+        
+        $pricing = $pricingService->calculateRentalPricing(
+            $vehicle,
+            $validated['start_date'],
+            $validated['end_date']
+        );
+
+        return response()->json($pricing);
+    }
+
+    /**
      * Store a newly created resource in storage.
      */
     public function store(Request $request): RedirectResponse
