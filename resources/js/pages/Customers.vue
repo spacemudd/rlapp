@@ -10,6 +10,7 @@ import { Plus, Users, Edit, Trash2, Phone, Mail, Calendar, CreditCard, Search } 
 import { ref, computed, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
+import { useDirection } from '@/composables/useDirection';
 
 interface Customer {
     id: string;
@@ -57,6 +58,7 @@ interface Props {
 const props = defineProps<Props>();
 
 const { t } = useI18n();
+const { isRtl } = useDirection();
 
 const breadcrumbs = [
     { title: t('dashboard'), href: '/dashboard' },
@@ -177,28 +179,37 @@ watch(searchQuery, (newValue, oldValue) => {
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
             <div class="space-y-6">
-            <div class="flex items-center justify-between">
-                <div>
+            <div class="flex items-center justify-between" :class="{ 'flex-row-reverse': isRtl }">
+                <div :class="{ 'text-right': isRtl }">
                     <h1 class="text-3xl font-bold tracking-tight">{{ t('customers') }}</h1>
                     <p class="text-muted-foreground">
                         {{ t('manage_customers') }}
                     </p>
                 </div>
 
-                <div class="flex items-center gap-4">
+                <div class="flex items-center gap-4" :class="{ 'flex-row-reverse': isRtl }">
                     <!-- Search Input -->
                     <div class="relative">
-                        <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Search :class="[
+                            'absolute top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground',
+                            isRtl ? 'right-3' : 'left-3'
+                        ]" />
                         <Input
                             v-model="searchQuery"
                             :placeholder="t('search_customers')"
-                            class="pl-10 w-64"
+                            :class="[
+                                'w-64',
+                                isRtl ? 'pr-10' : 'pl-10'
+                            ]"
                         />
                         <Button
                             v-if="searchQuery"
                             variant="ghost"
                             size="sm"
-                            class="absolute right-1 top-1/2 h-6 w-6 -translate-y-1/2 p-0"
+                            :class="[
+                                'absolute top-1/2 h-6 w-6 -translate-y-1/2 p-0',
+                                isRtl ? 'left-1' : 'right-1'
+                            ]"
                             @click="clearSearch"
                         >
                             ×
@@ -208,7 +219,10 @@ watch(searchQuery, (newValue, oldValue) => {
                     <Dialog v-model:open="showAddDialog">
                         <DialogTrigger as-child>
                             <Button @click="openAddDialog">
-                                <Plus class="mr-2 h-4 w-4" />
+                                <Plus :class="[
+                                    'h-4 w-4',
+                                    isRtl ? 'ml-2' : 'mr-2'
+                                ]" />
                                 {{ t('add_customer') }}
                             </Button>
                         </DialogTrigger>
@@ -234,39 +248,39 @@ watch(searchQuery, (newValue, oldValue) => {
 
             <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 <Card>
-                    <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle class="text-sm font-medium">{{ t('total_customers') }}</CardTitle>
+                    <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2" :class="{ 'flex-row-reverse': isRtl }">
+                        <CardTitle class="text-sm font-medium" :class="{ 'text-right': isRtl }">{{ t('total_customers') }}</CardTitle>
                         <Users class="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div class="text-2xl font-bold">{{ props.stats.total }}</div>
-                        <p class="text-xs text-muted-foreground">
+                        <div class="text-2xl font-bold" :class="{ 'text-right': isRtl }">{{ props.stats.total }}</div>
+                        <p class="text-xs text-muted-foreground" :class="{ 'text-right': isRtl }">
                             {{ props.stats.total === 0 ? t('no_data') : t('total_customers') }}
                         </p>
                     </CardContent>
                 </Card>
 
                 <Card>
-                    <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle class="text-sm font-medium">{{ t('active_customers') }}</CardTitle>
+                    <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2" :class="{ 'flex-row-reverse': isRtl }">
+                        <CardTitle class="text-sm font-medium" :class="{ 'text-right': isRtl }">{{ t('active_customers') }}</CardTitle>
                         <Users class="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div class="text-2xl font-bold">{{ props.stats.active }}</div>
-                        <p class="text-xs text-muted-foreground">
+                        <div class="text-2xl font-bold" :class="{ 'text-right': isRtl }">{{ props.stats.active }}</div>
+                        <p class="text-xs text-muted-foreground" :class="{ 'text-right': isRtl }">
                             {{ t('active') }}
                         </p>
                     </CardContent>
                 </Card>
 
                 <Card>
-                    <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle class="text-sm font-medium">{{ t('new_this_month') }}</CardTitle>
+                    <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2" :class="{ 'flex-row-reverse': isRtl }">
+                        <CardTitle class="text-sm font-medium" :class="{ 'text-right': isRtl }">{{ t('new_this_month') }}</CardTitle>
                         <Users class="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div class="text-2xl font-bold">{{ props.stats.new_this_month }}</div>
-                        <p class="text-xs text-muted-foreground">
+                        <div class="text-2xl font-bold" :class="{ 'text-right': isRtl }">{{ props.stats.new_this_month }}</div>
+                        <p class="text-xs text-muted-foreground" :class="{ 'text-right': isRtl }">
                             {{ t('new_this_month') }}
                         </p>
                     </CardContent>
@@ -275,8 +289,8 @@ watch(searchQuery, (newValue, oldValue) => {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>{{ t('customers') }}</CardTitle>
-                    <CardDescription>
+                    <CardTitle :class="{ 'text-right': isRtl }">{{ t('customers') }}</CardTitle>
+                    <CardDescription :class="{ 'text-right': isRtl }">
                         {{ t('manage_customers') }}
                     </CardDescription>
                 </CardHeader>
@@ -293,12 +307,15 @@ watch(searchQuery, (newValue, oldValue) => {
                                     : t('manage_customers')
                                 }}
                             </p>
-                            <div class="mt-4 flex gap-2 justify-center">
+                            <div class="mt-4 flex gap-2 justify-center" :class="{ 'flex-row-reverse': isRtl }">
                                 <Button v-if="searchQuery" variant="outline" @click="clearSearch">
                                     {{ t('clear_search') }}
                                 </Button>
                                 <Button @click="openAddDialog">
-                                    <Plus class="mr-2 h-4 w-4" />
+                                    <Plus :class="[
+                                        'h-4 w-4',
+                                        isRtl ? 'ml-2' : 'mr-2'
+                                    ]" />
                                     {{ t('add_customer') }}
                                 </Button>
                             </div>
@@ -307,8 +324,8 @@ watch(searchQuery, (newValue, oldValue) => {
 
                     <div v-else class="space-y-4">
                         <!-- Search Results Indicator -->
-                        <div v-if="searchQuery" class="flex items-center justify-between p-3 bg-muted/50 rounded-md">
-                            <div class="flex items-center gap-2">
+                        <div v-if="searchQuery" class="flex items-center justify-between p-3 bg-muted/50 rounded-md" :class="{ 'flex-row-reverse': isRtl }">
+                            <div class="flex items-center gap-2" :class="{ 'flex-row-reverse': isRtl }">
                                 <Search class="h-4 w-4 text-muted-foreground" />
                                 <span class="text-sm text-muted-foreground">
                                     {{ t('showing') }} {{ props.customers.total }} {{ t('results') }} "{{ searchQuery }}"
@@ -347,21 +364,21 @@ watch(searchQuery, (newValue, oldValue) => {
                                             </div>
                                         </td>
                                         <td class="p-4 align-middle">
-                                            <div class="flex items-center gap-2 text-sm">
+                                            <div class="flex items-center gap-2 text-sm" :class="{ 'flex-row-reverse': isRtl }">
                                                 <Mail class="h-4 w-4" />
                                                 {{ customer.email }}
                                             </div>
-                                            <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                                            <div class="flex items-center gap-2 text-sm text-muted-foreground" :class="{ 'flex-row-reverse': isRtl }">
                                                 <Phone class="h-4 w-4" />
                                                 {{ customer.phone }}
                                             </div>
                                         </td>
                                         <td class="p-4 align-middle">
-                                            <div class="flex items-center gap-2 text-sm">
+                                            <div class="flex items-center gap-2 text-sm" :class="{ 'flex-row-reverse': isRtl }">
                                                 <CreditCard class="h-4 w-4" />
                                                 {{ customer.drivers_license_number }}
                                             </div>
-                                            <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                                            <div class="flex items-center gap-2 text-sm text-muted-foreground" :class="{ 'flex-row-reverse': isRtl }">
                                                 <Calendar class="h-4 w-4" />
                                                 {{ t('license_expiry') }}: {{ formatDate(customer.drivers_license_expiry) }}
                                             </div>
@@ -394,12 +411,12 @@ watch(searchQuery, (newValue, oldValue) => {
                         </div>
 
                         <!-- Pagination -->
-                        <div v-if="props.customers.last_page > 1" class="flex items-center justify-between mt-6">
-                            <p class="text-sm text-muted-foreground">
+                        <div v-if="props.customers.last_page > 1" class="flex items-center justify-between mt-6" :class="{ 'flex-row-reverse': isRtl }">
+                            <p class="text-sm text-muted-foreground" :class="{ 'text-right': isRtl }">
                                 Showing {{ props.customers.from ?? 0 }} to {{ props.customers.to ?? 0 }} of {{ props.customers.total }} results
                             </p>
 
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-2" :class="{ 'flex-row-reverse': isRtl }">
                                 <!-- Previous Button -->
                                 <template v-if="props.customers.current_page > 1">
                                     <Link

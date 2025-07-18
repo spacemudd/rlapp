@@ -6,7 +6,7 @@ const { t } = useI18n();
 </script>
 
 <template>
-    <Head title="Welcome">
+    <Head :title="t('welcome')">
         <link rel="preconnect" href="https://rsms.me/" />
         <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
     </Head>
@@ -33,8 +33,11 @@ const { t } = useI18n();
         <div class="flex w-full items-center justify-center lg:grow">
             <main class="text-center">
                 <h1 class="text-4xl font-bold lg:text-6xl">
-                    Luxuria Cars Rental Application
+                    {{ t('app_name') }}
                 </h1>
+                <p class="mt-4 text-lg text-gray-600 dark:text-gray-300">
+                    {{ t('welcome_message') }}
+                </p>
             </main>
         </div>
     </div>

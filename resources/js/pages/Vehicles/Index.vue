@@ -233,32 +233,32 @@ const formatCurrency = (amount?: number) => {
                             <table class="w-full">
                                 <thead class="bg-gray-50 border-b">
                                     <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Vehicle
+                                                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            {{ t('vehicles') }}
                                         </th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Plate Number
+                                            {{ t('plate_number') }}
                                         </th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Status
-                                        </th>
-                                                                                                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Category
+                                            {{ t('status') }}
                                         </th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Ownership
+                                            {{ t('category') }}
                                         </th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Details
+                                            {{ t('ownership_status') }}
                                         </th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Odometer
+                                            {{ t('vehicle_details') }}
                                         </th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Daily Rate
+                                            {{ t('odometer') }}
+                                        </th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            {{ t('daily_rate') }}
                                         </th>
                                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Actions
+                                            {{ t('actions') }}
                                         </th>
                                     </tr>
                                 </thead>
@@ -323,16 +323,16 @@ const formatCurrency = (amount?: number) => {
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuItem @click="router.visit(`/vehicles/${vehicle.id}`)">
                                                         <Car class="mr-2 h-4 w-4" />
-                                                        View Details
+                                                        {{ t('view') }}
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem @click="router.visit(`/vehicles/${vehicle.id}/edit`)">
                                                         <Edit class="mr-2 h-4 w-4" />
-                                                        Edit
+                                                        {{ t('edit') }}
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem @click="toggleVehicleStatus(vehicle)">
                                                         <Power v-if="vehicle.status === 'out_of_service'" class="mr-2 h-4 w-4" />
                                                         <PowerOff v-else class="mr-2 h-4 w-4" />
-                                                        {{ vehicle.status === 'out_of_service' ? 'Enable' : 'Disable' }}
+                                                        {{ vehicle.status === 'out_of_service' ? t('enable') : t('disable') }}
                                                     </DropdownMenuItem>
                                                     <!-- Show borrowing info for borrowed vehicles -->
                                                     <div v-if="vehicle.ownership_status === 'borrowed'" class="px-2 py-1 text-xs text-gray-500 border-t">
@@ -354,8 +354,8 @@ const formatCurrency = (amount?: number) => {
                         <!-- Empty state -->
                         <div v-if="vehicles.data.length === 0" class="text-center py-12">
                             <Car class="mx-auto h-12 w-12 text-gray-400" />
-                            <h3 class="mt-2 text-sm font-medium text-gray-900">No vehicles found</h3>
-                            <p class="mt-1 text-sm text-gray-500">Get started by adding a new vehicle.</p>
+                            <h3 class="mt-2 text-sm font-medium text-gray-900">{{ t('no_results') }}</h3>
+                            <p class="mt-1 text-sm text-gray-500">{{ t('get_started_add_vehicle') }}</p>
                             <div class="mt-6">
                                 <Link :href="route('vehicles.create')">
                                     <Button>

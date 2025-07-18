@@ -368,7 +368,7 @@ const submitStripeForm = () => {
                                         class="w-4 h-4 text-green-600"
                                     />
                                     <Copy v-else class="w-4 h-4" />
-                                    {{ copiedUrls.has(`invitation-${invitation.id}`) ? 'Copied!' : 'Copy Link' }}
+                                    {{ copiedUrls.has(`invitation-${invitation.id}`) ? t('copied') : t('copy_link') }}
                                 </Button>
 
                                 <!-- Cancel Invitation Button -->

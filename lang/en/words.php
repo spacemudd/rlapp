@@ -277,4 +277,9 @@ return [
     'last_week' => 'Last Week',
     'last_month' => 'Last Month',
     'last_year' => 'Last Year',
+    
+    // Welcome Page
+    'welcome' => 'Welcome',
+    'app_name' => 'Luxuria Cars Rental Application',
+    'welcome_message' => 'Welcome to our premium car rental service',
 ]; 

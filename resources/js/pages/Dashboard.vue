@@ -42,7 +42,7 @@ const lateInvoicesList = (usePage().props.late_invoices_list ?? []) as LateInvoi
 
 const statCards = [
   {
-    label: 'Late Invoices Amount',
+    label: t('late_invoices_amount'),
     value: (stats?.late_invoices_amount ?? 0).toLocaleString(),
     badge: 'AED',
     badgeColor: 'bg-red-100 text-red-700 border-red-200',
@@ -52,9 +52,9 @@ const statCards = [
     valueColor: 'text-red-600',
   },
   {
-    label: 'Late Invoices',
+    label: t('late_invoices'),
     value: stats?.late_invoices ?? 0,
-    badge: 'Overdue',
+    badge: t('overdue'),
     badgeColor: 'bg-red-100 text-red-700 border-red-200',
     icon: AlertCircle,
     iconColor: 'text-red-600',
@@ -62,36 +62,36 @@ const statCards = [
     trend: 12,
   },
   {
-    label: 'Available Cars',
+    label: t('available_cars'),
     value: stats?.available_cars ?? 0,
-    badge: 'Available',
+    badge: t('available'),
     badgeColor: 'bg-blue-100 text-blue-700 border-blue-200',
     icon: Car,
     iconColor: 'text-blue-600',
     iconBg: 'bg-blue-50',
   },
   {
-    label: 'Rented Cars',
+    label: t('rented_cars'),
     value: stats?.rented_cars ?? 0,
-    badge: 'Rented',
+    badge: t('rented'),
     badgeColor: 'bg-yellow-100 text-yellow-700 border-yellow-200',
     icon: Car,
     iconColor: 'text-yellow-600',
     iconBg: 'bg-yellow-50',
   },
   {
-    label: 'Total Cars',
+    label: t('total_cars'),
     value: stats?.total_cars ?? 0,
-    badge: 'Total',
+    badge: t('total'),
     badgeColor: 'bg-gray-100 text-gray-700 border-gray-200',
     icon: Truck,
     iconColor: 'text-gray-600',
     iconBg: 'bg-gray-50',
   },
   {
-    label: 'Overdue Contracts',
+    label: t('overdue_contracts'),
     value: stats?.overdue_contracts ?? 0,
-    badge: 'Overdue',
+    badge: t('overdue'),
     badgeColor: 'bg-red-100 text-red-700 border-red-200',
     icon: FileText,
     iconColor: 'text-red-600',
@@ -116,10 +116,10 @@ function daysAgo(dueDate: string) {
             <div class="p-6 space-y-8">
                 <!-- Header Section -->
                 <div class="flex justify-between items-center">
-                    <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
+                    <h1 class="text-2xl font-bold text-gray-900">{{ t('dashboard') }}</h1>
                     <Button class="bg-primary-600 hover:bg-primary-700 text-white transition-all duration-200 transform hover:scale-105">
                         <Plus class="w-4 h-4 mr-2" />
-                        New Invoice
+                        {{ t('new_invoice') }}
                     </Button>
                 </div>
 
@@ -176,22 +176,22 @@ function daysAgo(dueDate: string) {
                         <div class="p-6">
                             <div class="flex items-center justify-between mb-6">
                                 <div>
-                                    <h2 class="text-xl font-semibold text-gray-900">Late Invoices</h2>
-                                    <p class="text-sm text-gray-500 mt-1">Overdue payments requiring attention</p>
+                                    <h2 class="text-xl font-semibold text-gray-900">{{ t('late_invoices') }}</h2>
+                                    <p class="text-sm text-gray-500 mt-1">{{ t('overdue_payments_attention') }}</p>
                                 </div>
                                 <Button
                                     variant="ghost"
                                     class="text-primary-600 hover:text-primary-700 hover:bg-primary-50 transition-colors duration-200"
                                 >
-                                    View all
+                                    {{ t('view_all') }}
                                 </Button>
                             </div>
 
                             <div class="space-y-4">
                                 <div v-if="lateInvoicesList.length === 0" class="flex flex-col items-center justify-center py-12 text-gray-500">
                                     <AlertCircle class="w-12 h-12 mb-4 text-gray-400" />
-                                    <p class="text-lg font-medium">No Late Invoices</p>
-                                    <p class="text-sm">All payments are up to date</p>
+                                    <p class="text-lg font-medium">{{ t('no_late_invoices') }}</p>
+                                    <p class="text-sm">{{ t('all_payments_up_to_date') }}</p>
                                 </div>
 
                                 <div
@@ -209,7 +209,7 @@ function daysAgo(dueDate: string) {
                                                     {{ invoice.invoice_number }}
                                                 </p>
                                                 <p class="text-sm text-gray-500">
-                                                    Due {{ daysAgo(invoice.due_date) }} days ago
+                                                    {{ t('due_days_ago', { days: daysAgo(invoice.due_date) }) }}
                                                 </p>
                                             </div>
                                         </div>
@@ -218,7 +218,7 @@ function daysAgo(dueDate: string) {
                                                 {{ Number(invoice.total_amount).toLocaleString() }} {{ invoice.currency }}
                                             </p>
                                             <p class="text-sm text-red-600 font-medium">
-                                                Overdue
+                                                {{ t('overdue') }}
                                             </p>
                                         </div>
                                     </div>
