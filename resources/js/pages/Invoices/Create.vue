@@ -2,13 +2,15 @@
 import AppSidebarLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Plus, Calendar, DollarSign, Car, User } from 'lucide-vue-next';
-import { Link, useForm, usePage } from '@inertiajs/vue3';
+import { Link, useForm, usePage, router } from '@inertiajs/vue3';
 import { ref, computed, watch, onMounted } from 'vue';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import AsyncCombobox from '@/components/ui/combobox/AsyncCombobox.vue';
+import CreateCustomerForm from '@/components/CreateCustomerForm.vue';
 
 // Define props interface
 interface Props {
@@ -71,6 +73,8 @@ const form = useForm({
 
 const selectedCustomer = ref<any>(null);
 const selectedVehicle = ref<any>(null);
+const showCreateCustomerDialog = ref(false);
+const customerComboboxRef = ref<any>(null);
 
 const invoiceAmount = computed(() => {
     return (form.items as InvoiceItem[]).reduce((sum: number, item: InvoiceItem) => sum + (Number(item.amount || 0) - Number(item.discount || 0)), 0);
@@ -287,6 +291,58 @@ const handleCustomerSelected = (customer: any) => {
     selectedCustomer.value = customer;
 };
 
+// Create customer functions
+const handleCustomerSubmit = (customerForm: any) => {
+    router.post('/customers', customerForm.data(), {
+        onSuccess: (page) => {
+            console.log('Customer creation success, page:', page);
+            
+            // Try to get customer from different possible locations
+            const customer = (page.props as any).newCustomer ||
+                           (page.props as any).flash?.newCustomer ||
+                           (page.props as any).flash?.customer ||
+                           (page.props as any).customer ||
+                           null;
+
+            console.log('Found customer data:', customer);
+
+            if (customer) {
+                // Auto-select the newly created customer
+                form.customer_id = customer.id;
+                selectedCustomer.value = customer;
+
+                // Update the combobox with the new customer data
+                if (customerComboboxRef.value) {
+                    console.log('Calling selectOption with:', customer);
+                    customerComboboxRef.value.selectOption(customer);
+                } else {
+                    console.log('Combobox ref not available');
+                }
+            } else {
+                console.log('No customer data found in response');
+            }
+
+            showCreateCustomerDialog.value = false;
+        },
+        onError: (errors) => {
+            console.log('Validation errors:', errors);
+            // Set errors on the form
+            Object.keys(errors).forEach(key => {
+                if (key in customerForm.errors) {
+                    customerForm.setError(key as keyof typeof customerForm.errors, errors[key]);
+                }
+            });
+        },
+        headers: {
+            'Accept': 'application/json',
+        }
+    });
+};
+
+const handleCustomerCancel = () => {
+    showCreateCustomerDialog.value = false;
+};
+
 // Handle vehicle selection
 const handleVehicleSelected = (vehicle: any) => {
     selectedVehicle.value = vehicle;
@@ -340,6 +396,7 @@ const selectedContractVehicleName = computed(() => {
                         <CardContent class="space-y-6">
                             <div class="space-y-2">
                                 <AsyncCombobox
+                                    ref="customerComboboxRef"
                                     v-model="form.customer_id"
                                     label="Customer"
                                     placeholder="Search customers..."
@@ -347,6 +404,36 @@ const selectedContractVehicleName = computed(() => {
                                     :required="true"
                                     @option-selected="handleCustomerSelected"
                                 />
+                                
+                                <!-- Add Create Customer Section -->
+                                <div class="pt-4 border-t">
+                                    <div class="flex items-center justify-between">
+                                        <p class="text-sm text-gray-500">
+                                            Need to add a new customer?
+                                        </p>
+                                        <Dialog v-model:open="showCreateCustomerDialog">
+                                            <DialogTrigger as-child>
+                                                <Button type="button" variant="outline" size="sm">
+                                                    <Plus class="w-4 h-4 mr-2" />
+                                                    Create Customer
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent class="max-w-2xl max-h-[90vh] overflow-y-auto">
+                                                <DialogHeader>
+                                                    <DialogTitle>Create New Customer</DialogTitle>
+                                                    <DialogDescription>
+                                                        Add a new customer to your database. All fields marked with * are required.
+                                                    </DialogDescription>
+                                                </DialogHeader>
+
+                                                <CreateCustomerForm
+                                                    @submit="handleCustomerSubmit"
+                                                    @cancel="handleCustomerCancel"
+                                                />
+                                            </DialogContent>
+                                        </Dialog>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="space-y-2">
