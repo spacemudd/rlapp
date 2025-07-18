@@ -231,4 +231,107 @@ class Contract extends Model
     {
         return $this->daily_rate * $this->total_days;
     }
+
+    /**
+     * Get the extensions for this contract.
+     */
+    public function extensions()
+    {
+        return $this->hasMany(ContractExtension::class)->orderBy('extension_number');
+    }
+
+    /**
+     * Get the total number of extension days.
+     */
+    public function getTotalExtensionDays(): int
+    {
+        return $this->extensions()->approved()->sum('extension_days');
+    }
+
+    /**
+     * Get the total extension amount.
+     */
+    public function getExtensionAmount(): float
+    {
+        return $this->extensions()->approved()->sum('total_amount');
+    }
+
+    /**
+     * Get the current effective end date (including extensions).
+     */
+    public function getEffectiveEndDate(): \Carbon\Carbon
+    {
+        $latestExtension = $this->extensions()->approved()->latest('extension_number')->first();
+        return $latestExtension ? $latestExtension->new_end_date : $this->end_date;
+    }
+
+    /**
+     * Get the original end date (before any extensions).
+     */
+    public function getOriginalEndDate(): \Carbon\Carbon
+    {
+        return $this->end_date;
+    }
+
+    /**
+     * Check if this contract has any extensions.
+     */
+    public function hasExtensions(): bool
+    {
+        return $this->extensions()->approved()->exists();
+    }
+
+    /**
+     * Extend the contract by a specified number of days.
+     */
+    public function extend(int $days, ?string $reason = null): ContractExtension
+    {
+        if ($this->status !== 'active') {
+            throw new \Exception('Only active contracts can be extended.');
+        }
+
+        // Load the vehicle relation if not already loaded
+        if (!$this->relationLoaded('vehicle')) {
+            $this->load('vehicle');
+        }
+
+        $latestExtension = $this->extensions()->approved()->latest('extension_number')->first();
+        $extensionNumber = $latestExtension ? $latestExtension->extension_number + 1 : 1;
+        
+        $originalEndDate = $latestExtension ? $latestExtension->new_end_date : $this->end_date;
+        $newEndDate = Carbon::parse($originalEndDate)->addDays($days);
+        
+        // Use PricingService for consistent rate calculation
+        $pricingService = new \App\Services\PricingService();
+        $pricing = $pricingService->calculatePricingForDays($this->vehicle, $days);
+        
+        $extension = $this->extensions()->create([
+            'extension_number' => $extensionNumber,
+            'original_end_date' => $originalEndDate,
+            'new_end_date' => $newEndDate,
+            'extension_days' => $days,
+            'daily_rate' => $pricing['effective_daily_rate'],
+            'total_amount' => $pricing['total_amount'],
+            'reason' => $reason,
+            'approved_by' => auth()->user()?->name ?? 'System',
+            'status' => 'approved',
+        ]);
+        
+        // Update main contract
+        // First update the end_date
+        $this->update(['end_date' => $newEndDate]);
+        
+        // Then calculate total days based on the new end_date
+        $newTotalDays = $this->calculateTotalDays();
+        $originalAmount = $this->daily_rate * $newTotalDays;
+        $extensionAmount = $this->getExtensionAmount();
+        
+        // Update total_days and total_amount
+        $this->update([
+            'total_days' => $newTotalDays,
+            'total_amount' => $originalAmount + $extensionAmount,
+        ]);
+        
+        return $extension;
+    }
 }

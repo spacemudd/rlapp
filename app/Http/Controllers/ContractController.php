@@ -225,7 +225,7 @@ class ContractController extends Controller
      */
     public function show(Contract $contract): Response
     {
-        $contract->load(['customer', 'vehicle', 'invoices']);
+        $contract->load(['customer', 'vehicle', 'invoices', 'extensions']);
 
         return Inertia::render('Contracts/Show', [
             'contract' => $contract,
@@ -452,5 +452,66 @@ class ContractController extends Controller
         ]);
 
         return $pdf->stream('contract-' . $contract->contract_number . '.pdf');
+    }
+
+    /**
+     * Extend a contract by a specified number of days.
+     */
+    public function extend(Request $request, Contract $contract): RedirectResponse
+    {
+        if ($contract->status !== 'active') {
+            return redirect()->route('contracts.show', $contract)
+                ->with('error', 'Only active contracts can be extended.');
+        }
+
+        $validated = $request->validate([
+            'days' => 'required|integer|min:1|max:365',
+            'reason' => 'nullable|string|max:1000',
+        ]);
+
+        try {
+            $extension = $contract->extend(
+                $validated['days'],
+                $validated['reason'] ?? null
+            );
+
+            return redirect()->route('contracts.show', $contract)
+                ->with('success', "Contract extended by {$validated['days']} days successfully. Extension amount: " . number_format($extension->total_amount, 2) . " AED");
+        } catch (\Exception $e) {
+            return redirect()->route('contracts.show', $contract)
+                ->with('error', 'Error extending contract: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Calculate pricing for a contract extension.
+     */
+    public function calculateExtensionPricing(Request $request, Contract $contract)
+    {
+        $validated = $request->validate([
+            'days' => 'required|integer|min:1|max:365',
+        ]);
+
+        try {
+            // Load the vehicle relation
+            $contract->load('vehicle');
+            
+            $pricingService = new \App\Services\PricingService();
+            $pricing = $pricingService->calculatePricingForDays($contract->vehicle, $validated['days']);
+
+            return response()->json([
+                'success' => true,
+                'pricing' => $pricing,
+                'daily_rate' => $pricing['effective_daily_rate'],
+                'total_amount' => $pricing['total_amount'],
+                'pricing_tier' => $pricing['tier'],
+                'breakdown' => $pricing['breakdown'] ?? null,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Error calculating pricing: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }

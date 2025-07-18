@@ -113,14 +113,16 @@ watch(
 );
 
 // ووتشر التواريخ ليحسب دائماً الفرق بين التواريخ ناقص 1
+// Only recalculate when NO contract is selected (manual input)
 watch(
     [() => form.start_datetime, () => form.end_datetime],
     ([start, end]) => {
-        if (start && end) {
+        // Only recalculate if no contract is selected
+        if (!form.contract_id && start && end) {
             const startDate = parseISO(start);
             const endDate = parseISO(end);
             const days = differenceInDays(endDate, startDate);
-            form.total_days = Math.max(0, days - 1);
+            form.total_days = Math.max(0, days + 1); // Match contract model calculation
         }
     }
 );
@@ -159,6 +161,7 @@ watch(
                 if (selectedContract.start_date) form.start_datetime = toDatetimeLocal(selectedContract.start_date);
                 if (selectedContract.end_date) form.end_datetime = toDatetimeLocal(selectedContract.end_date);
                 if (selectedContract.vehicle_id) form.vehicle_id = selectedContract.vehicle_id;
+                // Use contract's total_days directly (includes extensions)
                 if (selectedContract.total_days) form.total_days = selectedContract.total_days;
                 if (selectedContract.customer_id) form.customer_id = selectedContract.customer_id;
                 // Add or update vehicle item in items
@@ -198,6 +201,7 @@ watch(
             if (selectedContract) {
                 if (selectedContract.start_date) form.start_datetime = toDatetimeLocal(selectedContract.start_date);
                 if (selectedContract.end_date) form.end_datetime = toDatetimeLocal(selectedContract.end_date);
+                // Use contract's total_days directly (includes extensions)
                 if (selectedContract.total_days) form.total_days = selectedContract.total_days;
                 if (selectedContract.customer_id) form.customer_id = selectedContract.customer_id;
             }
@@ -253,11 +257,12 @@ function removeItem(idx: number) {
 }
 
 function calculateTotalDays() {
-    if (form.start_datetime && form.end_datetime) {
+    // Only recalculate if no contract is selected
+    if (!form.contract_id && form.start_datetime && form.end_datetime) {
         const startDate = parseISO(form.start_datetime);
         const endDate = parseISO(form.end_datetime);
         const days = differenceInDays(endDate, startDate);
-        form.total_days = Math.max(0, days - 1);
+        form.total_days = Math.max(0, days + 1); // Match contract model calculation
     }
 }
 
@@ -280,6 +285,7 @@ onMounted(() => {
         if (selectedContract) {
             if (selectedContract.start_date) form.start_datetime = toDatetimeLocal(selectedContract.start_date);
             if (selectedContract.end_date) form.end_datetime = toDatetimeLocal(selectedContract.end_date);
+            // Use contract's total_days directly (includes extensions)
             if (selectedContract.total_days) form.total_days = selectedContract.total_days;
             if (selectedContract.customer_id) form.customer_id = selectedContract.customer_id;
         }
