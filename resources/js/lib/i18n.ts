@@ -16,7 +16,7 @@ const messages = {
         saved: 'Saved.',
         language: 'Language',
         select_language: 'Select language',
-        
+
         // Navigation & Layout
         dashboard: 'Dashboard',
         customers: 'Customers',
@@ -33,7 +33,7 @@ const messages = {
         login: 'Log in',
         logout: 'Log out',
         register: 'Register',
-        
+
         // Common Actions
         create: 'Create',
         edit: 'Edit',
@@ -48,7 +48,7 @@ const messages = {
         filter: 'Filter',
         export: 'Export',
         import: 'Import',
-        
+
         // Status & Messages
         active: 'Active',
         inactive: 'Inactive',
@@ -59,12 +59,12 @@ const messages = {
         no_data: 'No data available',
         error_occurred: 'An error occurred',
         success: 'Success',
-        
+
         // Welcome Page
         welcome: 'Welcome',
         app_name: 'Luxuria Cars Rental Application',
         welcome_message: 'Welcome to our premium car rental service',
-        
+
         // Dashboard
         new_invoice: 'New Invoice',
         late_invoices_amount: 'Late Invoices Amount',
@@ -82,7 +82,7 @@ const messages = {
         no_late_invoices: 'No Late Invoices',
         all_payments_up_to_date: 'All payments are up to date',
         due_days_ago: 'Due {days} days ago',
-        
+
         // Customers
         add_customer: 'Add Customer',
         edit_customer: 'Edit Customer',
@@ -101,7 +101,7 @@ const messages = {
         delete_customer_confirm: 'Are you sure you want to delete this customer?',
         get_started_first_customer: 'Get started by adding your first customer.',
         no_customers_found: 'No customers match your search for "{query}". Try adjusting your search terms.',
-        
+
         // Vehicles
         add_vehicle: 'Add Vehicle',
         get_started_add_vehicle: 'Get started by adding a new vehicle.',
@@ -132,7 +132,7 @@ const messages = {
         owned: 'Owned',
         borrowed: 'Borrowed',
         delete_vehicle_confirm: 'Are you sure you want to delete this vehicle?',
-        
+
         // Contracts
         new_contract: 'New Contract',
         contract_details: 'Contract Details',
@@ -146,7 +146,7 @@ const messages = {
         activate_contract: 'Activate Contract',
         complete_contract: 'Complete Contract',
         void_contract: 'Void Contract',
-        
+
         // Invoices
         create_invoice: 'Create Invoice',
         manage_invoices: 'Manage your billing and payment records',
@@ -157,7 +157,13 @@ const messages = {
         amount: 'Amount',
         customer: 'Customer',
         delete_invoice_confirm: 'Are you sure you want to delete this invoice?',
-        
+        total_invoices: 'Total Invoices',
+        paid_invoices: 'Paid Invoices',
+        total_amount: 'Total Amount',
+        date: 'Date',
+        status: 'Status',
+        actions: 'Actions',
+
         // Locations
         add_location: 'Add Location',
         edit_location: 'Edit Location',
@@ -167,7 +173,7 @@ const messages = {
         city: 'City',
         country: 'Country',
         description: 'Description',
-        
+
         // Team Management
         invite_user: 'Invite User',
         pending_invitations: 'Pending Invitations',
@@ -182,7 +188,7 @@ const messages = {
         copy_link: 'Copy Link',
         copied: 'Copied!',
         remove_member: 'Remove Member',
-        
+
         // General
         all_status: 'All Status',
         maintenance: 'Maintenance',
@@ -214,7 +220,7 @@ const messages = {
         saved: 'تم الحفظ.',
         language: 'اللغة',
         select_language: 'اختر اللغة',
-        
+
         // Navigation & Layout
         dashboard: 'لوحة التحكم',
         customers: 'العملاء',
@@ -231,7 +237,7 @@ const messages = {
         login: 'تسجيل الدخول',
         logout: 'تسجيل الخروج',
         register: 'التسجيل',
-        
+
         // Common Actions
         create: 'إنشاء',
         edit: 'تعديل',
@@ -246,7 +252,7 @@ const messages = {
         filter: 'تصفية',
         export: 'تصدير',
         import: 'استيراد',
-        
+
         // Status & Messages
         active: 'نشط',
         inactive: 'غير نشط',
@@ -257,12 +263,12 @@ const messages = {
         no_data: 'لا توجد بيانات متاحة',
         error_occurred: 'حدث خطأ',
         success: 'نجح',
-        
+
         // Welcome Page
         welcome: 'أهلاً وسهلاً',
         app_name: 'تطبيق لوكشوريا لتأجير السيارات',
         welcome_message: 'أهلاً بكم في خدمة تأجير السيارات المتميزة',
-        
+
         // Dashboard
         new_invoice: 'فاتورة جديدة',
         late_invoices_amount: 'مبلغ الفواتير المتأخرة',
@@ -280,7 +286,7 @@ const messages = {
         no_late_invoices: 'لا توجد فواتير متأخرة',
         all_payments_up_to_date: 'جميع المدفوعات محدثة',
         due_days_ago: 'استحقت منذ {days} يوم',
-        
+
         // Customers
         add_customer: 'إضافة عميل',
         edit_customer: 'تعديل العميل',
@@ -299,7 +305,7 @@ const messages = {
         delete_customer_confirm: 'هل أنت متأكد من أنك تريد حذف هذا العميل؟',
         get_started_first_customer: 'ابدأ بإضافة عميلك الأول.',
         no_customers_found: 'لم يتم العثور على عملاء مطابقين لبحثك عن "{query}". حاول تعديل مصطلحات البحث.',
-        
+
         // Vehicles
         add_vehicle: 'إضافة مركبة',
         get_started_add_vehicle: 'ابدأ بإضافة مركبة جديدة.',
@@ -330,7 +336,7 @@ const messages = {
         owned: 'مملوك',
         borrowed: 'مستعار',
         delete_vehicle_confirm: 'هل أنت متأكد من أنك تريد حذف هذه المركبة؟',
-        
+
         // Contracts
         new_contract: 'عقد جديد',
         contract_details: 'تفاصيل العقد',
@@ -344,7 +350,7 @@ const messages = {
         activate_contract: 'تفعيل العقد',
         complete_contract: 'إكمال العقد',
         void_contract: 'إلغاء العقد',
-        
+
         // Invoices
         create_invoice: 'إنشاء فاتورة',
         manage_invoices: 'إدارة الفواتير وسجلات الدفع',
@@ -355,7 +361,13 @@ const messages = {
         amount: 'المبلغ',
         customer: 'العميل',
         delete_invoice_confirm: 'هل أنت متأكد من أنك تريد حذف هذه الفاتورة؟',
-        
+        total_invoices: 'جميع الفواتير',
+        paid_invoices: 'الفواتير المدفوعة',
+        total_amount: 'إجمالي المبلغ',
+        date: 'التاريخ',
+        status: 'الحالة',
+        actions: 'الإجراءات',
+
         // Locations
         add_location: 'إضافة موقع',
         edit_location: 'تعديل الموقع',
@@ -365,7 +377,7 @@ const messages = {
         city: 'المدينة',
         country: 'البلد',
         description: 'الوصف',
-        
+
         // Team Management
         invite_user: 'دعوة مستخدم',
         pending_invitations: 'الدعوات المعلقة',
@@ -380,7 +392,7 @@ const messages = {
         copy_link: 'نسخ الرابط',
         copied: 'تم النسخ!',
         remove_member: 'إزالة العضو',
-        
+
         // General
         all_status: 'جميع الحالات',
         maintenance: 'صيانة',
@@ -426,4 +438,4 @@ export const setDirection = (locale: string): void => {
 // Helper function to get current locale direction
 export const getCurrentDirection = (): string => {
     return document.documentElement.getAttribute('dir') || 'ltr';
-}; 
+};
