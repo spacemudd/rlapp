@@ -192,12 +192,17 @@ const syncFines = async () => {
   showLog.value = true; // أظهر نافذة اللوج
   logContent.value = '';
   syncStartTimestamp = Math.floor(Date.now() / 1000);
+
+  // الحصول على CSRF token من Inertia
+  const csrfToken = (usePage().props as any).csrf_token;
+
   await fetch('/run-script', {
     method: 'POST',
     headers: {
       'X-Requested-With': 'XMLHttpRequest',
-      'X-CSRF-TOKEN': (document.querySelector('meta[name=csrf-token]') as HTMLMetaElement)?.content || '',
+      'X-CSRF-TOKEN': csrfToken,
       'Accept': 'application/json',
+      'Content-Type': 'application/json',
     },
   });
   if (logInterval) clearInterval(logInterval);
