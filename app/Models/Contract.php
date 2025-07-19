@@ -40,6 +40,15 @@ class Contract extends Model
         'created_by',
         'approved_by',
         'void_reason',
+        // Vehicle condition fields
+        'pickup_mileage',
+        'pickup_fuel_level',
+        'pickup_condition_photos',
+        'return_mileage',
+        'return_fuel_level',
+        'return_condition_photos',
+        'excess_mileage_charge',
+        'fuel_charge',
     ];
 
     /**
@@ -60,6 +69,13 @@ class Contract extends Model
         'excess_mileage_rate' => 'decimal:2',
         'total_days' => 'integer',
         'mileage_limit' => 'integer',
+        // Vehicle condition casts
+        'pickup_mileage' => 'integer',
+        'return_mileage' => 'integer',
+        'pickup_condition_photos' => 'array',
+        'return_condition_photos' => 'array',
+        'excess_mileage_charge' => 'decimal:2',
+        'fuel_charge' => 'decimal:2',
     ];
 
     /**
@@ -279,6 +295,112 @@ class Contract extends Model
     public function hasExtensions(): bool
     {
         return $this->extensions()->approved()->exists();
+    }
+
+    /**
+     * Record vehicle return condition and calculate additional charges.
+     */
+    public function recordVehicleReturn(int $returnMileage, string $returnFuelLevel, array $returnPhotos = []): void
+    {
+        // Store return condition
+        $this->update([
+            'return_mileage' => $returnMileage,
+            'return_fuel_level' => $returnFuelLevel,
+            'return_condition_photos' => $returnPhotos,
+            'excess_mileage_charge' => $this->calculateExcessMileageCharge($returnMileage),
+            'fuel_charge' => $this->calculateFuelCharge($returnFuelLevel),
+        ]);
+    }
+
+    /**
+     * Calculate excess mileage charge.
+     */
+    public function calculateExcessMileageCharge(int $returnMileage): float
+    {
+        if (!$this->pickup_mileage || !$this->mileage_limit || !$this->excess_mileage_rate) {
+            return 0;
+        }
+
+        $actualMileage = $returnMileage - $this->pickup_mileage;
+        $excessMileage = max(0, $actualMileage - $this->mileage_limit);
+        
+        return $excessMileage * $this->excess_mileage_rate;
+    }
+
+    /**
+     * Calculate fuel charge (if returned with less fuel).
+     */
+    public function calculateFuelCharge(string $returnFuelLevel): float
+    {
+        if (!$this->pickup_fuel_level) {
+            return 0;
+        }
+
+        $fuelLevels = [
+            'empty' => 0,
+            'low' => 25,
+            '1/4' => 25,
+            '1/2' => 50,
+            '3/4' => 75,
+            'full' => 100,
+        ];
+
+        $pickupLevel = $fuelLevels[$this->pickup_fuel_level] ?? 0;
+        $returnLevel = $fuelLevels[$returnFuelLevel] ?? 0;
+        
+        // If returned with less fuel, charge for the difference
+        if ($returnLevel < $pickupLevel) {
+            $fuelDifference = $pickupLevel - $returnLevel;
+            // Assume a standard fuel charge rate (can be made configurable)
+            $fuelChargeRate = 2.50; // AED per percentage point
+            return ($fuelDifference * $fuelChargeRate) / 100;
+        }
+
+        return 0;
+    }
+
+    /**
+     * Get the total additional charges (excess mileage + fuel).
+     */
+    public function getTotalAdditionalCharges(): float
+    {
+        return ($this->excess_mileage_charge ?? 0) + ($this->fuel_charge ?? 0);
+    }
+
+    /**
+     * Get the actual mileage driven.
+     */
+    public function getActualMileageDriven(): ?int
+    {
+        if ($this->pickup_mileage && $this->return_mileage) {
+            return $this->return_mileage - $this->pickup_mileage;
+        }
+        return null;
+    }
+
+    /**
+     * Check if vehicle has been returned.
+     */
+    public function isVehicleReturned(): bool
+    {
+        return !is_null($this->return_mileage) && !is_null($this->return_fuel_level);
+    }
+
+    /**
+     * Get fuel level as percentage for calculations.
+     */
+    public static function fuelLevelToPercentage(string $level): int
+    {
+        $levels = [
+            'empty' => 0,
+            'low' => 10,
+            '1/4' => 25,
+            '1/2' => 50,
+            '3/4' => 75,
+            'full' => 100,
+        ];
+
+        return $levels[$level] ?? 0;
     }
 
     /**

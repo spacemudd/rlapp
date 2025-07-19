@@ -189,7 +189,20 @@ class ContractController extends Controller
             'excess_mileage_rate' => 'nullable|numeric|min:0',
             'terms_and_conditions' => 'nullable|string',
             'notes' => 'nullable|string',
+            // Vehicle condition validation
+            'current_mileage' => 'required|integer|min:0',
+            'fuel_level' => 'required|in:full,3/4,1/2,1/4,low,empty',
+            'condition_photos.*' => 'nullable|image|mimes:jpeg,png,jpg|max:10240', // 10MB max per image
         ]);
+
+        // Handle photo uploads
+        $photosPaths = [];
+        if ($request->hasFile('condition_photos')) {
+            foreach ($request->file('condition_photos') as $photo) {
+                $path = $photo->store('contract_photos/pickup', 'public');
+                $photosPaths[] = $path;
+            }
+        }
 
         // Calculate total days and amount
         $startDate = \Carbon\Carbon::parse($validated['start_date']);
@@ -214,6 +227,10 @@ class ContractController extends Controller
             'notes' => $validated['notes'],
             'created_by' => auth()->user()->name,
             'status' => 'draft',
+            // Vehicle pickup condition
+            'pickup_mileage' => $validated['current_mileage'],
+            'pickup_fuel_level' => $validated['fuel_level'],
+            'pickup_condition_photos' => $photosPaths,
         ]);
 
         return redirect()->route('contracts.show', $contract)
@@ -347,6 +364,56 @@ class ContractController extends Controller
 
         return redirect()->route('contracts.show', $contract)
             ->with('success', 'Contract completed successfully.');
+    }
+
+    /**
+     * Record vehicle return and complete contract.
+     */
+    public function recordReturn(Request $request, Contract $contract): RedirectResponse
+    {
+        // Only allow recording return for active contracts
+        if ($contract->status !== 'active') {
+            return redirect()->route('contracts.show', $contract)
+                ->with('error', 'Only active contracts can have returns recorded.');
+        }
+
+        $validated = $request->validate([
+            'return_mileage' => 'required|integer|min:0',
+            'return_fuel_level' => 'required|in:full,3/4,1/2,1/4,low,empty',
+            'return_condition_photos.*' => 'nullable|image|mimes:jpeg,png,jpg|max:10240',
+        ]);
+
+        // Handle return photos upload
+        $returnPhotosPaths = [];
+        if ($request->hasFile('return_condition_photos')) {
+            foreach ($request->file('return_condition_photos') as $photo) {
+                $path = $photo->store('contract_photos/return', 'public');
+                $returnPhotosPaths[] = $path;
+            }
+        }
+
+        // Record vehicle return using the model method
+        $contract->recordVehicleReturn(
+            $validated['return_mileage'],
+            $validated['return_fuel_level'],
+            $returnPhotosPaths
+        );
+
+        // Optionally complete the contract automatically
+        // You can make this configurable based on business logic
+        if ($request->input('complete_contract', false)) {
+            $contract->complete();
+        }
+
+        $additionalCharges = $contract->getTotalAdditionalCharges();
+        $message = 'Vehicle return recorded successfully.';
+        
+        if ($additionalCharges > 0) {
+            $message .= ' Additional charges of AED ' . number_format($additionalCharges, 2) . ' have been calculated.';
+        }
+
+        return redirect()->route('contracts.show', $contract)
+            ->with('success', $message);
     }
 
     /**
