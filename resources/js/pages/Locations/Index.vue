@@ -116,7 +116,7 @@ const hasActiveFilters = computed(() => {
     <Head :title="t('locations')" />
     
     <AppLayout>
-        <div class="p-6 sm:p-8 max-w-7xl mx-auto">
+        <div class="p-6">
             <!-- Header -->
             <div class="mb-6">
                     <div class="sm:flex sm:items-center sm:justify-between">

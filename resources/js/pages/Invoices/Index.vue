@@ -76,7 +76,7 @@ function deleteInvoice(id: string) {
 
 <template>
     <AppSidebarLayout>
-        <div class="p-6 sm:p-8 max-w-7xl mx-auto">
+        <div class="p-6">
             <!-- Header Section -->
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                 <div>

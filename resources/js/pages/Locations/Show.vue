@@ -68,8 +68,7 @@ const getVehicleStatusBadge = (status: string) => {
     <Head :title="location.name" />
     
     <AppLayout>
-        <div class="py-6">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="p-6">
                 <!-- Header -->
                 <div class="mb-6">
                     <div class="flex items-center space-x-4 mb-4">
@@ -206,7 +205,6 @@ const getVehicleStatusBadge = (status: string) => {
                         </Card>
                     </div>
                 </div>
-            </div>
         </div>
     </AppLayout>
 </template> 

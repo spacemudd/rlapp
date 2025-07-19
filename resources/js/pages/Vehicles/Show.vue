@@ -145,8 +145,7 @@ const isExpired = (dateString: string) => {
     <Head :title="`${vehicle.make} ${vehicle.model} - ${vehicle.plate_number}`" />
     
     <AppLayout>
-        <div class="py-6">
-            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="p-6">
                 <!-- Header -->
                 <div class="mb-6">
                     <div class="flex items-center space-x-4 mb-4">
@@ -444,7 +443,6 @@ const isExpired = (dateString: string) => {
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
-            </div>
         </div>
     </AppLayout>
 </template> 

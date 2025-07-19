@@ -177,7 +177,7 @@ watch(searchQuery, (newValue, oldValue) => {
     <Head :title="t('customers')" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="p-6 sm:p-8 max-w-7xl mx-auto">
+        <div class="p-6">
             <div class="space-y-6">
                 <div class="flex items-center justify-between" :class="{ 'flex-row-reverse': isRtl }">
                     <div :class="{ 'text-right': isRtl }">
@@ -302,7 +302,7 @@ watch(searchQuery, (newValue, oldValue) => {
                                     {{ searchQuery ? t('no_results') : t('no_data') }}
                                 </h3>
                                 <p class="mt-2 text-sm text-muted-foreground">
-                                    {{ searchQuery 
+                                    {{ searchQuery
                                         ? `${t('no_results')} "${searchQuery}"`
                                         : t('manage_customers')
                                     }}

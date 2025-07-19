@@ -209,7 +209,7 @@ async function sendEmail() {
 
 <template>
     <AppSidebarLayout>
-        <div class="container mx-auto p-6 max-w-7xl">
+        <div class="p-6">
             <!-- Header Section -->
             <div class="flex items-center justify-between mb-8">
                 <div class="flex items-center gap-4">
