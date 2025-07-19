@@ -102,53 +102,54 @@ Route::get('invitation/{token}', [App\Http\Controllers\InvitationController::cla
 Route::post('invitation/{token}/accept', [App\Http\Controllers\InvitationController::class, 'accept'])->name('invitation.accept');
 Route::post('invitation/{token}/decline', [App\Http\Controllers\InvitationController::class, 'decline'])->name('invitation.decline');
 
-Route::get('/fines', [\App\Http\Controllers\FinesController::class, 'index'])->name('fines');
-Route::post('/fines/sync', [\App\Http\Controllers\FinesController::class, 'sync'])->name('fines.sync');
-Route::post('/run-script', [App\Http\Controllers\ScriptController::class, 'run']);
-Route::get('/script-log', [App\Http\Controllers\ScriptController::class, 'log']);
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/fines', [\App\Http\Controllers\FineController::class, 'index'])->name('fines');
+    Route::post('/fines/sync', [\App\Http\Controllers\FineController::class, 'runScript'])->name('fines.sync');
+    Route::post('/run-script', [App\Http\Controllers\ScriptController::class, 'run']);
+    Route::get('/script-log', [App\Http\Controllers\ScriptController::class, 'log']);
 
-// Routes للـ FineController الجديد
-Route::post('/fines/run-script', [App\Http\Controllers\FineController::class, 'runScript'])->name('fines.run-script');
-Route::get('/fines/last-sync', [App\Http\Controllers\FineController::class, 'getLastSync'])->name('fines.last-sync');
+    // Routes للـ FineController الجديد
+    Route::post('/fines/run-script', [App\Http\Controllers\FineController::class, 'runScript'])->name('fines.run-script');
+    Route::get('/fines/last-sync', [App\Http\Controllers\FineController::class, 'getLastSync'])->name('fines.last-sync');
 
-// Route لإرجاع نسبة التقدم في ملف progress.txt
-Route::get('/sync-progress', function () {
-    $progressFile = base_path('scripts/progress.txt');
-    $percent = 0;
-    if (file_exists($progressFile)) {
-        $percent = (int)file_get_contents($progressFile);
-    }
-    return Response::json(['progress' => $percent]);
-});
+    // Route لإرجاع نسبة التقدم في ملف progress.txt
+    Route::get('/sync-progress', function () {
+        $progressFile = base_path('scripts/progress.txt');
+        $percent = 0;
+        if (file_exists($progressFile)) {
+            $percent = (int)file_get_contents($progressFile);
+        }
+        return Response::json(['progress' => $percent]);
+    });
 
-Route::get('/traffic-violations', function () {
-    return inertia('TrafficViolations');
-});
+    Route::get('/traffic-violations', function () {
+        return inertia('TrafficViolations');
+    });
 
-Route::get('/traffic-violations/salik', function () {
-    return inertia('TrafficViolations/Salik');
-});
+    Route::get('/traffic-violations/salik', function () {
+        return inertia('TrafficViolations/Salik');
+    });
 
-Route::get('/api/salik-balance', function () {
-    $file = base_path('scripts/salik_balance.txt');
-    $balance = file_exists($file) ? trim(file_get_contents($file)) : null;
-    return response()->json(['balance' => $balance]);
-});
+    Route::get('/api/salik-balance', function () {
+        $file = base_path('scripts/salik_balance.txt');
+        $balance = file_exists($file) ? trim(file_get_contents($file)) : null;
+        return response()->json(['balance' => $balance]);
+    });
 
-// API route to return Salik trips data
+    // API route to return Salik trips data
+    Route::get('/api/salik-trips', function () {
+        $path = base_path('scripts/salik_trips.json');
+        if (file_exists($path)) {
+            return response()->json(json_decode(file_get_contents($path)));
+        }
+        return response()->json([]);
+    });
 
-Route::get('/api/salik-trips', function () {
-    $path = base_path('scripts/salik_trips.json');
-    if (file_exists($path)) {
-        return response()->json(json_decode(file_get_contents($path)));
-    }
-    return response()->json([]);
-});
-
-Route::get('/script-status', function () {
-    $path = storage_path('logs/scrap_rta.done');
-    $done = file_exists($path) ? trim(file_get_contents($path)) : null;
-    return response()->json(['done' => $done]);
+    Route::get('/script-status', function () {
+        $path = storage_path('logs/scrap_rta.done');
+        $done = file_exists($path) ? trim(file_get_contents($path)) : null;
+        return response()->json(['done' => $done]);
+    });
 });
 
 require __DIR__.'/settings.php';
