@@ -149,10 +149,9 @@ const formatCurrency = (amount?: number) => {
     <Head :title="t('vehicles')" />
     
     <AppLayout>
-        <div class="py-6">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <!-- Header -->
-                <div class="md:flex md:items-center md:justify-between mb-6">
+        <div class="p-6 sm:p-8 max-w-7xl mx-auto">
+            <!-- Header -->
+            <div class="md:flex md:items-center md:justify-between mb-6">
                     <div class="flex-1 min-w-0">
                         <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
                             {{ t('vehicles') }}
@@ -415,6 +414,5 @@ const formatCurrency = (amount?: number) => {
                     </DialogContent>
                 </Dialog>
             </div>
-        </div>
     </AppLayout>
 </template>

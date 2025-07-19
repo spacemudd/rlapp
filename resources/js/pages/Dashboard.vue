@@ -112,16 +112,17 @@ function daysAgo(dueDate: string) {
     <Head :title="t('dashboard')" />
 
     <AppLayout>
-        <div class="min-h-screen bg-gradient-to-br from-gray-50 to-white">
-            <div class="p-6 space-y-8">
-                <!-- Header Section -->
-                <div class="flex justify-between items-center">
-                    <h1 class="text-2xl font-bold text-gray-900">{{ t('dashboard') }}</h1>
-                    <Button class="bg-primary-600 hover:bg-primary-700 text-white transition-all duration-200 transform hover:scale-105">
-                        <Plus class="w-4 h-4 mr-2" />
-                        {{ t('new_invoice') }}
-                    </Button>
-                </div>
+        <div class="p-6 sm:p-8 max-w-7xl mx-auto">
+            <div class="min-h-screen bg-gradient-to-br from-gray-50 to-white">
+                <div class="space-y-8">
+                    <!-- Header Section -->
+                    <div class="flex justify-between items-center">
+                        <h1 class="text-2xl font-bold text-gray-900">{{ t('dashboard') }}</h1>
+                        <Button class="bg-primary-600 hover:bg-primary-700 text-white transition-all duration-200 transform hover:scale-105">
+                            <Plus class="w-4 h-4 mr-2" />
+                            {{ t('new_invoice') }}
+                        </Button>
+                    </div>
 
                 <!-- Stats Grid -->
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -229,6 +230,7 @@ function daysAgo(dueDate: string) {
                 </div>
             </div>
         </div>
+    </div>
     </AppLayout>
 </template>
 

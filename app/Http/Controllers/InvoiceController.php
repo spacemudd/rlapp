@@ -16,9 +16,17 @@ use App\Models\Contract;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\InvoicePdfMail;
 use Illuminate\Support\Facades\Storage;
+use App\Services\AccountingService;
 
 class InvoiceController extends Controller
 {
+    protected $accountingService;
+
+    public function __construct(AccountingService $accountingService)
+    {
+        $this->accountingService = $accountingService;
+    }
+
     private function generateInvoiceNumber()
     {
         $lastInvoice = Invoice::latest()->first();
@@ -173,11 +181,17 @@ class InvoiceController extends Controller
                 'sub_total' => 'required|numeric|min:0',
                 'total_discount' => 'required|numeric|min:0',
                 'total_amount' => 'required|numeric|min:0',
+                'vat_rate' => 'nullable|numeric|min:0|max:100',
                 'items' => 'required|array|min:1',
                 'items.*.description' => 'nullable|string',
                 'items.*.amount' => 'nullable|numeric|min:0',
                 'items.*.discount' => 'nullable|numeric|min:0',
             ]);
+
+            // Calculate VAT
+            $vatRate = $validated['vat_rate'] ?? 5.0; // Default UAE VAT rate
+            $netAmount = $validated['sub_total'] - $validated['total_discount'];
+            $vatAmount = $this->accountingService->calculateVAT($netAmount, $vatRate);
 
             // Generate invoice number
             $lastInvoice = Invoice::orderBy('created_at', 'desc')->first();
@@ -203,6 +217,8 @@ class InvoiceController extends Controller
                 'sub_total' => $validated['sub_total'],
                 'total_discount' => $validated['total_discount'],
                 'total_amount' => $validated['total_amount'],
+                'vat_rate' => $vatRate,
+                'vat_amount' => $vatAmount,
             ]);
 
             // Create invoice items
@@ -214,6 +230,19 @@ class InvoiceController extends Controller
                         'discount' => $item['discount'] ?? 0,
                     ]);
                 }
+            }
+
+            // Record invoice in IFRS system
+            try {
+                $this->accountingService->recordInvoice($invoice);
+                Log::info("Invoice {$invoice->invoice_number} successfully recorded in accounting system");
+            } catch (Exception $e) {
+                // Log the error but don't fail the invoice creation
+                Log::error("Failed to record invoice {$invoice->invoice_number} in accounting system", [
+                    'error' => $e->getMessage(),
+                    'invoice_id' => $invoice->id,
+                ]);
+                // You might want to add a flag to indicate accounting sync is needed
             }
 
             DB::commit();
