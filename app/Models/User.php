@@ -58,6 +58,21 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the IFRS entity through the user's team.
+     */
+    public function entity()
+    {
+        return $this->hasOneThrough(
+            \IFRS\Models\Entity::class,
+            Team::class,
+            'id',         // Foreign key on teams table
+            'id',         // Foreign key on entities table  
+            'team_id',    // Local key on users table
+            'entity_id'   // Local key on teams table
+        );
+    }
+
+    /**
      * Switch to a different team and set permissions team ID
      */
     public function switchTeam(Team $team)

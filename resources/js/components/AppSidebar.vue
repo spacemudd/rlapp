@@ -5,7 +5,7 @@ import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid, Users, Receipt, Settings, Car, FileText, MapPin } from 'lucide-vue-next';
+import { BookOpen, Folder, LayoutGrid, Users, Receipt, Settings, Car, FileText, MapPin, Calculator } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -23,6 +23,12 @@ const userPermissions = computed(() => {
 // Check if user can manage team settings
 const canManageTeam = computed(() => {
     return userPermissions.value.includes('manage team settings');
+});
+
+// Check if user can view financial reports
+const canViewFinancialReports = computed(() => {
+    return userPermissions.value.includes('view financial reports') || 
+           userPermissions.value.includes('manage team settings'); // Team managers can access accounting
 });
 
 const mainNavItems = computed<NavItem[]>(() => {
@@ -57,12 +63,22 @@ const mainNavItems = computed<NavItem[]>(() => {
             href: '/locations',
             icon: MapPin,
         },
-        {
-            title: 'Traffic violations',
-            href: '/traffic-violations',
-            icon: FileText,
-        },
     ];
+
+    // Add Accounting link for users with financial permissions
+    if (canViewFinancialReports.value) {
+        items.push({
+            title: t('accounting'),
+            href: '/accounting',
+            icon: Calculator,
+        });
+    }
+
+    items.push({
+        title: 'Traffic violations',
+        href: '/traffic-violations',
+        icon: FileText,
+    });
 
     // Add Team link only for users with manage team settings permission
     if (canManageTeam.value) {

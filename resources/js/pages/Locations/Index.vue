@@ -116,10 +116,9 @@ const hasActiveFilters = computed(() => {
     <Head :title="t('locations')" />
     
     <AppLayout>
-        <div class="py-6">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <!-- Header -->
-                <div class="mb-6">
+        <div class="p-6 sm:p-8 max-w-7xl mx-auto">
+            <!-- Header -->
+            <div class="mb-6">
                     <div class="sm:flex sm:items-center sm:justify-between">
                         <div>
                             <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl">
@@ -322,7 +321,6 @@ const hasActiveFilters = computed(() => {
                     </div>
                 </div>
             </div>
-        </div>
     </AppLayout>
 </template>
 

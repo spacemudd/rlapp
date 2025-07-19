@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use IFRS\Models\Transaction as IFRSTransaction;
+use IFRS\Models\Account as IFRSAccount;
 
 class Invoice extends Model
 {
@@ -38,6 +40,10 @@ class Invoice extends Model
         'paid_amount',
         'remaining_amount',
         'notes',
+        'ifrs_transaction_id',
+        'ifrs_receivable_account_id',
+        'vat_amount',
+        'vat_rate',
     ];
 
     protected $casts = [
@@ -53,6 +59,8 @@ class Invoice extends Model
         'total_amount' => 'decimal:2',
         'paid_amount' => 'decimal:2',
         'remaining_amount' => 'decimal:2',
+        'vat_amount' => 'decimal:2',
+        'vat_rate' => 'decimal:2',
     ];
 
     public function vehicle(): BelongsTo
@@ -75,14 +83,79 @@ class Invoice extends Model
         return $this->hasMany(Payment::class);
     }
 
-    public function getPaidAmountAttribute()
+    /**
+     * Get the IFRS transaction associated with this invoice.
+     */
+    public function ifrsTransaction(): BelongsTo
+    {
+        return $this->belongsTo(IFRSTransaction::class, 'ifrs_transaction_id');
+    }
+
+    /**
+     * Get the IFRS receivable account associated with this invoice.
+     */
+    public function ifrsReceivableAccount(): BelongsTo
+    {
+        return $this->belongsTo(IFRSAccount::class, 'ifrs_receivable_account_id');
+    }
+
+    /**
+     * Calculate the total paid amount from payments.
+     */
+    public function calculatePaidAmount()
     {
         return $this->payments()->where('transaction_type', 'payment')->sum('amount');
     }
 
-    public function getRemainingAmountAttribute()
+    /**
+     * Calculate the remaining amount.
+     */
+    public function calculateRemainingAmount()
     {
-        return $this->total_amount - $this->paid_amount;
+        return $this->total_amount - $this->calculatePaidAmount();
+    }
+
+    /**
+     * Sync payment tracking fields with calculated values.
+     */
+    public function syncPaymentFields()
+    {
+        $paidAmount = $this->calculatePaidAmount();
+        $remainingAmount = $this->total_amount - $paidAmount;
+        
+        $this->update([
+            'paid_amount' => $paidAmount,
+            'remaining_amount' => $remainingAmount,
+        ]);
+        
+        // Update status based on payment
+        $newStatus = $this->status;
+        if ($remainingAmount <= 0) {
+            $newStatus = 'paid';
+        } elseif ($paidAmount > 0 && $remainingAmount > 0) {
+            $newStatus = 'partial_paid';
+        } elseif ($paidAmount == 0) {
+            $newStatus = 'unpaid';
+        }
+        
+        if ($newStatus !== $this->status) {
+            $this->update(['status' => $newStatus]);
+        }
+    }
+
+    /**
+     * Boot method to sync payment fields when payments are added.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::saved(function ($invoice) {
+            // Only sync if the total_amount changed to avoid infinite loops
+            if ($invoice->wasChanged('total_amount')) {
+                $invoice->syncPaymentFields();
+            }
+        });
     }
 
     public function getDepositBalanceAttribute()
@@ -90,6 +163,95 @@ class Invoice extends Model
         $deposit = $this->payments()->where('transaction_type', 'deposit')->sum('amount');
         $refund = $this->payments()->where('transaction_type', 'refund')->sum('amount');
         return $deposit - $refund;
+    }
+
+    /**
+     * Calculate VAT amount based on vat_rate and subtotal.
+     */
+    public function calculateVatAmount()
+    {
+        if (!$this->vat_rate || !$this->sub_total) {
+            return 0;
+        }
+        
+        return ($this->sub_total * $this->vat_rate) / 100;
+    }
+
+    /**
+     * Get the net amount (subtotal after discount, before VAT).
+     */
+    public function getNetAmountAttribute()
+    {
+        return $this->sub_total - $this->total_discount;
+    }
+
+    /**
+     * Check if the invoice is overdue.
+     */
+    public function isOverdue()
+    {
+        return $this->due_date < now() && in_array($this->status, ['unpaid', 'partial_paid']);
+    }
+
+    /**
+     * Get days overdue.
+     */
+    public function getDaysOverdueAttribute()
+    {
+        if (!$this->isOverdue()) {
+            return 0;
+        }
+        
+        return now()->diffInDays($this->due_date);
+    }
+
+    /**
+     * Get the aging category for this invoice.
+     */
+    public function getAgingCategoryAttribute()
+    {
+        if (!$this->isOverdue()) {
+            return 'current';
+        }
+        
+        $daysOverdue = $this->days_overdue;
+        
+        if ($daysOverdue <= 30) {
+            return '1-30 days';
+        } elseif ($daysOverdue <= 60) {
+            return '31-60 days';
+        } elseif ($daysOverdue <= 90) {
+            return '61-90 days';
+        } elseif ($daysOverdue <= 180) {
+            return '91-180 days';
+        } else {
+            return '180+ days';
+        }
+    }
+
+    /**
+     * Scope for overdue invoices.
+     */
+    public function scopeOverdue($query)
+    {
+        return $query->where('due_date', '<', now())
+                    ->whereIn('status', ['unpaid', 'partial_paid']);
+    }
+
+    /**
+     * Scope for unpaid invoices.
+     */
+    public function scopeUnpaid($query)
+    {
+        return $query->whereIn('status', ['unpaid', 'partial_paid']);
+    }
+
+    /**
+     * Scope for paid invoices.
+     */
+    public function scopePaid($query)
+    {
+        return $query->where('status', 'paid');
     }
 
     public function team()

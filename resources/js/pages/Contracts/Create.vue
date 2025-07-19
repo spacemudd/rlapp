@@ -41,6 +41,10 @@ const form = useForm({
     excess_mileage_rate: '' as string | number,
     terms_and_conditions: '',
     notes: '',
+    // New vehicle condition fields
+    current_mileage: '',
+    fuel_level: '',
+    condition_photos: null as File[] | null,
 });
 
 const selectedVehicle = ref<any>(null);
@@ -64,6 +68,49 @@ const pricingTier = ref('');
 const rateType = ref('');
 const pricingBreakdown = ref<PricingBreakdown | null>(null);
 const isCalculatingPricing = ref(false);
+
+// Photo handling methods
+const handlePhotoUpload = (event: Event) => {
+    const target = event.target as HTMLInputElement;
+    const files = target.files;
+    
+    if (files) {
+        const fileArray = Array.from(files);
+        // Limit to 10 photos and 10MB each
+        const validFiles = fileArray.filter(file => {
+            const isValidType = file.type.startsWith('image/');
+            const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB
+            return isValidType && isValidSize;
+        }).slice(0, 10);
+        
+        form.condition_photos = validFiles;
+    }
+};
+
+const removePhoto = (index: number) => {
+    if (form.condition_photos) {
+        form.condition_photos.splice(index, 1);
+        if (form.condition_photos.length === 0) {
+            form.condition_photos = null;
+        }
+    }
+};
+
+const getFilePreview = (file: File): string => {
+    return URL.createObjectURL(file);
+};
+
+const getFuelLevelDisplay = (level: string): string => {
+    const levels: Record<string, string> = {
+        'full': 'Full Tank (100%)',
+        '3/4': '3/4 Tank (75%)',
+        '1/2': '1/2 Tank (50%)',
+        '1/4': '1/4 Tank (25%)',
+        'low': 'Low Fuel (< 25%)',
+        'empty': 'Empty'
+    };
+    return levels[level] || level;
+};
 
 // Function to calculate pricing via API
 const calculatePricing = async () => {
@@ -649,6 +696,163 @@ watch(() => props.newCustomer, (customer) => {
                                 />
                                 <div v-if="form.errors.excess_mileage_rate" class="text-sm text-red-600">
                                     {{ form.errors.excess_mileage_rate }}
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <!-- Vehicle Condition at Pickup -->
+                <Card v-if="selectedVehicle">
+                    <CardHeader>
+                        <CardTitle class="flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            Vehicle Condition at Pickup
+                        </CardTitle>
+                        <CardDescription>Record the current condition of {{ selectedVehicle.make }} {{ selectedVehicle.model }}</CardDescription>
+                    </CardHeader>
+                    <CardContent class="space-y-6">
+                        <div class="grid gap-4 md:grid-cols-2">
+                            <!-- Current Mileage -->
+                            <div class="space-y-2">
+                                <Label for="current_mileage">Current Odometer Reading (KM) *</Label>
+                                <Input
+                                    id="current_mileage"
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    v-model="form.current_mileage"
+                                    placeholder="Enter current mileage"
+                                    required
+                                />
+                                <div v-if="form.errors.current_mileage" class="text-sm text-red-600">
+                                    {{ form.errors.current_mileage }}
+                                </div>
+                                <p class="text-xs text-gray-500">
+                                    Record exact odometer reading at vehicle handover
+                                </p>
+                            </div>
+
+                            <!-- Fuel Level -->
+                            <div class="space-y-2">
+                                <Label for="fuel_level">Current Fuel Level *</Label>
+                                <select 
+                                    id="fuel_level"
+                                    v-model="form.fuel_level" 
+                                    required
+                                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <option value="">Select fuel level</option>
+                                    <option value="full">Full Tank (100%)</option>
+                                    <option value="3/4">3/4 Tank (75%)</option>
+                                    <option value="1/2">1/2 Tank (50%)</option>
+                                    <option value="1/4">1/4 Tank (25%)</option>
+                                    <option value="low">Low Fuel (< 25%)</option>
+                                    <option value="empty">Empty</option>
+                                </select>
+                                <div v-if="form.errors.fuel_level" class="text-sm text-red-600">
+                                    {{ form.errors.fuel_level }}
+                                </div>
+                                <p class="text-xs text-gray-500">
+                                    Customer will return vehicle at this level or pay refueling fee
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Photo Upload Section -->
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <Label for="condition_photos">Vehicle Condition Photos</Label>
+                                    <p class="text-sm text-gray-500 mt-1">
+                                        Upload photos to document current vehicle condition (optional)
+                                    </p>
+                                </div>
+                                <div class="text-xs text-gray-400">
+                                    Optional
+                                </div>
+                            </div>
+                            
+                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-gray-400 transition-colors">
+                                <div class="text-center">
+                                    <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg>
+                                    <div class="mt-4">
+                                        <label for="condition_photos" class="cursor-pointer">
+                                            <span class="mt-2 block text-sm font-medium text-gray-900">
+                                                Upload vehicle photos
+                                            </span>
+                                            <span class="mt-1 block text-sm text-gray-500">
+                                                PNG, JPG up to 10MB each
+                                            </span>
+                                        </label>
+                                        <input
+                                            id="condition_photos"
+                                            name="condition_photos"
+                                            type="file"
+                                            class="sr-only"
+                                            multiple
+                                            accept="image/*"
+                                            @change="handlePhotoUpload"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Selected Photos Preview -->
+                            <div v-if="form.condition_photos && form.condition_photos.length > 0" class="mt-4">
+                                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                                    <div 
+                                        v-for="(file, index) in form.condition_photos" 
+                                        :key="index"
+                                        class="relative group"
+                                    >
+                                        <img 
+                                            :src="getFilePreview(file)" 
+                                            :alt="`Vehicle condition ${index + 1}`"
+                                            class="h-20 w-full object-cover rounded-md border border-gray-200"
+                                        />
+                                        <button
+                                            type="button"
+                                            @click="removePhoto(index)"
+                                            class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-2">
+                                    {{ form.condition_photos.length }} photo(s) selected
+                                </p>
+                            </div>
+
+                            <div v-if="form.errors.condition_photos" class="text-sm text-red-600">
+                                {{ form.errors.condition_photos }}
+                            </div>
+                        </div>
+
+                        <!-- Quick Condition Summary -->
+                        <div v-if="form.current_mileage || form.fuel_level || (form.condition_photos && form.condition_photos.length > 0)" class="p-4 bg-blue-50 border border-blue-200 rounded-md">
+                            <div class="flex items-start gap-3">
+                                <svg class="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <div>
+                                    <h4 class="font-medium text-blue-900 mb-1">Pickup Condition Summary</h4>
+                                    <div class="text-sm text-blue-800 space-y-1">
+                                        <p v-if="form.current_mileage">
+                                            <strong>Mileage:</strong> {{ Number(form.current_mileage).toLocaleString() }} KM
+                                        </p>
+                                        <p v-if="form.fuel_level">
+                                            <strong>Fuel:</strong> {{ getFuelLevelDisplay(form.fuel_level) }}
+                                        </p>
+                                        <p v-if="form.condition_photos && form.condition_photos.length > 0">
+                                            <strong>Photos:</strong> {{ form.condition_photos.length }} condition photo(s) attached
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
