@@ -18,6 +18,7 @@ class Team extends Model
     protected $fillable = [
         'name',
         'description',
+        'entity_id',
     ];
 
     /**
@@ -46,6 +47,14 @@ class Team extends Model
     public function users()
     {
         return $this->hasMany(User::class);
+    }
+
+    /**
+     * Get the IFRS entity that the team belongs to.
+     */
+    public function entity()
+    {
+        return $this->belongsTo(\IFRS\Models\Entity::class);
     }
 
     /**

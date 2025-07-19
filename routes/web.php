@@ -41,6 +41,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('contracts', App\Http\Controllers\ContractController::class);
     Route::patch('/contracts/{contract}/activate', [App\Http\Controllers\ContractController::class, 'activate'])->name('contracts.activate');
     Route::patch('/contracts/{contract}/complete', [App\Http\Controllers\ContractController::class, 'complete'])->name('contracts.complete');
+    Route::post('/contracts/{contract}/record-return', [App\Http\Controllers\ContractController::class, 'recordReturn'])->name('contracts.record-return');
     Route::patch('/contracts/{contract}/void', [App\Http\Controllers\ContractController::class, 'void'])->name('contracts.void');
     Route::post('/contracts/{contract}/create-invoice', [App\Http\Controllers\ContractController::class, 'createInvoice'])->name('contracts.create-invoice');
     Route::get('/contracts/{contract}/pdf', [App\Http\Controllers\ContractController::class, 'downloadPdf'])->name('contracts.pdf');

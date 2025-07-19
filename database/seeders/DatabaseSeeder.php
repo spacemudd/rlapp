@@ -18,6 +18,11 @@ class DatabaseSeeder extends Seeder
             TeamsSeeder::class,
         ]);
 
+        // Initialize IFRS accounting system (must be done early for proper setup)
+        $this->call([
+            IFRSSeeder::class,
+        ]);
+
         // Create team roles and permissions for all teams
         $this->call([
             TeamRolesSeeder::class,
@@ -25,6 +30,12 @@ class DatabaseSeeder extends Seeder
 
         // Get the created team
         $team = \App\Models\Team::where('name', 'Luxuria Cars LLC')->first();
+
+        // Get the default IFRS entity and assign it to the team
+        $entity = \IFRS\Models\Entity::first();
+        if ($entity && !$team->entity_id) {
+            $team->update(['entity_id' => $entity->id]);
+        }
 
         // Create user and assign to team
         $user = User::factory()->create([
