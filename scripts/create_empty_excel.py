@@ -1,6 +1,8 @@
 import pandas as pd
 import os
 import subprocess
+from datetime import datetime
+import time
 
 # الأعمدة المطلوبة
 columns_needed = [
@@ -15,6 +17,31 @@ base_dir = os.path.dirname(os.path.abspath(__file__))
 project_dir = os.path.dirname(base_dir)
 os.chdir(project_dir)
 print(f"Changed working directory to: {project_dir}")
+
+# مسح محتوى ملف اللوج scrap_rta.log في بداية التشغيل
+log_path = os.path.join(project_dir, 'storage', 'logs', 'scrap_rta.log')
+with open(log_path, 'w') as log_file:
+    log_file.write('')
+
+# مسح ملف الحالة scrap_rta.done في بداية التشغيل
+status_path = os.path.join(project_dir, 'storage', 'logs', 'scrap_rta.done')
+if os.path.exists(status_path):
+    os.remove(status_path)
+
+# توجيه كل print إلى ملف اللوج أيضاً
+import sys
+class Logger(object):
+    def __init__(self, log_path):
+        self.terminal = sys.stdout
+        self.log = open(log_path, "a", buffering=1, encoding='utf-8')
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)
+    def flush(self):
+        self.terminal.flush()
+        self.log.flush()
+sys.stdout = Logger(log_path)
+sys.stderr = Logger(log_path)
 
 # قراءة البيانات من violations_details.xlsx (من نفس مجلد السكريبت)
 details_excel_path = os.path.join(base_dir, 'violations_details.xlsx')
@@ -101,6 +128,20 @@ else:
         # خروج من السكريبت إذا لم تكن هناك بيانات
         print("Exiting script due to no data to process.")
         exit(0)
+
+# حذف جميع البيانات من جدول fines قبل الاستيراد
+print("Deleting all data from fines table before import...")
+try:
+    delete_cmd = [
+        "php",
+        "artisan",
+        "tinker",
+        "--execute=App\\Models\\Fine::truncate(); echo 'Fines table truncated.';"
+    ]
+    delete_result = subprocess.run(delete_cmd, capture_output=True, text=True, timeout=30)
+    print(delete_result.stdout)
+except Exception as delete_err:
+    print("Failed to truncate fines table:", delete_err)
 
 # استيراد فقط المخالفات الجديدة من Clean.xlsx
 # استخدام المسار النسبي بدلاً من المسار المطلق
@@ -193,6 +234,10 @@ try:
     except Exception as verify_err:
         print("Database verification failed:", verify_err)
 
+    # في نهاية النجاح فقط
+    with open(status_path, 'w') as f:
+        f.write(str(int(time.time())))
+
 except subprocess.CalledProcessError as e:
     print("Import failed!")
     print("Error code:", e.returncode)
@@ -202,7 +247,6 @@ except subprocess.CalledProcessError as e:
     # محاولة تشغيل الأمر مع معلومات إضافية للتشخيص
     print("\nTrying to get more diagnostic information...")
     try:
-        # فحص حالة قاعدة البيانات
         db_check_cmd = ["php", "artisan", "tinker", "--execute='echo \"DB Connection: \" . config(\"database.default\"); echo \"DB Host: \" . config(\"database.connections.mysql.host\"); echo \"DB Database: \" . config(\"database.connections.mysql.database\");'"]
         db_result = subprocess.run(db_check_cmd, capture_output=True, text=True, timeout=30)
         print("Database check result:", db_result.stdout)
@@ -221,3 +265,12 @@ finally:
             print(f"Found: {f}")
         else:
             print(f"Not found: {f}")
+
+    # تسجيل وقت آخر مزامنة
+    last_sync_path = os.path.join(project_dir, 'storage', 'app', 'last_sync.txt')
+    try:
+        with open(last_sync_path, 'w') as f:
+            f.write(datetime.now().isoformat())
+        print(f"Last sync time saved to {last_sync_path}")
+    except Exception as e:
+        print(f"Failed to write last sync time: {e}")

@@ -130,6 +130,8 @@ const syncing = ref(false);
 const showLog = ref(false);
 const logContent = ref('');
 let logInterval: ReturnType<typeof setInterval> | null = null;
+let syncStartTimestamp = 0;
+let logPollInterval: ReturnType<typeof setInterval> | null = null;
 
 const dateFrom = ref('');
 const dateTo = ref('');
@@ -166,10 +168,30 @@ const fetchLog = async () => {
   logContent.value = data.log || '';
 };
 
+const pollLog = () => {
+  if (logPollInterval) clearInterval(logPollInterval);
+  logPollInterval = setInterval(fetchLog, 2000);
+};
+
+const pollForProcessEnd = () => {
+  logInterval = setInterval(async () => {
+    const res = await fetch('/script-status');
+    const data = await res.json();
+    const doneTimestamp = parseInt(data.done, 10);
+    if (doneTimestamp && doneTimestamp >= syncStartTimestamp) {
+      syncing.value = false;
+      showLog.value = false; // أو اتركها true إذا أردت إبقاء اللوج ظاهرًا بعد الانتهاء
+      if (logInterval) clearInterval(logInterval);
+      if (logPollInterval) clearInterval(logPollInterval);
+    }
+  }, 3000);
+};
+
 const syncFines = async () => {
   syncing.value = true;
-  showLog.value = true;
+  showLog.value = true; // أظهر نافذة اللوج
   logContent.value = '';
+  syncStartTimestamp = Math.floor(Date.now() / 1000);
   await fetch('/run-script', {
     method: 'POST',
     headers: {
@@ -178,20 +200,24 @@ const syncFines = async () => {
       'Accept': 'application/json',
     },
   });
-  // Start polling log only
-  fetchLog();
   if (logInterval) clearInterval(logInterval);
-  logInterval = setInterval(fetchLog, 3000);
+  setTimeout(() => {
+    pollForProcessEnd();
+    pollLog(); // ابدأ جلب اللوج
+  }, 1000);
+  setTimeout(fetchLastSync, 5000);
 };
 
 const closeLog = () => {
   showLog.value = false;
   syncing.value = false;
   if (logInterval) clearInterval(logInterval);
+  if (logPollInterval) clearInterval(logPollInterval);
 };
 
 onUnmounted(() => {
   if (logInterval) clearInterval(logInterval);
+  if (logPollInterval) clearInterval(logPollInterval);
 });
 </script>
 
@@ -224,6 +250,18 @@ onUnmounted(() => {
               <span class="text-sm font-semibold text-blue-700">{{ formattedServerLastSync }}</span>
             </div>
           </div>
+
+          <!-- زر المزامنة -->
+          <button
+            class="flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow transition disabled:opacity-50"
+            :disabled="syncing"
+            @click="syncFines"
+          >
+            <RefreshCw class="w-4 h-4 mr-2 animate-spin" v-if="syncing" />
+            <RefreshCw class="w-4 h-4 mr-2" v-else />
+            <span v-if="syncing">Syncing...</span>
+            <span v-else>Sync</span>
+          </button>
         </div>
       </div>
 

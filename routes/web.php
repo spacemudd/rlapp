@@ -145,5 +145,11 @@ Route::get('/api/salik-trips', function () {
     return response()->json([]);
 });
 
+Route::get('/script-status', function () {
+    $path = storage_path('logs/scrap_rta.done');
+    $done = file_exists($path) ? trim(file_get_contents($path)) : null;
+    return response()->json(['done' => $done]);
+});
+
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
