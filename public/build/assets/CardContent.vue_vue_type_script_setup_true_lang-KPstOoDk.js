@@ -1,0 +1,1 @@
+import{a as o}from"./AppLogoIcon.vue_vue_type_script_setup_true_lang-B6CdmlMU.js";import{z as n,c as t,o as r,n as c,e as l,U as p}from"./app-CAZ12x1D.js";const i=n({__name:"CardContent",props:{class:{}},setup(s){const a=s;return(e,m)=>(r(),t("div",{"data-slot":"card-content",class:c(l(o)("px-6",a.class))},[p(e.$slots,"default")],2))}});export{i as _};
