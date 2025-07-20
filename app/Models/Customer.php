@@ -20,6 +20,11 @@ class Customer extends Model
      */
     protected $fillable = [
         'team_id',
+        'business_type',
+        'business_name',
+        'driver_name',
+        'trade_license_number',
+        'trade_license_pdf_path',
         'first_name',
         'last_name',
         'email',

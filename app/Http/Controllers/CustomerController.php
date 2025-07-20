@@ -28,6 +28,9 @@ class CustomerController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('first_name', 'like', "%{$search}%")
                   ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('business_name', 'like', "%{$search}%")
+                  ->orWhere('driver_name', 'like', "%{$search}%")
+                  ->orWhere('trade_license_number', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%")
                   ->orWhere('phone', 'like', "%{$search}%")
                   ->orWhere('drivers_license_number', 'like', "%{$search}%")
@@ -53,10 +56,48 @@ class CustomerController extends Controller
             'new_this_month' => $allCustomers->where('created_at', '>=', now()->startOfMonth())->count(),
         ];
 
-        return Inertia::render('Customers', [
+        return Inertia::render('Customers/Index', [
             'customers' => $customers,
             'stats' => $stats,
             'search' => $search,
+        ]);
+    }
+
+    /**
+     * Show the form for creating a new customer.
+     */
+    public function create()
+    {
+        return Inertia::render('Customers/Create');
+    }
+
+    /**
+     * Display the specified customer.
+     */
+    public function show(Customer $customer)
+    {
+        // Ensure customer belongs to user's team
+        if ($customer->team_id !== auth()->user()->team_id) {
+            abort(403);
+        }
+
+        return Inertia::render('Customers/Show', [
+            'customer' => $customer,
+        ]);
+    }
+
+    /**
+     * Show the form for editing the specified customer.
+     */
+    public function edit(Customer $customer)
+    {
+        // Ensure customer belongs to user's team
+        if ($customer->team_id !== auth()->user()->team_id) {
+            abort(403);
+        }
+
+        return Inertia::render('Customers/Edit', [
+            'customer' => $customer,
         ]);
     }
 
@@ -68,6 +109,17 @@ class CustomerController extends Controller
         $validated = $request->validated();
 
         $validated['team_id'] = auth()->user()->team_id;
+
+        // Handle trade license PDF upload
+        if ($request->hasFile('trade_license_pdf')) {
+            $file = $request->file('trade_license_pdf');
+            $filename = 'trade_license_' . time() . '_' . $file->getClientOriginalName();
+            $path = $file->storeAs('trade_licenses', $filename, 'public');
+            $validated['trade_license_pdf_path'] = $path;
+        }
+
+        // Remove the file from validated data since it's not a database field
+        unset($validated['trade_license_pdf']);
 
         $customer = Customer::create($validated);
 
@@ -108,7 +160,7 @@ class CustomerController extends Controller
             ]);
         }
 
-        return back()->with([
+        return redirect('/customers')->with([
             'success' => 'Customer created successfully.',
             'customer' => $customerData
         ]);
@@ -126,9 +178,25 @@ class CustomerController extends Controller
 
         $validated = $request->validated();
 
+        // Handle trade license PDF upload
+        if ($request->hasFile('trade_license_pdf')) {
+            // Delete old file if it exists
+            if ($customer->trade_license_pdf_path && \Storage::disk('public')->exists($customer->trade_license_pdf_path)) {
+                \Storage::disk('public')->delete($customer->trade_license_pdf_path);
+            }
+
+            $file = $request->file('trade_license_pdf');
+            $filename = 'trade_license_' . time() . '_' . $file->getClientOriginalName();
+            $path = $file->storeAs('trade_licenses', $filename, 'public');
+            $validated['trade_license_pdf_path'] = $path;
+        }
+
+        // Remove the file from validated data since it's not a database field
+        unset($validated['trade_license_pdf']);
+
         $customer->update($validated);
 
-        return back()->with('success', 'Customer updated successfully.');
+        return redirect("/customers/{$customer->id}")->with('success', 'Customer updated successfully.');
     }
 
     /**

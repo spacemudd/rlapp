@@ -24,6 +24,11 @@ class UpdateCustomerRequest extends FormRequest
         $customer = $this->route('customer');
         
         $rules = [
+            'business_type' => 'required|in:individual,business',
+            'business_name' => 'nullable|string|max:255|required_if:business_type,business',
+            'driver_name' => 'nullable|string|max:255',
+            'trade_license_number' => 'nullable|string|max:255',
+            'trade_license_pdf' => 'nullable|file|mimes:pdf|max:10240', // 10MB max
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'nullable|string|email|max:255|unique:customers,email,' . $customer->id,
@@ -65,6 +70,12 @@ class UpdateCustomerRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'business_type.required' => 'Please select whether this is an individual or business customer.',
+            'business_type.in' => 'Invalid customer type selected.',
+            'business_name.required_if' => 'Business name is required for business customers.',
+            'trade_license_pdf.file' => 'Trade license must be a valid file.',
+            'trade_license_pdf.mimes' => 'Trade license must be a PDF file.',
+            'trade_license_pdf.max' => 'Trade license file size must not exceed 10MB.',
             'secondary_identification_type.required' => 'Please select a secondary identification type.',
             'secondary_identification_type.in' => 'Invalid secondary identification type selected.',
             'drivers_license_number.required' => 'Driver\'s license number is required.',

@@ -4,9 +4,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import CreateCustomerForm from '@/components/CreateCustomerForm.vue';
-import { Plus, Users, Edit, Trash2, Phone, Mail, Calendar, CreditCard, Search } from 'lucide-vue-next';
+import { Plus, Users, Edit, Trash2, Phone, Mail, Calendar, CreditCard, Search, FileText, Download, Eye } from 'lucide-vue-next';
 import { ref, computed, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
@@ -14,6 +12,11 @@ import { useDirection } from '@/composables/useDirection';
 
 interface Customer {
     id: string;
+    business_type: 'individual' | 'business';
+    business_name?: string;
+    driver_name?: string;
+    trade_license_number?: string;
+    trade_license_pdf_path?: string;
     first_name: string;
     last_name: string;
     email: string;
@@ -65,42 +68,7 @@ const breadcrumbs = [
     { title: t('customers'), href: '/customers' },
 ];
 
-const showAddDialog = ref(false);
-const editingCustomer = ref<Customer | null>(null);
 const searchQuery = ref(props.search || '');
-
-const openAddDialog = () => {
-    editingCustomer.value = null;
-    showAddDialog.value = true;
-};
-
-const openEditDialog = (customer: Customer) => {
-    editingCustomer.value = customer;
-    showAddDialog.value = true;
-};
-
-const handleCustomerSubmit = (form: any) => {
-    if (editingCustomer.value) {
-        form.put(`/customers/${editingCustomer.value.id}`, {
-            onSuccess: () => {
-                showAddDialog.value = false;
-                editingCustomer.value = null;
-            },
-        });
-    } else {
-        form.post('/customers', {
-            onSuccess: () => {
-                showAddDialog.value = false;
-                editingCustomer.value = null;
-            },
-        });
-    }
-};
-
-const handleCustomerCancel = () => {
-    showAddDialog.value = false;
-    editingCustomer.value = null;
-};
 
 const deleteCustomer = (customer: Customer) => {
     if (confirm(t('delete_customer_confirm'))) {
@@ -216,33 +184,15 @@ watch(searchQuery, (newValue, oldValue) => {
                             </Button>
                         </div>
 
-                        <Dialog v-model:open="showAddDialog">
-                            <DialogTrigger as-child>
-                                <Button @click="openAddDialog">
-                                    <Plus :class="[
-                                        'h-4 w-4',
-                                        isRtl ? 'ml-2' : 'mr-2'
-                                    ]" />
-                                    {{ t('add_customer') }}
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent class="max-w-2xl max-h-[90vh] overflow-y-auto">
-                                <DialogHeader>
-                                    <DialogTitle>
-                                        {{ editingCustomer ? t('edit_customer') : t('add_customer') }}
-                                    </DialogTitle>
-                                    <DialogDescription>
-                                        {{ editingCustomer ? t('update_profile_info') : t('customer_information') }}
-                                    </DialogDescription>
-                                </DialogHeader>
-
-                                <CreateCustomerForm
-                                    :editing-customer="editingCustomer"
-                                    @submit="handleCustomerSubmit"
-                                    @cancel="handleCustomerCancel"
-                                />
-                            </DialogContent>
-                        </Dialog>
+                        <Link href="/customers/create">
+                            <Button>
+                                <Plus :class="[
+                                    'h-4 w-4',
+                                    isRtl ? 'ml-2' : 'mr-2'
+                                ]" />
+                                {{ t('add_customer') }}
+                            </Button>
+                        </Link>
                     </div>
                 </div>
 
@@ -311,13 +261,15 @@ watch(searchQuery, (newValue, oldValue) => {
                                     <Button v-if="searchQuery" variant="outline" @click="clearSearch">
                                         {{ t('clear_search') }}
                                     </Button>
-                                    <Button @click="openAddDialog">
-                                        <Plus :class="[
-                                            'h-4 w-4',
-                                            isRtl ? 'ml-2' : 'mr-2'
-                                        ]" />
-                                        {{ t('add_customer') }}
-                                    </Button>
+                                    <Link href="/customers/create">
+                                        <Button>
+                                            <Plus :class="[
+                                                'h-4 w-4',
+                                                isRtl ? 'ml-2' : 'mr-2'
+                                            ]" />
+                                            {{ t('add_customer') }}
+                                        </Button>
+                                    </Link>
                                 </div>
                             </div>
                         </div>
@@ -345,6 +297,7 @@ watch(searchQuery, (newValue, oldValue) => {
                                             <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground rtl:text-right">{{ t('phone') }}</th>
                                             <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground rtl:text-right">{{ t('drivers_license') }}</th>
                                             <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground rtl:text-right">{{ t('status') }}</th>
+                                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground rtl:text-right">Documents</th>
                                             <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground rtl:text-right">{{ t('actions') }}</th>
                                         </tr>
                                     </thead>
@@ -355,7 +308,21 @@ watch(searchQuery, (newValue, oldValue) => {
                                             class="border-b transition-colors hover:bg-muted/50"
                                         >
                                             <td class="p-4 align-middle">
-                                                <div class="font-medium">{{ getFullName(customer) }}</div>
+                                                <div class="font-medium">
+                                                    {{ customer.business_type === 'business' && customer.business_name 
+                                                        ? customer.business_name 
+                                                        : getFullName(customer) }}
+                                                </div>
+                                                <div v-if="customer.business_type === 'business'" class="text-sm text-gray-600">
+                                                    Owner: {{ getFullName(customer) }}
+                                                </div>
+                                                <div v-if="customer.business_type === 'business' && customer.driver_name" class="text-sm text-blue-600">
+                                                    Driver: {{ customer.driver_name }}
+                                                </div>
+                                                <div v-if="customer.business_type === 'business' && customer.trade_license_number" class="text-sm text-green-600 flex items-center gap-1" :class="{ 'flex-row-reverse': isRtl }">
+                                                    <FileText class="h-3 w-3" />
+                                                    Trade License: {{ customer.trade_license_number }}
+                                                </div>
                                                 <div class="text-sm text-muted-foreground">
                                                     {{ customer.country }}
                                                 </div>
@@ -396,13 +363,36 @@ watch(searchQuery, (newValue, oldValue) => {
                                             </td>
                                             <td class="p-4 align-middle">
                                                 <div class="flex items-center gap-2">
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        @click="openEditDialog(customer)"
+                                                    <a
+                                                        v-if="customer.business_type === 'business' && customer.trade_license_pdf_path"
+                                                        :href="`/storage/${customer.trade_license_pdf_path}`"
+                                                        target="_blank"
+                                                        class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-green-50 text-green-700 rounded-md hover:bg-green-100 transition-colors"
+                                                        :class="{ 'flex-row-reverse': isRtl }"
                                                     >
-                                                        <Edit class="h-4 w-4" />
-                                                    </Button>
+                                                        <Download class="h-3 w-3" />
+                                                        Trade License
+                                                    </a>
+                                                    <span v-else-if="customer.business_type === 'business'" class="text-xs text-gray-400">
+                                                        No documents
+                                                    </span>
+                                                    <span v-else class="text-xs text-gray-400">
+                                                        —
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td class="p-4 align-middle">
+                                                <div class="flex items-center gap-2">
+                                                    <Link :href="`/customers/${customer.id}`">
+                                                        <Button size="sm" variant="ghost">
+                                                            <Eye class="h-4 w-4" />
+                                                        </Button>
+                                                    </Link>
+                                                    <Link :href="`/customers/${customer.id}/edit`">
+                                                        <Button size="sm" variant="ghost">
+                                                            <Edit class="h-4 w-4" />
+                                                        </Button>
+                                                    </Link>
                                                 </div>
                                             </td>
                                         </tr>
@@ -468,4 +458,4 @@ watch(searchQuery, (newValue, oldValue) => {
             </div>
         </div>
     </AppLayout>
-</template>
+</template> 

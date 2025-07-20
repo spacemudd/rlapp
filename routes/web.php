@@ -77,7 +77,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 Route::resource('customers', App\Http\Controllers\CustomerController::class)
-    ->except(['show', 'create', 'edit'])
     ->middleware(['auth', 'verified']);
 
 
