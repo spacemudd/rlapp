@@ -79,6 +79,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::resource('customers', App\Http\Controllers\CustomerController::class)
     ->middleware(['auth', 'verified']);
 
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::post('/customers/{customer}/block', [App\Http\Controllers\CustomerController::class, 'block'])->name('customers.block');
+    Route::post('/customers/{customer}/unblock', [App\Http\Controllers\CustomerController::class, 'unblock'])->name('customers.unblock');
+    Route::get('/customers/{customer}/block-history', [App\Http\Controllers\CustomerController::class, 'blockHistory'])->name('customers.block-history');
+});
+
 
 
 Route::get('invoices/{id}/pdf', [App\Http\Controllers\InvoiceController::class, 'downloadPdf'])

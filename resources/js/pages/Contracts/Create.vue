@@ -51,6 +51,8 @@ const selectedVehicle = ref<any>(null);
 const showCreateCustomerDialog = ref(false);
 const customerComboboxRef = ref<any>(null);
 const durationDays = ref<number>(1);
+const selectedBlockedCustomer = ref<any>(null);
+const blockedCustomerError = ref<string>('');
 
 const totalDays = computed(() => {
     if (!form.start_date || !form.end_date) return 0;
@@ -242,6 +244,28 @@ const formatCurrency = (amount: number, currency: string = 'AED') => {
     }).format(amount);
 };
 
+const translateBlockReason = (reason: string) => {
+    const reasonMap: Record<string, string> = {
+        'payment_default': 'Payment Default',
+        'fraudulent_activity': 'Fraudulent Activity',
+        'policy_violation': 'Policy Violation',
+        'safety_concerns': 'Safety Concerns',
+        'document_issues': 'Document Issues',
+        'other': 'Other'
+    };
+    return reasonMap[reason] || reason;
+};
+
+const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+};
+
 // Dubai timezone utilities (GMT+4)
 const DUBAI_TIMEZONE_OFFSET_FROM_UTC = 4 * 60; // 4 hours in minutes from UTC
 
@@ -314,7 +338,49 @@ watch(() => form.start_date, () => {
     }
 });
 
+const handleCustomerSelected = (customer: any) => {
+    console.log('Customer selected:', customer);
+    
+    if (customer.is_blocked) {
+        selectedBlockedCustomer.value = customer;
+        blockedCustomerError.value = `Customer is blocked: ${customer.block_reason}`;
+        // Clear the form customer_id to prevent submission
+        form.customer_id = '';
+    } else {
+        selectedBlockedCustomer.value = null;
+        blockedCustomerError.value = '';
+        form.customer_id = customer.id;
+    }
+};
+
+const handleBlockedCustomerSelected = (customer: any) => {
+    selectedBlockedCustomer.value = customer;
+    blockedCustomerError.value = `Customer is blocked: ${customer.block_reason}`;
+    form.customer_id = ''; // Prevent form submission
+};
+
+const clearCustomerSelection = () => {
+    selectedBlockedCustomer.value = null;
+    blockedCustomerError.value = '';
+    form.customer_id = '';
+    if (customerComboboxRef.value) {
+        customerComboboxRef.value.clearSelection();
+    }
+};
+
+const viewCustomerDetails = () => {
+    if (selectedBlockedCustomer.value) {
+        // Open customer details in new tab
+        window.open(`/customers/${selectedBlockedCustomer.value.id}`, '_blank');
+    }
+};
+
 const submit = () => {
+    if (selectedBlockedCustomer.value) {
+        alert('Cannot create contract for blocked customer. Please select a different customer.');
+        return;
+    }
+    
     // Convert Dubai time to UTC for backend storage
     const formData = { ...form.data() };
 
@@ -394,11 +460,79 @@ watch(() => props.newCustomer, (customer) => {
                                 ref="customerComboboxRef"
                                 v-model="form.customer_id"
                                 label="Customer"
-                                placeholder="Search customers..."
+                                placeholder="Search by name, email, or phone..."
                                 search-url="/api/customers/search"
                                 :required="true"
-                                :error="form.errors.customer_id"
+                                :error="form.errors.customer_id || blockedCustomerError"
+                                @option-selected="handleCustomerSelected"
+                                @blocked-customer-selected="handleBlockedCustomerSelected"
                             />
+                            
+                            <!-- Show blocked customer details if selected -->
+                            <div v-if="selectedBlockedCustomer" 
+                                 class="p-4 bg-red-50 border border-red-200 rounded-md">
+                                <div class="flex items-start space-x-3">
+                                    <div class="text-red-500 text-2xl">🚫</div>
+                                    <div class="flex-1">
+                                        <h3 class="text-lg font-medium text-red-800 mb-2">
+                                            Cannot Create Contract - Customer Blocked
+                                        </h3>
+                                        
+                                        <div class="space-y-2 text-sm">
+                                            <div class="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <span class="font-medium text-red-700">Customer:</span>
+                                                    <p class="text-red-600">{{ selectedBlockedCustomer.name }}</p>
+                                                </div>
+                                                <div>
+                                                    <span class="font-medium text-red-700">Phone:</span>
+                                                    <p class="text-red-600">{{ selectedBlockedCustomer.phone }}</p>
+                                                </div>
+                                            </div>
+                                            
+                                            <div>
+                                                <span class="font-medium text-red-700">Block Reason:</span>
+                                                <p class="text-red-600">{{ translateBlockReason(selectedBlockedCustomer.block_reason) }}</p>
+                                            </div>
+                                            
+                                            <div class="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <span class="font-medium text-red-700">Blocked Date:</span>
+                                                    <p class="text-red-600">{{ formatDate(selectedBlockedCustomer.blocked_at) }}</p>
+                                                </div>
+                                                <div>
+                                                    <span class="font-medium text-red-700">Blocked By:</span>
+                                                    <p class="text-red-600">{{ selectedBlockedCustomer.blocked_by?.name }}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mt-4 pt-3 border-t border-red-200">
+                                            <div class="flex items-center justify-between">
+                                                <div class="text-sm text-red-600">
+                                                    To create a contract, this customer must first be unblocked.
+                                                </div>
+                                                <div class="flex gap-2">
+                                                    <Button 
+                                                        variant="outline" 
+                                                        size="sm"
+                                                        @click="viewCustomerDetails"
+                                                    >
+                                                        View Customer Details
+                                                    </Button>
+                                                    <Button 
+                                                        variant="outline" 
+                                                        size="sm"
+                                                        @click="clearCustomerSelection"
+                                                    >
+                                                        Select Different Customer
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
                             <div class="pt-4 border-t">
                                 <div class="flex items-center justify-between">

@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Edit, Phone, Mail, Calendar, CreditCard, FileText, Download, ArrowLeft } from 'lucide-vue-next';
 import { useI18n } from 'vue-i18n';
 import { useDirection } from '@/composables/useDirection';
+import BlockCustomerDialog from '@/components/BlockCustomerDialog.vue';
+import UnblockCustomerDialog from '@/components/UnblockCustomerDialog.vue';
 
 interface Customer {
     id: string;
@@ -29,6 +31,13 @@ interface Customer {
     status: 'active' | 'inactive';
     notes?: string;
     created_at: string;
+    is_blocked: boolean;
+    block_reason?: string;
+    blocked_at?: string;
+    blocked_by?: {
+        id: string;
+        name: string;
+    };
 }
 
 interface Props {
@@ -66,6 +75,28 @@ const getDisplayName = () => {
 const getOwnerName = () => {
     return `${props.customer.first_name} ${props.customer.last_name}`;
 };
+
+const translateBlockReason = (reason: string) => {
+    const reasonMap: Record<string, string> = {
+        'payment_default': t('payment_default'),
+        'fraudulent_activity': t('fraudulent_activity'),
+        'policy_violation': t('policy_violation'),
+        'safety_concerns': t('safety_concerns'),
+        'document_issues': t('document_issues'),
+        'other': t('other')
+    };
+    return reasonMap[reason] || reason;
+};
+
+const handleCustomerBlocked = () => {
+    // Reload the page to get updated customer data
+    window.location.reload();
+};
+
+const handleCustomerUnblocked = () => {
+    // Reload the page to get updated customer data
+    window.location.reload();
+};
 </script>
 
 <template>
@@ -101,6 +132,28 @@ const getOwnerName = () => {
                             >
                                 {{ customer.status === 'active' ? t('active') : t('inactive') }}
                             </Badge>
+                            
+                            <!-- Blocked status badge -->
+                            <Badge 
+                                v-if="customer.is_blocked"
+                                variant="destructive"
+                                class="bg-red-600"
+                            >
+                                🚫 {{ t('blocked') }}
+                            </Badge>
+                            
+                            <!-- Block/Unblock actions -->
+                            <BlockCustomerDialog 
+                                v-if="!customer.is_blocked" 
+                                :customer="customer" 
+                                @blocked="handleCustomerBlocked" 
+                            />
+                            <UnblockCustomerDialog 
+                                v-if="customer.is_blocked" 
+                                :customer="customer" 
+                                @unblocked="handleCustomerUnblocked" 
+                            />
+                            
                             <Link :href="`/customers/${customer.id}/edit`">
                                 <Button>
                                     <Edit :class="[
@@ -112,6 +165,46 @@ const getOwnerName = () => {
                             </Link>
                         </div>
                     </div>
+
+                    <!-- Show blocked customer details if blocked -->
+                    <Card v-if="customer.is_blocked" class="border-red-200 bg-red-50 md:col-span-2">
+                        <CardHeader>
+                            <CardTitle class="text-red-800 flex items-center gap-2" :class="{ 'text-right': isRtl }">
+                                🚫 {{ t('customer_blocked') }}
+                            </CardTitle>
+                            <CardDescription class="text-red-700" :class="{ 'text-right': isRtl }">
+                                {{ t('customer_blocked_description') }}
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="grid gap-4 md:grid-cols-3">
+                                <div>
+                                    <label class="text-sm font-medium text-red-800" :class="{ 'text-right': isRtl }">
+                                        {{ t('reason') }}
+                                    </label>
+                                    <p class="text-sm text-red-700 mt-1">
+                                        {{ translateBlockReason(customer.block_reason || '') }}
+                                    </p>
+                                </div>
+                                <div v-if="customer.blocked_at">
+                                    <label class="text-sm font-medium text-red-800" :class="{ 'text-right': isRtl }">
+                                        {{ t('blocked_on') }}
+                                    </label>
+                                    <p class="text-sm text-red-700 mt-1">
+                                        {{ formatDate(customer.blocked_at) }}
+                                    </p>
+                                </div>
+                                <div v-if="customer.blocked_by">
+                                    <label class="text-sm font-medium text-red-800" :class="{ 'text-right': isRtl }">
+                                        {{ t('blocked_by') }}
+                                    </label>
+                                    <p class="text-sm text-red-700 mt-1">
+                                        {{ customer.blocked_by.name }}
+                                    </p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
 
                     <div class="grid gap-6 md:grid-cols-2">
                         <!-- Basic Information -->

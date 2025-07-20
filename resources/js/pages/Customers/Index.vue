@@ -31,6 +31,9 @@ interface Customer {
     status: 'active' | 'inactive';
     notes?: string;
     created_at: string;
+    is_blocked: boolean;
+    block_reason?: string;
+    blocked_at?: string;
 }
 
 interface PaginatedCustomers {
@@ -53,9 +56,11 @@ interface Props {
     stats: {
         total: number;
         active: number;
+        blocked: number;
         new_this_month: number;
     };
     search: string;
+    filter: string;
 }
 
 const props = defineProps<Props>();
@@ -69,11 +74,29 @@ const breadcrumbs = [
 ];
 
 const searchQuery = ref(props.search || '');
+const activeFilter = ref(props.filter || 'all');
 
 const deleteCustomer = (customer: Customer) => {
     if (confirm(t('delete_customer_confirm'))) {
         useForm({}).delete(`/customers/${customer.id}`);
     }
+};
+
+const applyFilter = (filter: string) => {
+    activeFilter.value = filter;
+    const params = new URLSearchParams();
+    if (searchQuery.value.trim()) {
+        params.append('search', searchQuery.value.trim());
+    }
+    if (filter !== 'all') {
+        params.append('filter', filter);
+    }
+
+    const url = `/customers${params.toString() ? '?' + params.toString() : ''}`;
+    router.get(url, {}, {
+        preserveState: true,
+        preserveScroll: false,
+    });
 };
 
 const formatDate = (dateString: string) => {
@@ -82,6 +105,18 @@ const formatDate = (dateString: string) => {
 
 const getFullName = (customer: Customer) => {
     return `${customer.first_name} ${customer.last_name}`;
+};
+
+const translateBlockReason = (reason: string) => {
+    const reasonMap: Record<string, string> = {
+        'payment_default': t('payment_default'),
+        'fraudulent_activity': t('fraudulent_activity'),
+        'policy_violation': t('policy_violation'),
+        'safety_concerns': t('safety_concerns'),
+        'document_issues': t('document_issues'),
+        'other': t('other')
+    };
+    return reasonMap[reason] || reason;
 };
 
 const generatePageNumbers = () => {
@@ -113,6 +148,9 @@ const performSearch = () => {
     if (searchQuery.value.trim()) {
         params.append('search', searchQuery.value.trim());
     }
+    if (activeFilter.value !== 'all') {
+        params.append('filter', activeFilter.value);
+    }
 
     const url = `/customers${params.toString() ? '?' + params.toString() : ''}`;
     router.get(url, {}, {
@@ -123,7 +161,13 @@ const performSearch = () => {
 
 const clearSearch = () => {
     searchQuery.value = '';
-    router.get('/customers', {}, {
+    const params = new URLSearchParams();
+    if (activeFilter.value !== 'all') {
+        params.append('filter', activeFilter.value);
+    }
+    
+    const url = `/customers${params.toString() ? '?' + params.toString() : ''}`;
+    router.get(url, {}, {
         preserveState: true,
         preserveScroll: false,
     });
@@ -196,7 +240,7 @@ watch(searchQuery, (newValue, oldValue) => {
                     </div>
                 </div>
 
-                <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                     <Card>
                         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2" :class="{ 'flex-row-reverse': isRtl }">
                             <CardTitle class="text-sm font-medium" :class="{ 'text-right': isRtl }">{{ t('total_customers') }}</CardTitle>
@@ -225,6 +269,19 @@ watch(searchQuery, (newValue, oldValue) => {
 
                     <Card>
                         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2" :class="{ 'flex-row-reverse': isRtl }">
+                            <CardTitle class="text-sm font-medium" :class="{ 'text-right': isRtl }">{{ t('blocked_customers') }}</CardTitle>
+                            <Users class="h-4 w-4 text-red-500" />
+                        </CardHeader>
+                        <CardContent>
+                            <div class="text-2xl font-bold text-red-600" :class="{ 'text-right': isRtl }">{{ props.stats.blocked }}</div>
+                            <p class="text-xs text-red-500" :class="{ 'text-right': isRtl }">
+                                {{ t('blocked') }}
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2" :class="{ 'flex-row-reverse': isRtl }">
                             <CardTitle class="text-sm font-medium" :class="{ 'text-right': isRtl }">{{ t('new_this_month') }}</CardTitle>
                             <Users class="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
@@ -235,6 +292,43 @@ watch(searchQuery, (newValue, oldValue) => {
                             </p>
                         </CardContent>
                     </Card>
+                </div>
+
+                <!-- Filter Tabs -->
+                <div class="flex items-center justify-center gap-2 p-1 bg-muted rounded-lg w-fit mx-auto" :class="{ 'flex-row-reverse': isRtl }">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        :class="{
+                            'bg-background shadow-sm': activeFilter === 'all',
+                            'text-muted-foreground': activeFilter !== 'all'
+                        }"
+                        @click="applyFilter('all')"
+                    >
+                        {{ t('all_customers') }} ({{ props.stats.total }})
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        :class="{
+                            'bg-background shadow-sm': activeFilter === 'active',
+                            'text-muted-foreground': activeFilter !== 'active'
+                        }"
+                        @click="applyFilter('active')"
+                    >
+                        {{ t('active_customers') }} ({{ props.stats.active }})
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        :class="{
+                            'bg-background shadow-sm text-red-600': activeFilter === 'blocked',
+                            'text-red-500': activeFilter !== 'blocked'
+                        }"
+                        @click="applyFilter('blocked')"
+                    >
+                        🚫 {{ t('blocked_customers') }} ({{ props.stats.blocked }})
+                    </Button>
                 </div>
 
                 <Card>
@@ -350,17 +444,22 @@ watch(searchQuery, (newValue, oldValue) => {
                                                     {{ t('license_expiry') }}: {{ formatDate(customer.drivers_license_expiry) }}
                                                 </div>
                                             </td>
-                                            <td class="p-4 align-middle">
-                                                <span
-                                                    class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-                                                    :class="{
-                                                        'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20': customer.status === 'active',
-                                                        'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20': customer.status === 'inactive'
-                                                    }"
-                                                >
-                                                    {{ customer.status === 'active' ? t('active') : t('inactive') }}
-                                                </span>
-                                            </td>
+                                                                        <td class="p-4 align-middle">
+                                <div class="flex flex-col gap-1">
+                                    <span
+                                        class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium w-fit"
+                                        :class="{
+                                            'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20': customer.status === 'active',
+                                            'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20': customer.status === 'inactive'
+                                        }"
+                                    >
+                                        {{ customer.status === 'active' ? t('active') : t('inactive') }}
+                                    </span>
+                                    <span v-if="customer.is_blocked" class="text-xs text-red-600 font-medium flex items-center gap-1">
+                                        🚫 {{ translateBlockReason(customer.block_reason || '') }}
+                                    </span>
+                                </div>
+                            </td>
                                             <td class="p-4 align-middle">
                                                 <div class="flex items-center gap-2">
                                                     <a
@@ -410,7 +509,7 @@ watch(searchQuery, (newValue, oldValue) => {
                                     <!-- Previous Button -->
                                     <template v-if="props.customers.current_page > 1">
                                         <Link
-                                            :href="`/customers?page=${props.customers.current_page - 1}${searchQuery ? '&search=' + encodeURIComponent(searchQuery) : ''}`"
+                                            :href="`/customers?page=${props.customers.current_page - 1}${searchQuery ? '&search=' + encodeURIComponent(searchQuery) : ''}${activeFilter !== 'all' ? '&filter=' + activeFilter : ''}`"
                                             class="px-3 py-2 text-sm border rounded-md transition-colors hover:bg-muted"
                                         >
                                             Previous
@@ -425,7 +524,7 @@ watch(searchQuery, (newValue, oldValue) => {
                                     <!-- Page Numbers -->
                                     <template v-for="page in generatePageNumbers()" :key="`page-${page}`">
                                         <Link
-                                            :href="`/customers?page=${page}${searchQuery ? '&search=' + encodeURIComponent(searchQuery) : ''}`"
+                                            :href="`/customers?page=${page}${searchQuery ? '&search=' + encodeURIComponent(searchQuery) : ''}${activeFilter !== 'all' ? '&filter=' + activeFilter : ''}`"
                                             class="px-3 py-2 text-sm border rounded-md transition-colors"
                                             :class="{
                                                 'bg-primary text-primary-foreground border-primary': page === props.customers.current_page,
@@ -439,7 +538,7 @@ watch(searchQuery, (newValue, oldValue) => {
                                     <!-- Next Button -->
                                     <template v-if="props.customers.current_page < props.customers.last_page">
                                         <Link
-                                            :href="`/customers?page=${props.customers.current_page + 1}${searchQuery ? '&search=' + encodeURIComponent(searchQuery) : ''}`"
+                                            :href="`/customers?page=${props.customers.current_page + 1}${searchQuery ? '&search=' + encodeURIComponent(searchQuery) : ''}${activeFilter !== 'all' ? '&filter=' + activeFilter : ''}`"
                                             class="px-3 py-2 text-sm border rounded-md transition-colors hover:bg-muted"
                                         >
                                             Next

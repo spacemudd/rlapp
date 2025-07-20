@@ -49,6 +49,10 @@ class Customer extends Model
         'ifrs_receivable_account_id',
         'credit_limit',
         'payment_terms',
+        'is_blocked',
+        'block_reason',
+        'blocked_at',
+        'blocked_by_user_id',
     ];
 
     /**
@@ -73,6 +77,8 @@ class Customer extends Model
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
             'credit_limit' => 'decimal:2',
+            'is_blocked' => 'boolean',
+            'blocked_at' => 'datetime',
         ];
     }
 
@@ -275,5 +281,90 @@ class Customer extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * Get the user who blocked this customer.
+     */
+    public function blockedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'blocked_by_user_id');
+    }
+
+    /**
+     * Get the block history for this customer.
+     */
+    public function blockHistory(): HasMany
+    {
+        return $this->hasMany(CustomerBlockHistory::class)->latest('performed_at');
+    }
+
+    /**
+     * Scope a query to only include blocked customers.
+     */
+    public function scopeBlocked($query)
+    {
+        return $query->where('is_blocked', true);
+    }
+
+    /**
+     * Scope a query to only include non-blocked customers.
+     */
+    public function scopeNotBlocked($query)
+    {
+        return $query->where('is_blocked', false);
+    }
+
+    /**
+     * Check if the customer is blocked.
+     */
+    public function isBlocked(): bool
+    {
+        return $this->is_blocked;
+    }
+
+    /**
+     * Block the customer.
+     */
+    public function block(string $reason, User $user, ?string $notes = null): void
+    {
+        $this->update([
+            'is_blocked' => true,
+            'block_reason' => $reason,
+            'blocked_at' => now(),
+            'blocked_by_user_id' => $user->id,
+        ]);
+        
+        $this->recordBlockAction('blocked', $reason, $user, $notes);
+    }
+
+    /**
+     * Unblock the customer.
+     */
+    public function unblock(User $user, ?string $notes = null): void
+    {
+        $this->update([
+            'is_blocked' => false,
+            'block_reason' => null,
+            'blocked_at' => null,
+            'blocked_by_user_id' => null,
+        ]);
+        
+        $this->recordBlockAction('unblocked', null, $user, $notes);
+    }
+
+    /**
+     * Record a block/unblock action in the audit trail.
+     */
+    private function recordBlockAction(string $action, ?string $reason, User $user, ?string $notes): void
+    {
+        CustomerBlockHistory::create([
+            'customer_id' => $this->id,
+            'action' => $action,
+            'reason' => $reason,
+            'performed_by_user_id' => $user->id,
+            'performed_at' => now(),
+            'notes' => $notes,
+        ]);
     }
 }

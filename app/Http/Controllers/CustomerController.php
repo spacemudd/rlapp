@@ -18,9 +18,10 @@ class CustomerController extends Controller
     {
         $teamId = auth()->user()->team_id;
         $search = $request->get('search', '');
+        $filter = $request->get('filter', 'all'); // all, blocked, active
         
         // Build the query for paginated customers
-        $query = Customer::with('team')
+        $query = Customer::with(['team', 'blockedBy'])
             ->where('team_id', $teamId);
         
         // Apply search filters if search term is provided
@@ -43,16 +44,24 @@ class CustomerController extends Controller
             });
         }
         
+        // Apply status filter
+        if ($filter === 'blocked') {
+            $query->where('is_blocked', true);
+        } elseif ($filter === 'active') {
+            $query->where('is_blocked', false)->where('status', 'active');
+        }
+        
         $customers = $query->orderBy('created_at', 'desc')->paginate(10);
         
-        // Preserve search parameter in pagination links
-        $customers->appends(['search' => $search]);
+        // Preserve search and filter parameters in pagination links
+        $customers->appends(['search' => $search, 'filter' => $filter]);
 
         // Get statistics (need to query all for accurate stats)
         $allCustomers = Customer::where('team_id', $teamId)->get();
         $stats = [
             'total' => $allCustomers->count(),
-            'active' => $allCustomers->where('status', 'active')->count(),
+            'active' => $allCustomers->where('status', 'active')->where('is_blocked', false)->count(),
+            'blocked' => $allCustomers->where('is_blocked', true)->count(),
             'new_this_month' => $allCustomers->where('created_at', '>=', now()->startOfMonth())->count(),
         ];
 
@@ -60,6 +69,7 @@ class CustomerController extends Controller
             'customers' => $customers,
             'stats' => $stats,
             'search' => $search,
+            'filter' => $filter,
         ]);
     }
 
@@ -80,6 +90,9 @@ class CustomerController extends Controller
         if ($customer->team_id !== auth()->user()->team_id) {
             abort(403);
         }
+
+        // Load the blocked_by relationship
+        $customer->load('blockedBy');
 
         return Inertia::render('Customers/Show', [
             'customer' => $customer,
@@ -212,5 +225,67 @@ class CustomerController extends Controller
         $customer->delete();
 
         return back()->with('success', 'Customer deleted successfully.');
+    }
+
+    /**
+     * Block a customer.
+     */
+    public function block(Customer $customer, Request $request)
+    {
+        $request->validate([
+            'reason' => 'required|string|max:255',
+            'notes' => 'nullable|string|max:1000'
+        ]);
+        
+        if ($customer->team_id !== auth()->user()->team_id) {
+            abort(403);
+        }
+        
+        if ($customer->isBlocked()) {
+            return back()->with('error', 'Customer is already blocked.');
+        }
+        
+        $customer->block($request->reason, auth()->user(), $request->notes);
+        
+        return back()->with('success', 'Customer has been blocked successfully.');
+    }
+
+    /**
+     * Unblock a customer.
+     */
+    public function unblock(Customer $customer, Request $request)
+    {
+        $request->validate([
+            'notes' => 'nullable|string|max:1000'
+        ]);
+        
+        if ($customer->team_id !== auth()->user()->team_id) {
+            abort(403);
+        }
+        
+        if (!$customer->isBlocked()) {
+            return back()->with('error', 'Customer is not blocked.');
+        }
+        
+        $customer->unblock(auth()->user(), $request->notes);
+        
+        return back()->with('success', 'Customer has been unblocked successfully.');
+    }
+
+    /**
+     * Show block history for a customer.
+     */
+    public function blockHistory(Customer $customer)
+    {
+        if ($customer->team_id !== auth()->user()->team_id) {
+            abort(403);
+        }
+        
+        $history = $customer->blockHistory()->with('performedBy')->paginate(10);
+        
+        return Inertia::render('Customers/BlockHistory', [
+            'customer' => $customer,
+            'history' => $history
+        ]);
     }
 } 
