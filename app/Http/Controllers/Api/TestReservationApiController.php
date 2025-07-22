@@ -122,6 +122,34 @@ class TestReservationApiController extends Controller
         // Get all request data
         $reservationData = $request->all();
 
+        // Check if customer_id exists, if not use first customer or create mock data
+        $customer = Customer::find($reservationData['customer_id']);
+        if (!$customer) {
+            $customer = Customer::first();
+            if (!$customer) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No customers found in system. Please use a valid customer_id.',
+                    'available_customers' => []
+                ], 400);
+            }
+            $reservationData['customer_id'] = $customer->id;
+        }
+
+        // Check if vehicle_id exists, if not use first vehicle
+        $vehicle = Vehicle::find($reservationData['vehicle_id']);
+        if (!$vehicle) {
+            $vehicle = Vehicle::first();
+            if (!$vehicle) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No vehicles found in system. Please use a valid vehicle_id.',
+                    'available_vehicles' => []
+                ], 400);
+            }
+            $reservationData['vehicle_id'] = $vehicle->id;
+        }
+
         // Set defaults for missing fields
         $reservationData['pickup_location'] = $reservationData['pickup_location'] ?? 'Not specified';
         $reservationData['status'] = $reservationData['status'] ?? 'pending';
@@ -137,7 +165,7 @@ class TestReservationApiController extends Controller
             // Create reservation with your custom data
             $reservation = Reservation::create($reservationData);
 
-            // Try to load relationships (will be null if IDs don't exist)
+            // Load relationships
             $reservation->load(['customer', 'vehicle', 'team']);
 
             return response()->json([
@@ -145,7 +173,13 @@ class TestReservationApiController extends Controller
                 'message' => 'Custom reservation created successfully with your data',
                 'data' => $reservation,
                 'input_data' => $request->all(),
-                'info' => 'This API accepts any data you provide. Auto-expires in 5 minutes if status is pending.'
+                'mappings' => [
+                    'original_customer_id' => $request->customer_id,
+                    'used_customer_id' => $reservationData['customer_id'],
+                    'original_vehicle_id' => $request->vehicle_id,
+                    'used_vehicle_id' => $reservationData['vehicle_id']
+                ],
+                'info' => 'This API accepts any data you provide. Invalid IDs are automatically mapped to existing ones. Auto-expires in 5 minutes if status is pending.'
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
@@ -206,13 +240,67 @@ class TestReservationApiController extends Controller
                 'status' => 'pending',
                 'notes' => 'Test reservation from Postman API'
             ],
-            'api_endpoint' => url('/api/v1/test/reservations'),
+            'api_endpoint' => url('/api/v1/test/custom-reservation'),
             'method' => 'POST',
             'headers' => [
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json'
             ],
             'note' => 'This is a test API endpoint that does not require authentication or CSRF token'
+        ]);
+    }
+
+    /**
+     * Get available IDs for testing
+     *
+     * @return JsonResponse
+     */
+    public function getAvailableIds(): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'message' => 'Use these real IDs for testing',
+            'available_customers' => Customer::take(5)->get(['id', 'name', 'email'])->map(function($customer) {
+                return [
+                    'id' => $customer->id,
+                    'name' => $customer->name ?: 'Customer',
+                    'email' => $customer->email
+                ];
+            }),
+            'available_vehicles' => Vehicle::take(5)->get(['id', 'make', 'model', 'year', 'plate_number', 'price_daily'])->map(function($vehicle) {
+                return [
+                    'id' => $vehicle->id,
+                    'name' => "{$vehicle->make} {$vehicle->model} ({$vehicle->year})",
+                    'plate_number' => $vehicle->plate_number,
+                    'daily_rate' => $vehicle->price_daily
+                ];
+            }),
+            'usage_examples' => [
+                'example_1_with_real_ids' => [
+                    'customer_id' => Customer::first()?->id,
+                    'vehicle_id' => Vehicle::first()?->id,
+                    'pickup_date' => '2025-02-01 10:00:00',
+                    'return_date' => '2025-02-05 18:00:00',
+                    'rate' => 180.00,
+                    'status' => 'pending',
+                    'pickup_location' => 'Dubai Airport'
+                ],
+                'example_2_with_fake_ids' => [
+                    'customer_id' => 'any-fake-id',
+                    'vehicle_id' => 'any-fake-id',
+                    'pickup_date' => '2025-02-10 14:00:00',
+                    'return_date' => '2025-02-14 14:00:00',
+                    'rate' => 200.00,
+                    'status' => 'confirmed',
+                    'pickup_location' => 'Cairo Airport',
+                    'notes' => 'Fake IDs will be automatically mapped to real ones'
+                ]
+            ],
+            'api_endpoints' => [
+                'create_with_custom_data' => 'POST /api/v1/test/custom-reservation',
+                'get_test_data' => 'GET /api/v1/test/data',
+                'get_available_ids' => 'GET /api/v1/test/ids'
+            ]
         ]);
     }
 }

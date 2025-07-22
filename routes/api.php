@@ -41,6 +41,7 @@ Route::prefix('v1')->group(function () {
     // Test API endpoints (بدون authentication للاختبار)
     Route::prefix('test')->group(function () {
         Route::get('/data', [TestReservationApiController::class, 'testData']);
+        Route::get('/ids', [TestReservationApiController::class, 'getAvailableIds']);
         Route::get('/reservations', [TestReservationApiController::class, 'index']);
         Route::post('/reservations', [TestReservationApiController::class, 'store']);
         Route::post('/custom-reservation', [TestReservationApiController::class, 'createCustom']);
