@@ -123,6 +123,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/{id}/status', [\App\Http\Controllers\Api\ReservationApiController::class, 'updateStatus'])->name('api.reservations.update-status');
     });
 
+    // Route للحصول على CSRF Token للاختبار (بدون middleware)
+    Route::get('/api/csrf-token', function () {
+        return response()->json([
+            'csrf_token' => csrf_token(),
+            'message' => 'Use this token in X-CSRF-TOKEN header',
+            'timestamp' => now()->toISOString()
+        ]);
+    })->name('api.csrf-token')->withoutMiddleware(['auth', 'verified']);
+
+    // API Route للاختبار بدون CSRF (للاختبار فقط)
+    Route::post('/api/test/reservations', [\App\Http\Controllers\Api\ReservationApiController::class, 'store'])
+        ->name('api.test.reservations.store')
+        ->withoutMiddleware(['web']);
+
     Route::get('/fines', [\App\Http\Controllers\FineController::class, 'index'])->name('fines');
     Route::post('/fines/sync', [\App\Http\Controllers\FineController::class, 'runScript'])->name('fines.sync');
     Route::post('/run-script', [App\Http\Controllers\ScriptController::class, 'run']);
