@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ReservationApiController;
 use App\Http\Controllers\Api\TestReservationApiController;
+use App\Http\Controllers\Api\CustomerApiController;
 
 /*
 |--------------------------------------------------------------------------
@@ -44,5 +45,6 @@ Route::prefix('v1')->group(function () {
         Route::get('/reservations', [TestReservationApiController::class, 'index']);
         Route::post('/reservations', [TestReservationApiController::class, 'store']);
         Route::post('/custom-reservation', [TestReservationApiController::class, 'createCustom']);
+        Route::post('/customers', [CustomerApiController::class, 'store']);
     });
 });
