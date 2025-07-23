@@ -20,19 +20,37 @@ class CustomerApiController extends Controller
     {
         // Allowed fields for customers table
         $allowedFields = [
-            'name',
+            'team_id',
+            'first_name',
+            'last_name',
             'email',
             'phone',
+            'date_of_birth',
+            'secondary_identification_type',
+            'drivers_license_number',
+            'drivers_license_expiry',
+            'passport_number',
+            'passport_expiry',
+            'resident_id_number',
+            'resident_id_expiry',
             'address',
-            'identification_number',
-            'identification_type',
+            'city',
+            'country',
+            'nationality',
+            'emergency_contact_name',
+            'emergency_contact_phone',
+            'status',
             'notes',
-            'team_id',
+            'language',
+            'ifrs_receivable_account_id',
+            'credit_limit',
+            'payment_terms',
         ];
 
         // Minimal validation
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:50',
         ]);
