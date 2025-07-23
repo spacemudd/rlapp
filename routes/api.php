@@ -45,5 +45,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/reservations', [TestReservationApiController::class, 'index']);
         Route::post('/reservations', [TestReservationApiController::class, 'store']);
         Route::post('/custom-reservation', [TestReservationApiController::class, 'createCustom']);
+        // API لإضافة عميل جديد
+        Route::post('/customers', [\App\Http\Controllers\Api\CustomerApiController::class, 'store']);
     });
 });

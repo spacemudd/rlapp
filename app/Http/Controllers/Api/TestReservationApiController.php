@@ -119,8 +119,24 @@ class TestReservationApiController extends Controller
             ], 422);
         }
 
-        // Get all request data
-        $reservationData = $request->all();
+        // Define allowed fields that will be saved to reservations table
+        $allowedFields = [
+            'customer_id',
+            'vehicle_id',
+            'rate',
+            'pickup_date',
+            'pickup_location',
+            'return_date',
+            'status',
+            'reservation_date',
+            'notes',
+            'total_amount',
+            'duration_days',
+            'team_id',
+        ];
+
+        // Filter only allowed fields from request
+        $reservationData = array_intersect_key($request->all(), array_flip($allowedFields));
 
         // Check if customer_id exists, if not use first customer or create mock data
         $customer = Customer::find($reservationData['customer_id']);
@@ -162,29 +178,33 @@ class TestReservationApiController extends Controller
         }
 
         try {
-            // Create reservation with your custom data
+            // Create reservation with filtered data (only allowed fields)
             $reservation = Reservation::create($reservationData);
 
             // Load relationships
             $reservation->load(['customer', 'vehicle', 'team']);
 
+            // Get extra fields that were sent but not saved
+            $extraFields = array_diff_key($request->all(), array_flip($allowedFields));
+
             return response()->json([
                 'success' => true,
-                'message' => 'Custom reservation created successfully with your data',
+                'message' => 'Custom reservation created successfully',
                 'data' => $reservation,
-                'input_data' => $request->all(),
+                'saved_fields' => $reservationData,
+                'ignored_fields' => $extraFields,
                 'mappings' => [
                     'original_customer_id' => $request->customer_id,
                     'used_customer_id' => $reservationData['customer_id'],
                     'original_vehicle_id' => $request->vehicle_id,
                     'used_vehicle_id' => $reservationData['vehicle_id']
                 ],
-                'info' => 'This API accepts any data you provide. Invalid IDs are automatically mapped to existing ones. Auto-expires in 5 minutes if status is pending.'
+                'info' => 'Only reservation table fields are saved. Extra fields are ignored. Auto-expires in 5 minutes if status is pending.'
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create reservation with your data',
+                'message' => 'Failed to create reservation',
                 'error' => $e->getMessage(),
                 'input_data' => $request->all()
             ], 500);
