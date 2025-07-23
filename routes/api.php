@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ReservationApiController;
 use App\Http\Controllers\Api\TestReservationApiController;
 use App\Http\Controllers\Api\CustomerApiController;
-
+use App\Http\Controllers\Api\VehicleApiController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -47,5 +47,13 @@ Route::prefix('v1')->group(function () {
         Route::post('/reservations', [TestReservationApiController::class, 'store']);
         Route::post('/custom-reservation', [TestReservationApiController::class, 'createCustom']);
         Route::post('/customers', [CustomerApiController::class, 'store']);
+    });
+});
+
+Route::middleware(['api.key'])->group(function () {
+    // Vehicle API endpoints
+    Route::prefix('vehicles')->group(function () {
+        Route::get('/', [VehicleApiController::class, 'index'])->name('api.vehicles.index');
+        Route::get('/{id}', [VehicleApiController::class, 'show'])->name('api.vehicles.show');
     });
 });
