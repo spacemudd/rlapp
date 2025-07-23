@@ -48,6 +48,9 @@ Route::prefix('v1')->group(function () {
         Route::post('/custom-reservation', [TestReservationApiController::class, 'createCustom']);
         Route::post('/customers', [CustomerApiController::class, 'store']);
     });
+
+    // Add login route
+    Route::post('/login', [\App\Http\Controllers\Api\AuthApiController::class, 'login']);
 });
 
 Route::middleware(['api.key'])->group(function () {
