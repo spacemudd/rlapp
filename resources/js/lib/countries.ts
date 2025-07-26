@@ -146,6 +146,7 @@ export const nationalityOptions: NationalityOption[] = [
   { value: 'Norwegian', label: 'Norwegian' },
   { value: 'Omani', label: 'Omani' },
   { value: 'Pakistani', label: 'Pakistani' },
+  { value: 'Palestinian', label: 'Palestinian' },
   { value: 'Panamanian', label: 'Panamanian' },
   { value: 'Papua New Guinean', label: 'Papua New Guinean' },
   { value: 'Paraguayan', label: 'Paraguayan' },
