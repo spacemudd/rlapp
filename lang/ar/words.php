@@ -304,6 +304,31 @@ return [
     'app_name' => 'تطبيق لوكشوريا لتأجير السيارات',
     'welcome_message' => 'أهلاً بكم في خدمة تأجير السيارات المتميزة',
     
+    // Authentication
+    'auth' => [
+        'welcome' => 'أهلاً وسهلاً',
+        'welcome_message' => 'أهلاً بكم في خدمة تأجير السيارات المتميزة',
+        'email' => 'عنوان البريد الإلكتروني',
+        'password' => 'كلمة المرور',
+        'sign_in' => 'تسجيل الدخول',
+        'signing_in' => 'جاري تسجيل الدخول...',
+        'login' => 'تسجيل الدخول',
+        'logout' => 'تسجيل الخروج',
+        'register' => 'التسجيل',
+        'forgot_password' => 'نسيت كلمة المرور؟',
+        'remember_me' => 'تذكرني',
+        'dont_have_account' => 'ليس لديك حساب؟',
+        'already_have_account' => 'لديك حساب بالفعل؟',
+        'create_account' => 'إنشاء حساب',
+        'confirm_password' => 'تأكيد كلمة المرور',
+        'name' => 'الاسم',
+        'first_name' => 'الاسم الأول',
+        'last_name' => 'اسم العائلة',
+        'phone' => 'رقم الهاتف',
+        'terms' => 'أوافق على الشروط والأحكام',
+        'privacy' => 'أوافق على سياسة الخصوصية',
+    ],
+    
     // Accounting & Finance
     'accounting_dashboard' => 'لوحة تحكم المحاسبة',
     'comprehensive_financial_overview_and_analytics' => 'نظرة عامة مالية شاملة وتحليلات',

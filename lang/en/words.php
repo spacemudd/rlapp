@@ -331,6 +331,31 @@ return [
     'app_name' => 'Luxuria Cars Rental Application',
     'welcome_message' => 'Welcome to our premium car rental service',
     
+    // Authentication
+    'auth' => [
+        'welcome' => 'Welcome',
+        'welcome_message' => 'Welcome to our premium car rental service',
+        'email' => 'Email address',
+        'password' => 'Password',
+        'sign_in' => 'Sign in',
+        'signing_in' => 'Signing in...',
+        'login' => 'Log in',
+        'logout' => 'Log out',
+        'register' => 'Register',
+        'forgot_password' => 'Forgot your password?',
+        'remember_me' => 'Remember me',
+        'dont_have_account' => "Don't have an account?",
+        'already_have_account' => 'Already have an account?',
+        'create_account' => 'Create account',
+        'confirm_password' => 'Confirm password',
+        'name' => 'Name',
+        'first_name' => 'First name',
+        'last_name' => 'Last name',
+        'phone' => 'Phone number',
+        'terms' => 'I agree to the terms and conditions',
+        'privacy' => 'I agree to the privacy policy',
+    ],
+    
     // Accounting & Finance
     'accounting_dashboard' => 'Accounting Dashboard',
     'comprehensive_financial_overview_and_analytics' => 'Comprehensive financial overview and analytics',

@@ -51,9 +51,21 @@ const searchOptions = async (query: string) => {
     }
 
     isLoading.value = true;
-    
+
     try {
-        const response = await fetch(`${props.searchUrl}?query=${encodeURIComponent(query)}`);
+        const response = await fetch(`${props.searchUrl}?query=${encodeURIComponent(query)}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+            },
+            credentials: 'same-origin' // Include cookies for session authentication
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
         const data = await response.json();
         options.value = data;
     } catch (error) {
@@ -71,12 +83,12 @@ const selectOption = (option: Option) => {
     isOpen.value = false;
     emit('update:modelValue', option.value);
     emit('optionSelected', option);
-    
+
     // Emit blocked customer event if applicable
     if (option.is_blocked) {
         emit('blockedCustomerSelected', option);
     }
-    
+
     console.log('AsyncCombobox: Selection complete, emitted value:', option.value);
 };
 
@@ -163,7 +175,7 @@ defineExpose({
             {{ label }}
             <span v-if="required" class="text-red-500">*</span>
         </Label>
-        
+
         <div class="relative">
             <div class="relative">
                 <Input
@@ -179,13 +191,13 @@ defineExpose({
                     @focus="handleInputFocus"
                     @blur="handleInputBlur"
                 />
-                
+
                 <!-- Show blocked warning if selected customer is blocked -->
-                <div v-if="selectedOption?.is_blocked" 
+                <div v-if="selectedOption?.is_blocked"
                      class="absolute inset-y-0 right-24 flex items-center">
                     <span class="text-red-500 text-sm font-medium">🚫 BLOCKED</span>
                 </div>
-                
+
                 <div class="absolute inset-y-0 right-0 flex items-center pr-2 space-x-1">
                     <Button
                         v-if="selectedOption"
@@ -197,7 +209,7 @@ defineExpose({
                     >
                         <X class="h-3 w-3" />
                     </Button>
-                    
+
                     <Button
                         type="button"
                         variant="ghost"
@@ -219,15 +231,15 @@ defineExpose({
                 <div v-if="isLoading" class="p-3 text-sm text-gray-500 text-center">
                     Searching...
                 </div>
-                
+
                 <div v-else-if="options.length === 0 && searchQuery.length >= 2" class="p-3 text-sm text-gray-500 text-center">
                     No results found
                 </div>
-                
+
                 <div v-else-if="searchQuery.length < 2" class="p-3 text-sm text-gray-500 text-center">
                     Type at least 2 characters to search
                 </div>
-                
+
                 <div v-else>
                     <button
                         v-for="option in options"
@@ -256,17 +268,17 @@ defineExpose({
                                     </span>
                                 </div>
                             </div>
-                            
-                            <Check v-if="selectedOption?.id === option.id" 
+
+                            <Check v-if="selectedOption?.id === option.id"
                                    class="h-4 w-4 text-blue-600" />
                         </div>
                     </button>
                 </div>
             </div>
         </div>
-        
+
         <!-- Show detailed blocked customer warning -->
-        <div v-if="selectedOption?.is_blocked" 
+        <div v-if="selectedOption?.is_blocked"
              class="p-3 bg-red-50 border border-red-200 rounded-md">
             <div class="flex items-start space-x-2">
                 <div class="text-red-500 mt-0.5">🚫</div>
@@ -284,9 +296,9 @@ defineExpose({
                 </div>
             </div>
         </div>
-        
+
         <div v-if="error" class="text-sm text-red-600">
             {{ error }}
         </div>
     </div>
-</template> 
+</template>

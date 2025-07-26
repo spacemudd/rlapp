@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\Vehicle;
 use App\Models\Invoice;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
@@ -97,12 +98,12 @@ class ContractController extends Controller
             ->get()
             ->map(function ($customer) {
                 $label = $customer->first_name . ' ' . $customer->last_name . ' - ' . $customer->phone;
-                
+
                 // Add blocked indicator to label
                 if ($customer->is_blocked) {
                     $label = '🚫 ' . $label . ' (BLOCKED)';
                 }
-                
+
                 return [
                     'id' => $customer->id,
                     'label' => $label,
@@ -180,7 +181,7 @@ class ContractController extends Controller
 
         $vehicle = Vehicle::find($validated['vehicle_id']);
         $pricingService = new \App\Services\PricingService();
-        
+
         $pricing = $pricingService->calculateRentalPricing(
             $vehicle,
             $validated['start_date'],
@@ -214,11 +215,11 @@ class ContractController extends Controller
 
         // Check if customer is blocked
         $customer = Customer::findOrFail($validated['customer_id']);
-        
+
         if ($customer->team_id !== auth()->user()->team_id) {
             abort(403);
         }
-        
+
         if ($customer->is_blocked) {
             return back()->withErrors([
                 'customer_id' => "Cannot create contract for blocked customer. Reason: {$customer->block_reason}"
@@ -437,7 +438,7 @@ class ContractController extends Controller
 
         $additionalCharges = $contract->getTotalAdditionalCharges();
         $message = 'Vehicle return recorded successfully.';
-        
+
         if ($additionalCharges > 0) {
             $message .= ' Additional charges of AED ' . number_format($additionalCharges, 2) . ' have been calculated.';
         }
@@ -592,7 +593,7 @@ class ContractController extends Controller
         try {
             // Load the vehicle relation
             $contract->load('vehicle');
-            
+
             $pricingService = new \App\Services\PricingService();
             $pricing = $pricingService->calculatePricingForDays($contract->vehicle, $validated['days']);
 

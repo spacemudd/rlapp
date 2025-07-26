@@ -97,6 +97,31 @@ const messages = {
         app_name: 'Luxuria Cars Rental Application',
         welcome_message: 'Welcome to our premium car rental service',
 
+        // Authentication
+        auth: {
+            welcome: 'Welcome',
+            welcome_message: 'Welcome to our premium car rental service',
+            email: 'Email address',
+            password: 'Password',
+            sign_in: 'Sign in',
+            signing_in: 'Signing in...',
+            login: 'Log in',
+            logout: 'Log out',
+            register: 'Register',
+            forgot_password: 'Forgot your password?',
+            remember_me: 'Remember me',
+            dont_have_account: "Don't have an account?",
+            already_have_account: 'Already have an account?',
+            create_account: 'Create account',
+            confirm_password: 'Confirm password',
+            name: 'Name',
+            first_name: 'First name',
+            last_name: 'Last name',
+            phone: 'Phone number',
+            terms: 'I agree to the terms and conditions',
+            privacy: 'I agree to the privacy policy',
+        },
+
         // Dashboard
         new_invoice: 'New Invoice',
         late_invoices_amount: 'Late Invoices Amount',
@@ -359,6 +384,31 @@ const messages = {
         welcome: 'أهلاً وسهلاً',
         app_name: 'تطبيق لوكشوريا لتأجير السيارات',
         welcome_message: 'أهلاً بكم في خدمة تأجير السيارات المتميزة',
+
+        // Authentication
+        auth: {
+            welcome: 'أهلاً وسهلاً',
+            welcome_message: 'أهلاً بكم في خدمة تأجير السيارات المتميزة',
+            email: 'عنوان البريد الإلكتروني',
+            password: 'كلمة المرور',
+            sign_in: 'تسجيل الدخول',
+            signing_in: 'جاري تسجيل الدخول...',
+            login: 'تسجيل الدخول',
+            logout: 'تسجيل الخروج',
+            register: 'التسجيل',
+            forgot_password: 'نسيت كلمة المرور؟',
+            remember_me: 'تذكرني',
+            dont_have_account: 'ليس لديك حساب؟',
+            already_have_account: 'لديك حساب بالفعل؟',
+            create_account: 'إنشاء حساب',
+            confirm_password: 'تأكيد كلمة المرور',
+            name: 'الاسم',
+            first_name: 'الاسم الأول',
+            last_name: 'اسم العائلة',
+            phone: 'رقم الهاتف',
+            terms: 'أوافق على الشروط والأحكام',
+            privacy: 'أوافق على سياسة الخصوصية',
+        },
 
         // Dashboard
         new_invoice: 'فاتورة جديدة',
