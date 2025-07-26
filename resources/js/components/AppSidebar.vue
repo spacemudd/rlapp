@@ -5,7 +5,7 @@ import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid, Users, Receipt, Settings, Car, FileText, MapPin, Calculator } from 'lucide-vue-next';
+import { BookOpen, Folder, LayoutGrid, Users, Receipt, Settings, Car, FileText, MapPin, Calculator, Calendar } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -27,7 +27,7 @@ const canManageTeam = computed(() => {
 
 // Check if user can view financial reports
 const canViewFinancialReports = computed(() => {
-    return userPermissions.value.includes('view financial reports') || 
+    return userPermissions.value.includes('view financial reports') ||
            userPermissions.value.includes('manage team settings'); // Team managers can access accounting
 });
 
@@ -52,6 +52,11 @@ const mainNavItems = computed<NavItem[]>(() => {
             title: t('vehicles'),
             href: '/vehicles',
             icon: Car,
+        },
+        {
+            title: 'Reservations',
+            href: '/reservations',
+            icon: Calendar,
         },
         {
             title: t('contracts'),

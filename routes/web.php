@@ -109,52 +109,86 @@ Route::post('invitation/{token}/accept', [App\Http\Controllers\InvitationControl
 Route::post('invitation/{token}/decline', [App\Http\Controllers\InvitationController::class, 'decline'])->name('invitation.decline');
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    // Reservations Routes
+    Route::resource('reservations', \App\Http\Controllers\ReservationController::class);
+    Route::patch('reservations/{reservation}/status', [\App\Http\Controllers\ReservationController::class, 'updateStatus'])->name('reservations.update-status');
+
+    // API Routes for Reservations
+    Route::prefix('api/reservations')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\ReservationApiController::class, 'index'])->name('api.reservations.index');
+        Route::post('/', [\App\Http\Controllers\Api\ReservationApiController::class, 'store'])->name('api.reservations.store');
+        Route::get('/statistics', [\App\Http\Controllers\Api\ReservationApiController::class, 'statistics'])->name('api.reservations.statistics');
+        Route::get('/today', [\App\Http\Controllers\Api\ReservationApiController::class, 'today'])->name('api.reservations.today');
+        Route::get('/tomorrow', [\App\Http\Controllers\Api\ReservationApiController::class, 'tomorrow'])->name('api.reservations.tomorrow');
+        Route::get('/available-vehicles', [\App\Http\Controllers\Api\ReservationApiController::class, 'availableVehicles'])->name('api.reservations.available-vehicles');
+        Route::get('/search', [\App\Http\Controllers\Api\ReservationApiController::class, 'search'])->name('api.reservations.search');
+        Route::get('/status/{status}', [\App\Http\Controllers\Api\ReservationApiController::class, 'byStatus'])->name('api.reservations.by-status');
+        Route::get('/{id}', [\App\Http\Controllers\Api\ReservationApiController::class, 'show'])->name('api.reservations.show');
+        Route::put('/{id}', [\App\Http\Controllers\Api\ReservationApiController::class, 'update'])->name('api.reservations.update');
+        Route::delete('/{id}', [\App\Http\Controllers\Api\ReservationApiController::class, 'destroy'])->name('api.reservations.destroy');
+        Route::patch('/{id}/status', [\App\Http\Controllers\Api\ReservationApiController::class, 'updateStatus'])->name('api.reservations.update-status');
+    });
+
+    // Route للحصول على CSRF Token للاختبار (بدون middleware)
+    Route::get('/api/csrf-token', function () {
+        return response()->json([
+            'csrf_token' => csrf_token(),
+            'message' => 'Use this token in X-CSRF-TOKEN header',
+            'timestamp' => now()->toISOString()
+        ]);
+    })->name('api.csrf-token')->withoutMiddleware(['auth', 'verified']);
+
+    // API Route للاختبار بدون CSRF (للاختبار فقط)
+    Route::post('/api/test/reservations', [\App\Http\Controllers\Api\ReservationApiController::class, 'store'])
+        ->name('api.test.reservations.store')
+        ->withoutMiddleware(['web']);
+
     Route::get('/fines', [\App\Http\Controllers\FineController::class, 'index'])->name('fines');
     Route::post('/fines/sync', [\App\Http\Controllers\FineController::class, 'runScript'])->name('fines.sync');
-    Route::post('/run-script', [App\Http\Controllers\ScriptController::class, 'run']);
-    Route::get('/script-log', [App\Http\Controllers\ScriptController::class, 'log']);
+Route::post('/run-script', [App\Http\Controllers\ScriptController::class, 'run']);
+Route::get('/script-log', [App\Http\Controllers\ScriptController::class, 'log']);
 
-    // Routes للـ FineController الجديد
-    Route::post('/fines/run-script', [App\Http\Controllers\FineController::class, 'runScript'])->name('fines.run-script');
-    Route::get('/fines/last-sync', [App\Http\Controllers\FineController::class, 'getLastSync'])->name('fines.last-sync');
+// Routes للـ FineController الجديد
+Route::post('/fines/run-script', [App\Http\Controllers\FineController::class, 'runScript'])->name('fines.run-script');
+Route::get('/fines/last-sync', [App\Http\Controllers\FineController::class, 'getLastSync'])->name('fines.last-sync');
 
-    // Route لإرجاع نسبة التقدم في ملف progress.txt
-    Route::get('/sync-progress', function () {
-        $progressFile = base_path('scripts/progress.txt');
-        $percent = 0;
-        if (file_exists($progressFile)) {
-            $percent = (int)file_get_contents($progressFile);
-        }
-        return Response::json(['progress' => $percent]);
-    });
+// Route لإرجاع نسبة التقدم في ملف progress.txt
+Route::get('/sync-progress', function () {
+    $progressFile = base_path('scripts/progress.txt');
+    $percent = 0;
+    if (file_exists($progressFile)) {
+        $percent = (int)file_get_contents($progressFile);
+    }
+    return Response::json(['progress' => $percent]);
+});
 
-    Route::get('/traffic-violations', function () {
-        return inertia('TrafficViolations');
-    });
+Route::get('/traffic-violations', function () {
+    return inertia('TrafficViolations');
+});
 
-    Route::get('/traffic-violations/salik', function () {
-        return inertia('TrafficViolations/Salik');
-    });
+Route::get('/traffic-violations/salik', function () {
+    return inertia('TrafficViolations/Salik');
+});
 
-    Route::get('/api/salik-balance', function () {
-        $file = base_path('scripts/salik_balance.txt');
-        $balance = file_exists($file) ? trim(file_get_contents($file)) : null;
-        return response()->json(['balance' => $balance]);
-    });
+Route::get('/api/salik-balance', function () {
+    $file = base_path('scripts/salik_balance.txt');
+    $balance = file_exists($file) ? trim(file_get_contents($file)) : null;
+    return response()->json(['balance' => $balance]);
+});
 
-    // API route to return Salik trips data
-    Route::get('/api/salik-trips', function () {
-        $path = base_path('scripts/salik_trips.json');
-        if (file_exists($path)) {
-            return response()->json(json_decode(file_get_contents($path)));
-        }
-        return response()->json([]);
-    });
+// API route to return Salik trips data
+Route::get('/api/salik-trips', function () {
+    $path = base_path('scripts/salik_trips.json');
+    if (file_exists($path)) {
+        return response()->json(json_decode(file_get_contents($path)));
+    }
+    return response()->json([]);
+});
 
-    Route::get('/script-status', function () {
-        $path = storage_path('logs/scrap_rta.done');
-        $done = file_exists($path) ? trim(file_get_contents($path)) : null;
-        return response()->json(['done' => $done]);
+Route::get('/script-status', function () {
+    $path = storage_path('logs/scrap_rta.done');
+    $done = file_exists($path) ? trim(file_get_contents($path)) : null;
+    return response()->json(['done' => $done]);
     });
 });
 

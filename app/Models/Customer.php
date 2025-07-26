@@ -53,6 +53,18 @@ class Customer extends Model
         'block_reason',
         'blocked_at',
         'blocked_by_user_id',
+        // VAT fields
+        'vat_number',
+        'vat_registered',
+        'vat_registration_date',
+        'vat_registration_country',
+        'customer_type',
+        'reverse_charge_applicable',
+        'tax_classification',
+        'vat_number_validated',
+        'vat_number_validated_at',
+        'vat_validation_response',
+        'vat_notes',
     ];
 
     /**
@@ -79,6 +91,13 @@ class Customer extends Model
             'credit_limit' => 'decimal:2',
             'is_blocked' => 'boolean',
             'blocked_at' => 'datetime',
+            // VAT casts
+            'vat_registered' => 'boolean',
+            'vat_registration_date' => 'date',
+            'reverse_charge_applicable' => 'boolean',
+            'vat_number_validated' => 'boolean',
+            'vat_number_validated_at' => 'datetime',
+            'vat_validation_response' => 'array',
         ];
     }
 
@@ -168,7 +187,7 @@ class Customer extends Model
         if (!$this->credit_limit) {
             return 0;
         }
-        
+
         return $this->credit_limit - $this->outstanding_balance;
     }
 
@@ -180,7 +199,7 @@ class Customer extends Model
         if (!$this->credit_limit) {
             return false;
         }
-        
+
         return $this->outstanding_balance > $this->credit_limit;
     }
 
@@ -192,7 +211,7 @@ class Customer extends Model
         if (!$this->credit_limit) {
             return false;
         }
-        
+
         return $this->outstanding_balance >= ($this->credit_limit * $threshold);
     }
 
@@ -213,7 +232,7 @@ class Customer extends Model
     public function getAgingAnalysis()
     {
         $overdueInvoices = $this->getOverdueInvoices();
-        
+
         $aging = [
             'current' => 0,
             '1-30 days' => 0,
@@ -222,17 +241,17 @@ class Customer extends Model
             '91-180 days' => 0,
             '180+ days' => 0,
         ];
-        
+
         foreach ($overdueInvoices as $invoice) {
             $aging[$invoice->aging_category] += $invoice->remaining_amount;
         }
-        
+
         // Add current invoices (not overdue)
         $aging['current'] = $this->invoices()
             ->unpaid()
             ->where('due_date', '>=', now())
             ->sum('remaining_amount');
-        
+
         return $aging;
     }
 
