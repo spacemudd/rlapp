@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ChevronDown, Check, X } from 'lucide-vue-next';
+import { useI18n } from 'vue-i18n';
 
 interface Option {
     id: string;
@@ -31,6 +32,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
     'update:modelValue': [value: string];
     'optionSelected': [option: Option];
+    'blockedCustomerSelected': [option: Option];
 }>();
 
 const searchQuery = ref('');
@@ -49,9 +51,21 @@ const searchOptions = async (query: string) => {
     }
 
     isLoading.value = true;
-    
+
     try {
-        const response = await fetch(`${props.searchUrl}?query=${encodeURIComponent(query)}`);
+        const response = await fetch(`${props.searchUrl}?query=${encodeURIComponent(query)}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+            },
+            credentials: 'same-origin' // Include cookies for session authentication
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
         const data = await response.json();
         options.value = data;
     } catch (error) {
@@ -69,7 +83,37 @@ const selectOption = (option: Option) => {
     isOpen.value = false;
     emit('update:modelValue', option.value);
     emit('optionSelected', option);
+
+    // Emit blocked customer event if applicable
+    if (option.is_blocked) {
+        emit('blockedCustomerSelected', option);
+    }
+
     console.log('AsyncCombobox: Selection complete, emitted value:', option.value);
+};
+
+const { t } = useI18n();
+
+const translateBlockReason = (reason: string) => {
+    const reasonMap: Record<string, string> = {
+        'payment_default': t('payment_default'),
+        'fraudulent_activity': t('fraudulent_activity'),
+        'policy_violation': t('policy_violation'),
+        'safety_concerns': t('safety_concerns'),
+        'document_issues': t('document_issues'),
+        'other': t('other')
+    };
+    return reasonMap[reason] || reason;
+};
+
+const formatBlockDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 };
 
 const clearSelection = () => {
@@ -131,7 +175,7 @@ defineExpose({
             {{ label }}
             <span v-if="required" class="text-red-500">*</span>
         </Label>
-        
+
         <div class="relative">
             <div class="relative">
                 <Input
@@ -141,12 +185,19 @@ defineExpose({
                     :disabled="disabled"
                     :class="[
                         'pr-20',
-                        error ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                        error ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : '',
+                        selectedOption?.is_blocked ? 'border-red-500 bg-red-50' : ''
                     ]"
                     @focus="handleInputFocus"
                     @blur="handleInputBlur"
                 />
-                
+
+                <!-- Show blocked warning if selected customer is blocked -->
+                <div v-if="selectedOption?.is_blocked"
+                     class="absolute inset-y-0 right-24 flex items-center">
+                    <span class="text-red-500 text-sm font-medium">🚫 BLOCKED</span>
+                </div>
+
                 <div class="absolute inset-y-0 right-0 flex items-center pr-2 space-x-1">
                     <Button
                         v-if="selectedOption"
@@ -158,7 +209,7 @@ defineExpose({
                     >
                         <X class="h-3 w-3" />
                     </Button>
-                    
+
                     <Button
                         type="button"
                         variant="ghost"
@@ -180,32 +231,74 @@ defineExpose({
                 <div v-if="isLoading" class="p-3 text-sm text-gray-500 text-center">
                     Searching...
                 </div>
-                
+
                 <div v-else-if="options.length === 0 && searchQuery.length >= 2" class="p-3 text-sm text-gray-500 text-center">
                     No results found
                 </div>
-                
+
                 <div v-else-if="searchQuery.length < 2" class="p-3 text-sm text-gray-500 text-center">
                     Type at least 2 characters to search
                 </div>
-                
+
                 <div v-else>
                     <button
                         v-for="option in options"
                         :key="option.id"
                         type="button"
-                        class="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 focus:bg-gray-100 focus:outline-none flex items-center justify-between"
+                        class="w-full px-4 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none"
+                        :class="{
+                            'bg-red-50 border-l-4 border-red-500': option.is_blocked,
+                            'bg-blue-50': selectedOption?.id === option.id && !option.is_blocked
+                        }"
                         @click="selectOption(option)"
                     >
-                        <span>{{ option.label }}</span>
-                        <Check v-if="selectedOption?.id === option.id" class="h-4 w-4 text-green-600" />
+                        <div class="flex items-center justify-between">
+                            <div class="flex-1">
+                                <div class="font-medium" :class="{ 'text-red-700': option.is_blocked }">
+                                    {{ option.label }}
+                                </div>
+                                <div v-if="option.email" class="text-sm text-gray-500">
+                                    {{ option.email }}
+                                </div>
+                                <!-- Show block reason if customer is blocked -->
+                                <div v-if="option.is_blocked" class="text-sm text-red-600 font-medium mt-1">
+                                    🚫 {{ translateBlockReason(option.block_reason) }}
+                                    <span class="text-xs text-red-500 block">
+                                        Blocked {{ formatBlockDate(option.blocked_at) }} by {{ option.blocked_by?.name }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <Check v-if="selectedOption?.id === option.id"
+                                   class="h-4 w-4 text-blue-600" />
+                        </div>
                     </button>
                 </div>
             </div>
         </div>
-        
+
+        <!-- Show detailed blocked customer warning -->
+        <div v-if="selectedOption?.is_blocked"
+             class="p-3 bg-red-50 border border-red-200 rounded-md">
+            <div class="flex items-start space-x-2">
+                <div class="text-red-500 mt-0.5">🚫</div>
+                <div class="flex-1">
+                    <h4 class="text-sm font-medium text-red-800">Customer is Blocked</h4>
+                    <p class="text-sm text-red-700 mt-1">
+                        <strong>Reason:</strong> {{ translateBlockReason(selectedOption.block_reason) }}
+                    </p>
+                    <p class="text-xs text-red-600 mt-1">
+                        Blocked {{ formatBlockDate(selectedOption.blocked_at) }} by {{ selectedOption.blocked_by?.name }}
+                    </p>
+                    <p class="text-xs text-red-600 mt-2 font-medium">
+                        ⚠️ You cannot create contracts for blocked customers.
+                    </p>
+                </div>
+            </div>
+        </div>
+
         <div v-if="error" class="text-sm text-red-600">
             {{ error }}
         </div>
     </div>
-</template> 
+</template>

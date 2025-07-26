@@ -1,6 +1,6 @@
 <template>
   <AppLayout title="Add Bank Account">
-    <div class="p-6 sm:p-8">
+    <div class="p-6">
       <div class="max-w-4xl mx-auto">
         <!-- Header -->
         <div class="mb-8">

@@ -8,7 +8,7 @@ import SearchableSelect from './ui/SearchableSelect.vue';
 import InputError from './InputError.vue';
 import { useForm } from '@inertiajs/vue3';
 import { watch } from 'vue';
-import { CreditCard, BookOpen, IdCard } from 'lucide-vue-next';
+import { CreditCard, BookOpen, IdCard, User, Building } from 'lucide-vue-next';
 import { countryOptions, nationalityOptions } from '../lib/countries';
 
 interface Props {
@@ -25,6 +25,11 @@ const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
 const form = useForm({
+    business_type: 'individual' as 'individual' | 'business',
+    business_name: '',
+    driver_name: '',
+    trade_license_number: '',
+    trade_license_pdf: null as File | null,
     first_name: '',
     last_name: '',
     email: '',
@@ -71,6 +76,11 @@ watch(() => props.editingCustomer, (customer) => {
         }
     } else {
         form.reset();
+        form.business_type = 'individual';
+        form.business_name = '';
+        form.driver_name = '';
+        form.trade_license_number = '';
+        form.trade_license_pdf = null;
         form.country = 'United Arab Emirates';
         form.status = 'active';
         form.drivers_license_number = '';
@@ -97,6 +107,12 @@ watch(() => form.secondary_identification_type, (newType) => {
 });
 
 const submitForm = () => {
+    // Client-side validation for business customers
+    if (form.business_type === 'business' && !form.business_name.trim()) {
+        alert('Please enter a business/company name for business customers');
+        return;
+    }
+    
     // Client-side validation for secondary identification
     if (!form.secondary_identification_type) {
         alert('Please select either Passport or Emirates Resident ID');
@@ -130,7 +146,113 @@ const cancelForm = () => {
         <div class="space-y-4">
             <h3 class="text-lg font-medium text-gray-900">Required Information</h3>
             
-            <!-- Personal Information -->
+            <!-- Customer Type Selection -->
+            <div class="space-y-4">
+                <Label>Customer Type *</Label>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Individual Customer -->
+                    <div 
+                        class="relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:bg-gray-50"
+                        :class="{
+                            'border-blue-500 bg-blue-50': form.business_type === 'individual',
+                            'border-gray-200': form.business_type !== 'individual'
+                        }"
+                        @click="form.business_type = 'individual'"
+                    >
+                        <div class="flex flex-col items-center text-center space-y-2">
+                            <User class="h-8 w-8 text-gray-600" />
+                            <h3 class="font-medium text-gray-900">Individual Customer</h3>
+                            <p class="text-sm text-gray-500">Personal customer or individual</p>
+                        </div>
+                        <input
+                            type="radio"
+                            name="business_type"
+                            value="individual"
+                            v-model="form.business_type"
+                            class="absolute top-2 right-2"
+                        />
+                    </div>
+
+                    <!-- Business Customer -->
+                    <div 
+                        class="relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:bg-gray-50"
+                        :class="{
+                            'border-blue-500 bg-blue-50': form.business_type === 'business',
+                            'border-gray-200': form.business_type !== 'business'
+                        }"
+                        @click="form.business_type = 'business'"
+                    >
+                        <div class="flex flex-col items-center text-center space-y-2">
+                            <Building class="h-8 w-8 text-gray-600" />
+                            <h3 class="font-medium text-gray-900">Business Customer</h3>
+                            <p class="text-sm text-gray-500">Company or business entity</p>
+                        </div>
+                        <input
+                            type="radio"
+                            name="business_type"
+                            value="business"
+                            v-model="form.business_type"
+                            class="absolute top-2 right-2"
+                        />
+                    </div>
+                </div>
+                <InputError :message="form.errors.business_type" />
+            </div>
+
+            <!-- Business Information (shown only for business customers) -->
+            <div v-if="form.business_type === 'business'" class="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h4 class="font-medium text-gray-900">Business Information</h4>
+                <div class="space-y-2">
+                    <Label for="business_name">Business/Company Name *</Label>
+                    <Input
+                        id="business_name"
+                        v-model="form.business_name"
+                        type="text"
+                        :required="form.business_type === 'business'"
+                        placeholder="Enter company or business name"
+                    />
+                    <InputError :message="form.errors.business_name" />
+                </div>
+                <div class="space-y-2">
+                    <Label for="driver_name">Driver Name (if different from owner)</Label>
+                    <Input
+                        id="driver_name"
+                        v-model="form.driver_name"
+                        type="text"
+                        placeholder="Enter driver name (optional)"
+                    />
+                    <InputError :message="form.errors.driver_name" />
+                    <p class="text-sm text-gray-600">Leave empty if the owner is the driver</p>
+                </div>
+                
+                <div class="space-y-2">
+                    <Label for="trade_license_number">Trade License Number</Label>
+                    <Input
+                        id="trade_license_number"
+                        v-model="form.trade_license_number"
+                        type="text"
+                        placeholder="Enter trade license number (optional)"
+                    />
+                    <InputError :message="form.errors.trade_license_number" />
+                </div>
+                
+                <div class="space-y-2">
+                    <Label for="trade_license_pdf">Trade License PDF</Label>
+                    <Input
+                        id="trade_license_pdf"
+                        type="file"
+                        accept=".pdf"
+                        @input="form.trade_license_pdf = $event.target.files[0]"
+                    />
+                    <InputError :message="form.errors.trade_license_pdf" />
+                    <p class="text-sm text-gray-600">Upload trade license document (PDF only, optional)</p>
+                </div>
+            </div>
+
+            <!-- Owner/Personal Information -->
+            <h4 class="font-medium text-gray-900 mt-6">
+                {{ form.business_type === 'business' ? 'Owner Information' : 'Personal Information' }}
+            </h4>
             <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">
                     <Label for="first_name">First Name *</Label>

@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { inject, onMounted, onUnmounted } from 'vue';
 
-const select = inject('select');
+const select = inject<{
+    open: { value: boolean };
+    setOpen: (open: boolean) => void;
+}>('select');
 
 const handleClickOutside = (event: MouseEvent) => {
     const target = event.target as HTMLElement;
@@ -21,8 +24,9 @@ onUnmounted(() => {
 
 <template>
     <div
-        v-if="select?.open"
-        class="select-content absolute z-50 min-w-[8rem] overflow-hidden rounded-md border bg-white dark:bg-gray-800 p-1 text-popover-foreground shadow-md"
+        v-if="select?.open.value"
+        class="select-content absolute min-w-[8rem] overflow-hidden rounded-md border bg-white dark:bg-gray-800 p-1 text-popover-foreground shadow-md"
+        :class="$attrs.class"
         style="top: calc(100% + 4px); left: 0; width: 100%;"
     >
         <div class="max-h-[300px] overflow-y-auto">

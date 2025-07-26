@@ -112,7 +112,7 @@ function daysAgo(dueDate: string) {
     <Head :title="t('dashboard')" />
 
     <AppLayout>
-        <div class="p-6 sm:p-8 max-w-7xl mx-auto">
+        <div class="p-6">
             <div class="min-h-screen bg-gradient-to-br from-gray-50 to-white">
                 <div class="space-y-8">
                     <!-- Header Section -->

@@ -53,8 +53,19 @@ Route::prefix('v1')->group(function () {
     Route::post('/login', [\App\Http\Controllers\Api\AuthApiController::class, 'login']);
 });
 
+// Search endpoints (requires web authentication but no API key - used by frontend)
+Route::middleware(['auth:web'])->group(function () {
+    Route::prefix('vehicles')->group(function () {
+        Route::get('/search', [App\Http\Controllers\ContractController::class, 'searchVehicles'])->name('api.vehicles.search');
+    });
+
+    Route::prefix('customers')->group(function () {
+        Route::get('/search', [App\Http\Controllers\ContractController::class, 'searchCustomers'])->name('api.customers.search');
+    });
+});
+
 Route::middleware(['api.key'])->group(function () {
-    // Vehicle API endpoints
+    // Vehicle API endpoints (requires API key)
     Route::prefix('vehicles')->group(function () {
         Route::get('/', [VehicleApiController::class, 'index'])->name('api.vehicles.index');
         Route::get('/{id}', [VehicleApiController::class, 'show'])->name('api.vehicles.show');

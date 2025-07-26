@@ -149,7 +149,7 @@ const formatCurrency = (amount?: number) => {
     <Head :title="t('vehicles')" />
     
     <AppLayout>
-        <div class="p-6 sm:p-8 max-w-7xl mx-auto">
+        <div class="p-6">
             <!-- Header -->
             <div class="md:flex md:items-center md:justify-between mb-6">
                     <div class="flex-1 min-w-0">

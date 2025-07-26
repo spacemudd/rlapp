@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\Vehicle;
 use App\Models\Invoice;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
@@ -84,20 +85,28 @@ class ContractController extends Controller
         $query = $request->get('query', '');
 
         $customers = Customer::where('team_id', auth()->user()->team_id)
-            ->where('status', 'active')
             ->where(function ($q) use ($query) {
                 $q->where('first_name', 'like', "%{$query}%")
                     ->orWhere('last_name', 'like', "%{$query}%")
                     ->orWhere('email', 'like', "%{$query}%")
                     ->orWhere('phone', 'like', "%{$query}%");
             })
+            ->with('blockedBy') // Load the user who blocked the customer
+            ->orderBy('is_blocked') // Show non-blocked customers first
             ->orderBy('first_name')
             ->limit(20)
             ->get()
             ->map(function ($customer) {
+                $label = $customer->first_name . ' ' . $customer->last_name . ' - ' . $customer->phone;
+
+                // Add blocked indicator to label
+                if ($customer->is_blocked) {
+                    $label = '🚫 ' . $label . ' (BLOCKED)';
+                }
+
                 return [
                     'id' => $customer->id,
-                    'label' => $customer->first_name . ' ' . $customer->last_name . ' - ' . $customer->phone,
+                    'label' => $label,
                     'value' => $customer->id,
                     'name' => $customer->first_name . ' ' . $customer->last_name,
                     'first_name' => $customer->first_name,
@@ -108,6 +117,15 @@ class ContractController extends Controller
                     'address' => $customer->address,
                     'city' => $customer->city,
                     'country' => $customer->country,
+                    'status' => $customer->status,
+                    // Add blocking information
+                    'is_blocked' => $customer->is_blocked,
+                    'block_reason' => $customer->block_reason,
+                    'blocked_at' => $customer->blocked_at,
+                    'blocked_by' => $customer->blockedBy ? [
+                        'id' => $customer->blockedBy->id,
+                        'name' => $customer->blockedBy->name,
+                    ] : null,
                 ];
             });
 
@@ -163,7 +181,7 @@ class ContractController extends Controller
 
         $vehicle = Vehicle::find($validated['vehicle_id']);
         $pricingService = new \App\Services\PricingService();
-        
+
         $pricing = $pricingService->calculateRentalPricing(
             $vehicle,
             $validated['start_date'],
@@ -194,6 +212,19 @@ class ContractController extends Controller
             'fuel_level' => 'required|in:full,3/4,1/2,1/4,low,empty',
             'condition_photos.*' => 'nullable|image|mimes:jpeg,png,jpg|max:10240', // 10MB max per image
         ]);
+
+        // Check if customer is blocked
+        $customer = Customer::findOrFail($validated['customer_id']);
+
+        if ($customer->team_id !== auth()->user()->team_id) {
+            abort(403);
+        }
+
+        if ($customer->is_blocked) {
+            return back()->withErrors([
+                'customer_id' => "Cannot create contract for blocked customer. Reason: {$customer->block_reason}"
+            ])->withInput();
+        }
 
         // Handle photo uploads
         $photosPaths = [];
@@ -407,7 +438,7 @@ class ContractController extends Controller
 
         $additionalCharges = $contract->getTotalAdditionalCharges();
         $message = 'Vehicle return recorded successfully.';
-        
+
         if ($additionalCharges > 0) {
             $message .= ' Additional charges of AED ' . number_format($additionalCharges, 2) . ' have been calculated.';
         }
@@ -562,7 +593,7 @@ class ContractController extends Controller
         try {
             // Load the vehicle relation
             $contract->load('vehicle');
-            
+
             $pricingService = new \App\Services\PricingService();
             $pricing = $pricingService->calculatePricingForDays($contract->vehicle, $validated['days']);
 

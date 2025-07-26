@@ -259,8 +259,7 @@ function goToCreateInvoice() {
     <Head :title="`Contract ${contract.contract_number}`" />
 
     <AppLayout>
-        <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-            <div class="space-y-6">
+        <div class="p-6">
                 <!-- Header -->
                 <div class="space-y-4">
                     <!-- Back Button -->
@@ -647,7 +646,6 @@ function goToCreateInvoice() {
                         <p class="text-sm">{{ contract.void_reason }}</p>
                     </CardContent>
                 </Card>
-            </div>
         </div>
 
         <!-- Void Contract Dialog -->

@@ -11,8 +11,11 @@ use App\Http\Controllers\SalikApiController;
 use App\Http\Controllers\TrafficViolationsController;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome');
-})->name('home');
+    if (auth()->check()) {
+        return redirect()->route('dashboard');
+    }
+    return redirect()->route('login');
+});
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
@@ -66,8 +69,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Search endpoints for async dropdowns
-    Route::get('/api/customers/search', [App\Http\Controllers\ContractController::class, 'searchCustomers'])->name('api.customers.search');
-    Route::get('/api/vehicles/search', [App\Http\Controllers\ContractController::class, 'searchVehicles'])->name('api.vehicles.search');
     Route::get('/api/pricing/calculate', [App\Http\Controllers\ContractController::class, 'calculatePricing'])->name('api.pricing.calculate');
 });
 
@@ -77,8 +78,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 Route::resource('customers', App\Http\Controllers\CustomerController::class)
-    ->except(['show', 'create', 'edit'])
     ->middleware(['auth', 'verified']);
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::post('/customers/{customer}/block', [App\Http\Controllers\CustomerController::class, 'block'])->name('customers.block');
+    Route::post('/customers/{customer}/unblock', [App\Http\Controllers\CustomerController::class, 'unblock'])->name('customers.unblock');
+    Route::get('/customers/{customer}/block-history', [App\Http\Controllers\CustomerController::class, 'blockHistory'])->name('customers.block-history');
+});
 
 
 

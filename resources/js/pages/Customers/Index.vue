@@ -4,9 +4,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import CreateCustomerForm from '@/components/CreateCustomerForm.vue';
-import { Plus, Users, Edit, Trash2, Phone, Mail, Calendar, CreditCard, Search } from 'lucide-vue-next';
+import { Plus, Users, Edit, Trash2, Phone, Mail, Calendar, CreditCard, Search, FileText, Download, Eye } from 'lucide-vue-next';
 import { ref, computed, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
@@ -14,6 +12,11 @@ import { useDirection } from '@/composables/useDirection';
 
 interface Customer {
     id: string;
+    business_type: 'individual' | 'business';
+    business_name?: string;
+    driver_name?: string;
+    trade_license_number?: string;
+    trade_license_pdf_path?: string;
     first_name: string;
     last_name: string;
     email: string;
@@ -28,6 +31,9 @@ interface Customer {
     status: 'active' | 'inactive';
     notes?: string;
     created_at: string;
+    is_blocked: boolean;
+    block_reason?: string;
+    blocked_at?: string;
 }
 
 interface PaginatedCustomers {
@@ -50,9 +56,11 @@ interface Props {
     stats: {
         total: number;
         active: number;
+        blocked: number;
         new_this_month: number;
     };
     search: string;
+    filter: string;
 }
 
 const props = defineProps<Props>();
@@ -65,47 +73,30 @@ const breadcrumbs = [
     { title: t('customers'), href: '/customers' },
 ];
 
-const showAddDialog = ref(false);
-const editingCustomer = ref<Customer | null>(null);
 const searchQuery = ref(props.search || '');
-
-const openAddDialog = () => {
-    editingCustomer.value = null;
-    showAddDialog.value = true;
-};
-
-const openEditDialog = (customer: Customer) => {
-    editingCustomer.value = customer;
-    showAddDialog.value = true;
-};
-
-const handleCustomerSubmit = (form: any) => {
-    if (editingCustomer.value) {
-        form.put(`/customers/${editingCustomer.value.id}`, {
-            onSuccess: () => {
-                showAddDialog.value = false;
-                editingCustomer.value = null;
-            },
-        });
-    } else {
-        form.post('/customers', {
-            onSuccess: () => {
-                showAddDialog.value = false;
-                editingCustomer.value = null;
-            },
-        });
-    }
-};
-
-const handleCustomerCancel = () => {
-    showAddDialog.value = false;
-    editingCustomer.value = null;
-};
+const activeFilter = ref(props.filter || 'all');
 
 const deleteCustomer = (customer: Customer) => {
     if (confirm(t('delete_customer_confirm'))) {
         useForm({}).delete(`/customers/${customer.id}`);
     }
+};
+
+const applyFilter = (filter: string) => {
+    activeFilter.value = filter;
+    const params = new URLSearchParams();
+    if (searchQuery.value.trim()) {
+        params.append('search', searchQuery.value.trim());
+    }
+    if (filter !== 'all') {
+        params.append('filter', filter);
+    }
+
+    const url = `/customers${params.toString() ? '?' + params.toString() : ''}`;
+    router.get(url, {}, {
+        preserveState: true,
+        preserveScroll: false,
+    });
 };
 
 const formatDate = (dateString: string) => {
@@ -114,6 +105,18 @@ const formatDate = (dateString: string) => {
 
 const getFullName = (customer: Customer) => {
     return `${customer.first_name} ${customer.last_name}`;
+};
+
+const translateBlockReason = (reason: string) => {
+    const reasonMap: Record<string, string> = {
+        'payment_default': t('payment_default'),
+        'fraudulent_activity': t('fraudulent_activity'),
+        'policy_violation': t('policy_violation'),
+        'safety_concerns': t('safety_concerns'),
+        'document_issues': t('document_issues'),
+        'other': t('other')
+    };
+    return reasonMap[reason] || reason;
 };
 
 const generatePageNumbers = () => {
@@ -145,6 +148,9 @@ const performSearch = () => {
     if (searchQuery.value.trim()) {
         params.append('search', searchQuery.value.trim());
     }
+    if (activeFilter.value !== 'all') {
+        params.append('filter', activeFilter.value);
+    }
 
     const url = `/customers${params.toString() ? '?' + params.toString() : ''}`;
     router.get(url, {}, {
@@ -155,7 +161,13 @@ const performSearch = () => {
 
 const clearSearch = () => {
     searchQuery.value = '';
-    router.get('/customers', {}, {
+    const params = new URLSearchParams();
+    if (activeFilter.value !== 'all') {
+        params.append('filter', activeFilter.value);
+    }
+    
+    const url = `/customers${params.toString() ? '?' + params.toString() : ''}`;
+    router.get(url, {}, {
         preserveState: true,
         preserveScroll: false,
     });
@@ -177,7 +189,7 @@ watch(searchQuery, (newValue, oldValue) => {
     <Head :title="t('customers')" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="p-6 sm:p-8 max-w-7xl mx-auto">
+        <div class="p-6">
             <div class="space-y-6">
                 <div class="flex items-center justify-between" :class="{ 'flex-row-reverse': isRtl }">
                     <div :class="{ 'text-right': isRtl }">
@@ -216,37 +228,19 @@ watch(searchQuery, (newValue, oldValue) => {
                             </Button>
                         </div>
 
-                        <Dialog v-model:open="showAddDialog">
-                            <DialogTrigger as-child>
-                                <Button @click="openAddDialog">
-                                    <Plus :class="[
-                                        'h-4 w-4',
-                                        isRtl ? 'ml-2' : 'mr-2'
-                                    ]" />
-                                    {{ t('add_customer') }}
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent class="max-w-2xl max-h-[90vh] overflow-y-auto">
-                                <DialogHeader>
-                                    <DialogTitle>
-                                        {{ editingCustomer ? t('edit_customer') : t('add_customer') }}
-                                    </DialogTitle>
-                                    <DialogDescription>
-                                        {{ editingCustomer ? t('update_profile_info') : t('customer_information') }}
-                                    </DialogDescription>
-                                </DialogHeader>
-
-                                <CreateCustomerForm
-                                    :editing-customer="editingCustomer"
-                                    @submit="handleCustomerSubmit"
-                                    @cancel="handleCustomerCancel"
-                                />
-                            </DialogContent>
-                        </Dialog>
+                        <Link href="/customers/create">
+                            <Button>
+                                <Plus :class="[
+                                    'h-4 w-4',
+                                    isRtl ? 'ml-2' : 'mr-2'
+                                ]" />
+                                {{ t('add_customer') }}
+                            </Button>
+                        </Link>
                     </div>
                 </div>
 
-                <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                     <Card>
                         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2" :class="{ 'flex-row-reverse': isRtl }">
                             <CardTitle class="text-sm font-medium" :class="{ 'text-right': isRtl }">{{ t('total_customers') }}</CardTitle>
@@ -275,6 +269,19 @@ watch(searchQuery, (newValue, oldValue) => {
 
                     <Card>
                         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2" :class="{ 'flex-row-reverse': isRtl }">
+                            <CardTitle class="text-sm font-medium" :class="{ 'text-right': isRtl }">{{ t('blocked_customers') }}</CardTitle>
+                            <Users class="h-4 w-4 text-red-500" />
+                        </CardHeader>
+                        <CardContent>
+                            <div class="text-2xl font-bold text-red-600" :class="{ 'text-right': isRtl }">{{ props.stats.blocked }}</div>
+                            <p class="text-xs text-red-500" :class="{ 'text-right': isRtl }">
+                                {{ t('blocked') }}
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2" :class="{ 'flex-row-reverse': isRtl }">
                             <CardTitle class="text-sm font-medium" :class="{ 'text-right': isRtl }">{{ t('new_this_month') }}</CardTitle>
                             <Users class="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
@@ -285,6 +292,43 @@ watch(searchQuery, (newValue, oldValue) => {
                             </p>
                         </CardContent>
                     </Card>
+                </div>
+
+                <!-- Filter Tabs -->
+                <div class="flex items-center justify-center gap-2 p-1 bg-muted rounded-lg w-fit mx-auto" :class="{ 'flex-row-reverse': isRtl }">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        :class="{
+                            'bg-background shadow-sm': activeFilter === 'all',
+                            'text-muted-foreground': activeFilter !== 'all'
+                        }"
+                        @click="applyFilter('all')"
+                    >
+                        {{ t('all_customers') }} ({{ props.stats.total }})
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        :class="{
+                            'bg-background shadow-sm': activeFilter === 'active',
+                            'text-muted-foreground': activeFilter !== 'active'
+                        }"
+                        @click="applyFilter('active')"
+                    >
+                        {{ t('active_customers') }} ({{ props.stats.active }})
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        :class="{
+                            'bg-background shadow-sm text-red-600': activeFilter === 'blocked',
+                            'text-red-500': activeFilter !== 'blocked'
+                        }"
+                        @click="applyFilter('blocked')"
+                    >
+                        🚫 {{ t('blocked_customers') }} ({{ props.stats.blocked }})
+                    </Button>
                 </div>
 
                 <Card>
@@ -302,7 +346,7 @@ watch(searchQuery, (newValue, oldValue) => {
                                     {{ searchQuery ? t('no_results') : t('no_data') }}
                                 </h3>
                                 <p class="mt-2 text-sm text-muted-foreground">
-                                    {{ searchQuery 
+                                    {{ searchQuery
                                         ? `${t('no_results')} "${searchQuery}"`
                                         : t('manage_customers')
                                     }}
@@ -311,13 +355,15 @@ watch(searchQuery, (newValue, oldValue) => {
                                     <Button v-if="searchQuery" variant="outline" @click="clearSearch">
                                         {{ t('clear_search') }}
                                     </Button>
-                                    <Button @click="openAddDialog">
-                                        <Plus :class="[
-                                            'h-4 w-4',
-                                            isRtl ? 'ml-2' : 'mr-2'
-                                        ]" />
-                                        {{ t('add_customer') }}
-                                    </Button>
+                                    <Link href="/customers/create">
+                                        <Button>
+                                            <Plus :class="[
+                                                'h-4 w-4',
+                                                isRtl ? 'ml-2' : 'mr-2'
+                                            ]" />
+                                            {{ t('add_customer') }}
+                                        </Button>
+                                    </Link>
                                 </div>
                             </div>
                         </div>
@@ -345,6 +391,7 @@ watch(searchQuery, (newValue, oldValue) => {
                                             <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground rtl:text-right">{{ t('phone') }}</th>
                                             <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground rtl:text-right">{{ t('drivers_license') }}</th>
                                             <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground rtl:text-right">{{ t('status') }}</th>
+                                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground rtl:text-right">Documents</th>
                                             <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground rtl:text-right">{{ t('actions') }}</th>
                                         </tr>
                                     </thead>
@@ -355,7 +402,21 @@ watch(searchQuery, (newValue, oldValue) => {
                                             class="border-b transition-colors hover:bg-muted/50"
                                         >
                                             <td class="p-4 align-middle">
-                                                <div class="font-medium">{{ getFullName(customer) }}</div>
+                                                <div class="font-medium">
+                                                    {{ customer.business_type === 'business' && customer.business_name 
+                                                        ? customer.business_name 
+                                                        : getFullName(customer) }}
+                                                </div>
+                                                <div v-if="customer.business_type === 'business'" class="text-sm text-gray-600">
+                                                    Owner: {{ getFullName(customer) }}
+                                                </div>
+                                                <div v-if="customer.business_type === 'business' && customer.driver_name" class="text-sm text-blue-600">
+                                                    Driver: {{ customer.driver_name }}
+                                                </div>
+                                                <div v-if="customer.business_type === 'business' && customer.trade_license_number" class="text-sm text-green-600 flex items-center gap-1" :class="{ 'flex-row-reverse': isRtl }">
+                                                    <FileText class="h-3 w-3" />
+                                                    Trade License: {{ customer.trade_license_number }}
+                                                </div>
                                                 <div class="text-sm text-muted-foreground">
                                                     {{ customer.country }}
                                                 </div>
@@ -383,26 +444,54 @@ watch(searchQuery, (newValue, oldValue) => {
                                                     {{ t('license_expiry') }}: {{ formatDate(customer.drivers_license_expiry) }}
                                                 </div>
                                             </td>
+                                                                        <td class="p-4 align-middle">
+                                <div class="flex flex-col gap-1">
+                                    <span
+                                        class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium w-fit"
+                                        :class="{
+                                            'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20': customer.status === 'active',
+                                            'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20': customer.status === 'inactive'
+                                        }"
+                                    >
+                                        {{ customer.status === 'active' ? t('active') : t('inactive') }}
+                                    </span>
+                                    <span v-if="customer.is_blocked" class="text-xs text-red-600 font-medium flex items-center gap-1">
+                                        🚫 {{ translateBlockReason(customer.block_reason || '') }}
+                                    </span>
+                                </div>
+                            </td>
                                             <td class="p-4 align-middle">
-                                                <span
-                                                    class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-                                                    :class="{
-                                                        'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20': customer.status === 'active',
-                                                        'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20': customer.status === 'inactive'
-                                                    }"
-                                                >
-                                                    {{ customer.status === 'active' ? t('active') : t('inactive') }}
-                                                </span>
+                                                <div class="flex items-center gap-2">
+                                                    <a
+                                                        v-if="customer.business_type === 'business' && customer.trade_license_pdf_path"
+                                                        :href="`/storage/${customer.trade_license_pdf_path}`"
+                                                        target="_blank"
+                                                        class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-green-50 text-green-700 rounded-md hover:bg-green-100 transition-colors"
+                                                        :class="{ 'flex-row-reverse': isRtl }"
+                                                    >
+                                                        <Download class="h-3 w-3" />
+                                                        Trade License
+                                                    </a>
+                                                    <span v-else-if="customer.business_type === 'business'" class="text-xs text-gray-400">
+                                                        No documents
+                                                    </span>
+                                                    <span v-else class="text-xs text-gray-400">
+                                                        —
+                                                    </span>
+                                                </div>
                                             </td>
                                             <td class="p-4 align-middle">
                                                 <div class="flex items-center gap-2">
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        @click="openEditDialog(customer)"
-                                                    >
-                                                        <Edit class="h-4 w-4" />
-                                                    </Button>
+                                                    <Link :href="`/customers/${customer.id}`">
+                                                        <Button size="sm" variant="ghost">
+                                                            <Eye class="h-4 w-4" />
+                                                        </Button>
+                                                    </Link>
+                                                    <Link :href="`/customers/${customer.id}/edit`">
+                                                        <Button size="sm" variant="ghost">
+                                                            <Edit class="h-4 w-4" />
+                                                        </Button>
+                                                    </Link>
                                                 </div>
                                             </td>
                                         </tr>
@@ -420,7 +509,7 @@ watch(searchQuery, (newValue, oldValue) => {
                                     <!-- Previous Button -->
                                     <template v-if="props.customers.current_page > 1">
                                         <Link
-                                            :href="`/customers?page=${props.customers.current_page - 1}${searchQuery ? '&search=' + encodeURIComponent(searchQuery) : ''}`"
+                                            :href="`/customers?page=${props.customers.current_page - 1}${searchQuery ? '&search=' + encodeURIComponent(searchQuery) : ''}${activeFilter !== 'all' ? '&filter=' + activeFilter : ''}`"
                                             class="px-3 py-2 text-sm border rounded-md transition-colors hover:bg-muted"
                                         >
                                             Previous
@@ -435,7 +524,7 @@ watch(searchQuery, (newValue, oldValue) => {
                                     <!-- Page Numbers -->
                                     <template v-for="page in generatePageNumbers()" :key="`page-${page}`">
                                         <Link
-                                            :href="`/customers?page=${page}${searchQuery ? '&search=' + encodeURIComponent(searchQuery) : ''}`"
+                                            :href="`/customers?page=${page}${searchQuery ? '&search=' + encodeURIComponent(searchQuery) : ''}${activeFilter !== 'all' ? '&filter=' + activeFilter : ''}`"
                                             class="px-3 py-2 text-sm border rounded-md transition-colors"
                                             :class="{
                                                 'bg-primary text-primary-foreground border-primary': page === props.customers.current_page,
@@ -449,7 +538,7 @@ watch(searchQuery, (newValue, oldValue) => {
                                     <!-- Next Button -->
                                     <template v-if="props.customers.current_page < props.customers.last_page">
                                         <Link
-                                            :href="`/customers?page=${props.customers.current_page + 1}${searchQuery ? '&search=' + encodeURIComponent(searchQuery) : ''}`"
+                                            :href="`/customers?page=${props.customers.current_page + 1}${searchQuery ? '&search=' + encodeURIComponent(searchQuery) : ''}${activeFilter !== 'all' ? '&filter=' + activeFilter : ''}`"
                                             class="px-3 py-2 text-sm border rounded-md transition-colors hover:bg-muted"
                                         >
                                             Next
@@ -468,4 +557,4 @@ watch(searchQuery, (newValue, oldValue) => {
             </div>
         </div>
     </AppLayout>
-</template>
+</template> 

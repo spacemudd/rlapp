@@ -174,8 +174,7 @@ const submit = () => {
     <Head :title="`Edit Contract ${contract.contract_number}`" />
     
     <AppLayout>
-        <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-            <div class="space-y-6">
+        <div class="p-6">
             <!-- Header -->
             <div class="flex items-center gap-4">
                 <Link :href="route('contracts.show', contract.id)">
@@ -528,7 +527,6 @@ const submit = () => {
                     </Button>
                 </div>
             </form>
-            </div>
         </div>
     </AppLayout>
 </template> 

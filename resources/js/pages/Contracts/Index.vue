@@ -176,7 +176,7 @@ function goToCreateInvoice(contract: Contract) {
     <Head :title="t('contracts')" />
 
     <AppLayout>
-        <div class="p-6 sm:p-8 max-w-7xl mx-auto">
+        <div class="p-6">
             <div class="space-y-6">
                 <!-- Header -->
                 <div class="flex items-center justify-between">
