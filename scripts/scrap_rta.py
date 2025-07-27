@@ -284,7 +284,13 @@ try:
         print(f'All details saved in {details_excel_path}', flush=True)
         set_progress(40)  # بعد جمع الصفوف وحفظ التفاصيل
     else:
-        print('No details found!')
+        print('No details found! Creating empty details file...')
+        # Create empty details file to prevent errors
+        df = pd.DataFrame([{'Details': 'No details found'}])
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        details_excel_path = os.path.join(base_dir, 'violations_details.xlsx')
+        df.to_excel(details_excel_path, index=False)
+        print(f'Empty details file created: {details_excel_path}')
         set_progress(40)
 
     # Print all tr elements
@@ -402,5 +408,16 @@ finally:
     print("Closing the browser...")
     driver.quit()
     base_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Ensure violations_details.xlsx exists before calling create_empty_excel.py
+    details_excel_path = os.path.join(base_dir, 'violations_details.xlsx')
+    if not os.path.exists(details_excel_path):
+        print(f"Creating violations_details.xlsx at: {details_excel_path}")
+        df = pd.DataFrame([{'Details': 'No details found'}])
+        df.to_excel(details_excel_path, index=False)
+        print(f"File created successfully: {details_excel_path}")
+    else:
+        print(f"File already exists: {details_excel_path}")
+
     set_progress(50)  # قبل استدعاء create_empty_excel.py
     subprocess.run(['python3', os.path.join(base_dir, 'create_empty_excel.py')])
