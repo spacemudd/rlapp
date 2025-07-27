@@ -44,6 +44,14 @@ options.add_argument('--headless')  # Run without graphical interface (automated
 options.add_argument('--no-sandbox')
 options.add_argument('--disable-dev-shm-usage')
 options.add_argument('--disable-blink-features=AutomationControlled')
+options.add_argument('--disable-web-security')
+options.add_argument('--allow-running-insecure-content')
+options.add_argument('--disable-features=VizDisplayCompositor')
+options.add_argument('--disable-extensions')
+options.add_argument('--disable-plugins')
+options.add_argument('--disable-images')
+# options.add_argument('--disable-javascript')  # Removed - JavaScript is needed
+options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36')
 options.add_experimental_option("excludeSwitches", ["enable-automation"])
 options.add_experimental_option('useAutomationExtension', False)
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
@@ -156,6 +164,10 @@ try:
     search_button.click()
     print("Clicked search button")
 
+    # Wait longer for results to load
+    print("Waiting for search results...")
+    time.sleep(10)  # Increased wait time for results
+
     # Wait for navigation to results page
     print("Waiting for navigation to results page...")
     wait.until(EC.url_contains("customer-violations"))
@@ -163,7 +175,33 @@ try:
 
     # After navigating to results page
     print("Collecting all rows from the table...")
-    time.sleep(2)
+    time.sleep(5)  # Increased wait time
+
+    # Print page source for debugging
+    print("Page title:", driver.title)
+    print("Current URL:", driver.current_url)
+    print("Page source length:", len(driver.page_source))
+
+    # Check if we're on the right page
+    if "customer-violations" not in driver.current_url:
+        print("WARNING: Not on the expected results page!")
+        print("Current URL:", driver.current_url)
+
+    # Check for common elements
+    try:
+        table = driver.find_element(By.ID, "Id_FinesResultTable")
+        print("Found results table")
+    except:
+        print("Results table not found!")
+
+    # Check for any text containing "AED" or "Fine"
+    page_text = driver.find_element(By.TAG_NAME, "body").text
+    if "AED" in page_text:
+        print("Found 'AED' in page text")
+    if "Fine" in page_text:
+        print("Found 'Fine' in page text")
+    if "Police" in page_text:
+        print("Found 'Police' in page text")
 
     # تحسين العثور على الصفوف - محاولة عدة طرق
     rows = []
@@ -355,14 +393,28 @@ try:
     page_num = 1
     while True:
         print(f"--- Collecting violations from page {page_num} ---")
+
+        # Try multiple selectors to find violations
         violations = driver.find_elements(By.CSS_SELECTOR, '.row.fines_violation_list')
+        if not violations:
+            violations = driver.find_elements(By.CSS_SELECTOR, '.finesRowList')
+        if not violations:
+            violations = driver.find_elements(By.CSS_SELECTOR, '[class*="fines"]')
+        if not violations:
+            violations = driver.find_elements(By.CSS_SELECTOR, '[class*="violation"]')
+
+        print(f"Found {len(violations)} violation elements using CSS selectors")
+
         for v in violations:
             text = v.text.strip()
+            print(f"Raw violation text: {text[:200]}...")
+
             # Split text if it contains more than one violation (empty lines '\n\n')
             violations_split = [vi.strip() for vi in text.split('\n\n') if vi.strip()]
             for single_violation in violations_split:
                 if single_violation and single_violation not in violations_list:
                     violations_list.append(single_violation)
+                    print(f"Added violation: {single_violation[:100]}...")
         # Search for next button
         try:
             next_btn = driver.find_element(By.CSS_SELECTOR, '.p-paginator-next.p-paginator-element.p-link')
@@ -384,6 +436,50 @@ try:
             break
 
     print(f"Collected {len(violations_list)} violations from all pages.")
+
+    # If no violations found through normal method, try direct extraction
+    if not violations_list:
+        print("Trying direct extraction from page elements...")
+
+        # Method 1: Look for elements with violation data
+        all_elements = driver.find_elements(By.XPATH, '//*[contains(@class, "fines") or contains(@class, "violation") or contains(text(), "AED")]')
+        for elem in all_elements:
+            text = elem.text.strip()
+            if text and ('AED' in text or 'Police' in text or 'Fine' in text):
+                if text not in violations_list:
+                    violations_list.append(text)
+                    print(f"Direct extraction found: {text[:100]}...")
+
+        # Method 2: Try to find table rows directly
+        if not violations_list:
+            print("Trying table row extraction...")
+            table_rows = driver.find_elements(By.CSS_SELECTOR, 'table tr')
+            for row in table_rows:
+                text = row.text.strip()
+                if text and len(text) > 20:  # Filter out header rows
+                    violations_list.append(text)
+                    print(f"Table row found: {text[:100]}...")
+
+        # Method 3: Extract from page source
+        if not violations_list:
+            print("Trying page source extraction...")
+            page_source = driver.page_source
+            # Look for patterns that indicate violations
+            import re
+            violation_patterns = [
+                r'(\d+\.\d+ AED)',
+                r'(Police.*?\d{4})',
+                r'(Fine.*?\d+)',
+                r'(\d{2}/\d{2}/\d{4})',  # Date patterns
+            ]
+
+            for pattern in violation_patterns:
+                matches = re.findall(pattern, page_source)
+                for match in matches:
+                    if match not in violations_list:
+                        violations_list.append(match)
+                        print(f"Pattern match found: {match}")
+
     # Save cleaned_violations part in violations.xlsx as before
     # Save results in Excel file (each violation in a separate row)
     if violations_list:
