@@ -14,16 +14,29 @@ use Carbon\Carbon;
 
 class ReservationApiController extends Controller
 {
+    public function __construct()
+    {
+        // Suppress deprecation warnings for IFRS library
+        error_reporting(E_ALL & ~E_DEPRECATED);
+    }
+
     /**
-     * Get all reservations with filtering and pagination
-     *
-     * @param Request $request
-     * @return JsonResponse
+     * Get team ID from authenticated user or request header
+     */
+    private function getTeamId(Request $request): string
+    {
+        return Auth::check() ? Auth::user()->team_id : $request->header('X-TEAM-ID', '01978391-2b82-7226-bc6a-e8e49a90c7f8');
+    }
+
+    /**
+     * Display a listing of the reservations
      */
     public function index(Request $request): JsonResponse
     {
+        $teamId = $this->getTeamId($request);
+
         $query = Reservation::with(['customer', 'vehicle', 'team'])
-            ->where('team_id', Auth::user()->team_id);
+            ->where('team_id', $teamId);
 
         // Apply filters
         if ($request->has('status')) {
@@ -118,10 +131,12 @@ class ReservationApiController extends Controller
      * @param string $id
      * @return JsonResponse
      */
-    public function show(string $id): JsonResponse
+    public function show(Request $request, string $id): JsonResponse
     {
+        $teamId = $this->getTeamId($request);
+
         $reservation = Reservation::with(['customer', 'vehicle', 'team'])
-            ->where('team_id', Auth::user()->team_id)
+            ->where('team_id', $teamId)
             ->findOrFail($id);
 
         return response()->json([
@@ -178,7 +193,7 @@ class ReservationApiController extends Controller
         }
 
         $reservationData = $request->all();
-        $reservationData['team_id'] = Auth::user()->team_id;
+        $reservationData['team_id'] = $this->getTeamId($request);
 
         $reservation = Reservation::create($reservationData);
         $reservation->load(['customer', 'vehicle', 'team']);
@@ -199,7 +214,9 @@ class ReservationApiController extends Controller
      */
     public function update(Request $request, string $id): JsonResponse
     {
-        $reservation = Reservation::where('team_id', Auth::user()->team_id)
+        $teamId = $this->getTeamId($request);
+
+        $reservation = Reservation::where('team_id', $teamId)
             ->findOrFail($id);
 
         $validator = Validator::make($request->all(), [
@@ -264,9 +281,11 @@ class ReservationApiController extends Controller
      * @param string $id
      * @return JsonResponse
      */
-    public function destroy(string $id): JsonResponse
+    public function destroy(Request $request, string $id): JsonResponse
     {
-        $reservation = Reservation::where('team_id', Auth::user()->team_id)
+        $teamId = $this->getTeamId($request);
+
+        $reservation = Reservation::where('team_id', $teamId)
             ->findOrFail($id);
 
         $reservation->delete();
@@ -279,15 +298,16 @@ class ReservationApiController extends Controller
 
     /**
      * Update reservation status
-     *
-     * @param Request $request
-     * @param string $id
-     * @return JsonResponse
      */
     public function updateStatus(Request $request, string $id): JsonResponse
     {
+        $teamId = $this->getTeamId($request);
+
+        $reservation = Reservation::where('team_id', $teamId)
+            ->findOrFail($id);
+
         $validator = Validator::make($request->all(), [
-            'status' => 'required|in:pending,confirmed,completed,canceled,expired'
+            'status' => 'required|in:pending,confirmed,completed,canceled,expired',
         ]);
 
         if ($validator->fails()) {
@@ -298,55 +318,50 @@ class ReservationApiController extends Controller
             ], 422);
         }
 
-        $reservation = Reservation::where('team_id', Auth::user()->team_id)
-            ->findOrFail($id);
-
         $reservation->update(['status' => $request->status]);
-        $reservation->load(['customer', 'vehicle', 'team']);
 
         return response()->json([
             'success' => true,
             'message' => 'Reservation status updated successfully',
-            'data' => $reservation
+            'data' => $reservation->load(['customer', 'vehicle', 'team'])
         ]);
     }
 
     /**
      * Get reservations by status
-     *
-     * @param Request $request
-     * @param string $status
-     * @return JsonResponse
      */
     public function byStatus(Request $request, string $status): JsonResponse
     {
-        $allowedStatuses = ['pending', 'confirmed', 'completed', 'canceled', 'expired'];
+        $teamId = $this->getTeamId($request);
 
-        if (!in_array($status, $allowedStatuses)) {
+        $validStatuses = ['pending', 'confirmed', 'completed', 'canceled', 'expired'];
+
+        if (!in_array($status, $validStatuses)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Invalid status'
+                'message' => 'Invalid status. Valid statuses are: ' . implode(', ', $validStatuses)
             ], 400);
         }
 
         $query = Reservation::with(['customer', 'vehicle', 'team'])
-            ->where('team_id', Auth::user()->team_id)
+            ->where('team_id', $teamId)
             ->where('status', $status);
 
-        // Apply additional filters
-        if ($request->has('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('uid', 'like', "%{$search}%")
-                  ->orWhere('pickup_location', 'like', "%{$search}%")
-                  ->orWhereHas('customer', function ($customerQuery) use ($search) {
-                      $customerQuery->where('name', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('vehicle', function ($vehicleQuery) use ($search) {
-                      $vehicleQuery->where('name', 'like', "%{$search}%")
-                                  ->orWhere('plate_number', 'like', "%{$search}%");
-                  });
-            });
+        // Apply same filters as index method
+        if ($request->has('customer_id')) {
+            $query->where('customer_id', $request->customer_id);
+        }
+
+        if ($request->has('vehicle_id')) {
+            $query->where('vehicle_id', $request->vehicle_id);
+        }
+
+        if ($request->has('pickup_date_from')) {
+            $query->where('pickup_date', '>=', $request->pickup_date_from);
+        }
+
+        if ($request->has('pickup_date_to')) {
+            $query->where('pickup_date', '<=', $request->pickup_date_to);
         }
 
         $perPage = min($request->get('per_page', 15), 100);
@@ -367,16 +382,15 @@ class ReservationApiController extends Controller
 
     /**
      * Get today's reservations
-     *
-     * @param Request $request
-     * @return JsonResponse
      */
     public function today(Request $request): JsonResponse
     {
+        $teamId = $this->getTeamId($request);
+
         $reservations = Reservation::with(['customer', 'vehicle', 'team'])
-            ->where('team_id', Auth::user()->team_id)
+            ->where('team_id', $teamId)
             ->today()
-            ->orderBy('pickup_date', 'asc')
+            ->orderBy('pickup_date')
             ->get();
 
         return response()->json([
@@ -388,16 +402,15 @@ class ReservationApiController extends Controller
 
     /**
      * Get tomorrow's reservations
-     *
-     * @param Request $request
-     * @return JsonResponse
      */
     public function tomorrow(Request $request): JsonResponse
     {
+        $teamId = $this->getTeamId($request);
+
         $reservations = Reservation::with(['customer', 'vehicle', 'team'])
-            ->where('team_id', Auth::user()->team_id)
+            ->where('team_id', $teamId)
             ->tomorrow()
-            ->orderBy('pickup_date', 'asc')
+            ->orderBy('pickup_date')
             ->get();
 
         return response()->json([
@@ -408,57 +421,38 @@ class ReservationApiController extends Controller
     }
 
     /**
-     * Get reservations statistics
-     *
-     * @return JsonResponse
+     * Get reservation statistics
      */
-    public function statistics(): JsonResponse
+    public function statistics(Request $request): JsonResponse
     {
-        $teamId = Auth::user()->team_id;
+        $teamId = $this->getTeamId($request);
 
         $stats = [
             'total' => Reservation::where('team_id', $teamId)->count(),
-            'today' => Reservation::where('team_id', $teamId)->today()->count(),
-            'tomorrow' => Reservation::where('team_id', $teamId)->tomorrow()->count(),
             'pending' => Reservation::where('team_id', $teamId)->pending()->count(),
             'confirmed' => Reservation::where('team_id', $teamId)->confirmed()->count(),
             'completed' => Reservation::where('team_id', $teamId)->completed()->count(),
             'canceled' => Reservation::where('team_id', $teamId)->canceled()->count(),
-        ];
-
-        // Revenue statistics
-        $revenueStats = [
-            'total_revenue' => Reservation::where('team_id', $teamId)
-                ->where('status', 'completed')
-                ->sum('total_amount'),
-            'monthly_revenue' => Reservation::where('team_id', $teamId)
-                ->where('status', 'completed')
-                ->whereMonth('pickup_date', Carbon::now()->month)
-                ->whereYear('pickup_date', Carbon::now()->year)
-                ->sum('total_amount'),
-            'weekly_revenue' => Reservation::where('team_id', $teamId)
-                ->where('status', 'completed')
-                ->whereBetween('pickup_date', [
-                    Carbon::now()->startOfWeek(),
-                    Carbon::now()->endOfWeek()
-                ])
-                ->sum('total_amount'),
+            'expired' => Reservation::where('team_id', $teamId)->expired()->count(),
+            'today' => Reservation::where('team_id', $teamId)->today()->count(),
+            'tomorrow' => Reservation::where('team_id', $teamId)->tomorrow()->count(),
+            'this_week' => Reservation::where('team_id', $teamId)
+                ->whereBetween('pickup_date', [now()->startOfWeek(), now()->endOfWeek()])
+                ->count(),
+            'this_month' => Reservation::where('team_id', $teamId)
+                ->whereMonth('pickup_date', now()->month)
+                ->whereYear('pickup_date', now()->year)
+                ->count(),
         ];
 
         return response()->json([
             'success' => true,
-            'data' => [
-                'reservations' => $stats,
-                'revenue' => $revenueStats
-            ]
+            'data' => $stats
         ]);
     }
 
     /**
-     * Get available vehicles for a specific period
-     *
-     * @param Request $request
-     * @return JsonResponse
+     * Get available vehicles for a given period
      */
     public function availableVehicles(Request $request): JsonResponse
     {
@@ -475,42 +469,48 @@ class ReservationApiController extends Controller
             ], 422);
         }
 
-        // Get vehicles that are not reserved during the requested period
-        $reservedVehicleIds = Reservation::where('status', '!=', 'canceled')
-            ->where(function ($query) use ($request) {
-                $query->whereBetween('pickup_date', [$request->pickup_date, $request->return_date])
-                      ->orWhereBetween('return_date', [$request->pickup_date, $request->return_date])
-                      ->orWhere(function ($q) use ($request) {
-                          $q->where('pickup_date', '<=', $request->pickup_date)
-                            ->where('return_date', '>=', $request->return_date);
+        $pickupDate = $request->pickup_date;
+        $returnDate = $request->return_date;
+
+        // Get all vehicles
+        $allVehicles = Vehicle::where('status', 'available')
+            ->where('is_active', true)
+            ->get();
+
+        // Get vehicles that have conflicting reservations
+        $busyVehicleIds = Reservation::where('status', '!=', 'canceled')
+            ->where(function ($query) use ($pickupDate, $returnDate) {
+                $query->whereBetween('pickup_date', [$pickupDate, $returnDate])
+                      ->orWhereBetween('return_date', [$pickupDate, $returnDate])
+                      ->orWhere(function ($q) use ($pickupDate, $returnDate) {
+                          $q->where('pickup_date', '<=', $pickupDate)
+                            ->where('return_date', '>=', $returnDate);
                       });
             })
-            ->pluck('vehicle_id');
+            ->pluck('vehicle_id')
+            ->unique();
 
-        $availableVehicles = Vehicle::with(['location'])
-            ->where('team_id', Auth::user()->team_id)
-            ->where('status', 'available')
-            ->whereNotIn('id', $reservedVehicleIds)
-            ->get();
+        // Filter out busy vehicles
+        $availableVehicles = $allVehicles->whereNotIn('id', $busyVehicleIds);
 
         return response()->json([
             'success' => true,
-            'data' => $availableVehicles,
+            'data' => $availableVehicles->values(),
+            'count' => $availableVehicles->count(),
             'period' => [
-                'pickup_date' => $request->pickup_date,
-                'return_date' => $request->return_date
+                'pickup_date' => $pickupDate,
+                'return_date' => $returnDate,
             ]
         ]);
     }
 
     /**
      * Search reservations
-     *
-     * @param Request $request
-     * @return JsonResponse
      */
     public function search(Request $request): JsonResponse
     {
+        $teamId = $this->getTeamId($request);
+
         $validator = Validator::make($request->all(), [
             'query' => 'required|string|min:2',
         ]);
@@ -526,21 +526,22 @@ class ReservationApiController extends Controller
         $searchQuery = $request->query;
 
         $reservations = Reservation::with(['customer', 'vehicle', 'team'])
-            ->where('team_id', Auth::user()->team_id)
-            ->where(function ($q) use ($searchQuery) {
-                $q->where('uid', 'like', "%{$searchQuery}%")
-                  ->orWhere('pickup_location', 'like', "%{$searchQuery}%")
-                  ->orWhere('notes', 'like', "%{$searchQuery}%")
-                  ->orWhereHas('customer', function ($customerQuery) use ($searchQuery) {
-                      $customerQuery->where('name', 'like', "%{$searchQuery}%")
-                                   ->orWhere('email', 'like', "%{$searchQuery}%")
-                                   ->orWhere('phone', 'like', "%{$searchQuery}%");
-                  })
-                  ->orWhereHas('vehicle', function ($vehicleQuery) use ($searchQuery) {
-                      $vehicleQuery->where('name', 'like', "%{$searchQuery}%")
-                                  ->orWhere('plate_number', 'like', "%{$searchQuery}%")
-                                  ->orWhere('model', 'like', "%{$searchQuery}%");
-                  });
+            ->where('team_id', $teamId)
+            ->where(function ($query) use ($searchQuery) {
+                $query->where('uid', 'like', "%{$searchQuery}%")
+                      ->orWhere('pickup_location', 'like', "%{$searchQuery}%")
+                      ->orWhere('notes', 'like', "%{$searchQuery}%")
+                      ->orWhereHas('customer', function ($q) use ($searchQuery) {
+                          $q->where('first_name', 'like', "%{$searchQuery}%")
+                            ->orWhere('last_name', 'like', "%{$searchQuery}%")
+                            ->orWhere('email', 'like', "%{$searchQuery}%")
+                            ->orWhere('phone', 'like', "%{$searchQuery}%");
+                      })
+                      ->orWhereHas('vehicle', function ($q) use ($searchQuery) {
+                          $q->where('plate_number', 'like', "%{$searchQuery}%")
+                            ->orWhere('make', 'like', "%{$searchQuery}%")
+                            ->orWhere('model', 'like', "%{$searchQuery}%");
+                      });
             })
             ->orderBy('pickup_date', 'desc')
             ->limit(50)

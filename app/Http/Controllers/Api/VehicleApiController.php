@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Vehicle;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 
 class VehicleApiController extends Controller
 {
@@ -18,8 +20,10 @@ class VehicleApiController extends Controller
             // Get query parameters for filtering
             $status = $request->query('status');
             $location = $request->query('location');
-            $limit = $request->query('limit', 100); // Default limit of 100
-            
+            $search = $request->query('search');
+            $perPage = min($request->query('per_page', 15), 100);
+            $page = $request->query('page', 1);
+
             // Build query
             $query = Vehicle::with('location:id,name,city,country')
                 ->select([
@@ -45,23 +49,26 @@ class VehicleApiController extends Controller
             if ($status) {
                 $query->where('status', $status);
             }
-            
+
             if ($location) {
                 $query->where('location_id', $location);
             }
-            
+
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('make', 'like', "%{$search}%")
+                      ->orWhere('model', 'like', "%{$search}%")
+                      ->orWhere('plate_number', 'like', "%{$search}%");
+                });
+            }
+
             // Only show active vehicles by default
             $query->where('is_active', true);
-            
-            // Apply limit
-            if ($limit && $limit <= 1000) { // Max 1000 records
-                $query->limit($limit);
-            }
-            
-            $vehicles = $query->orderBy('plate_number')->get();
-            
+
+            $vehicles = $query->orderBy('plate_number')->paginate($perPage, ['*'], 'page', $page);
+
             // Format the response
-            $formattedVehicles = $vehicles->map(function ($vehicle) {
+            $formattedVehicles = $vehicles->getCollection()->map(function ($vehicle) {
                 return [
                     'id' => $vehicle->id,
                     'plate_number' => $vehicle->plate_number,
@@ -89,31 +96,222 @@ class VehicleApiController extends Controller
                     'last_updated' => $vehicle->updated_at?->toISOString(),
                 ];
             });
-            
+
             return response()->json([
                 'success' => true,
                 'data' => $formattedVehicles,
-                'meta' => [
-                    'total' => $formattedVehicles->count(),
-                    'filters' => [
-                        'status' => $status,
-                        'location' => $location,
-                    ],
-                    'available_statuses' => [
-                        'available',
-                        'rented',
-                        'maintenance',
-                        'out_of_service'
-                    ],
+                'pagination' => [
+                    'current_page' => $vehicles->currentPage(),
+                    'last_page' => $vehicles->lastPage(),
+                    'per_page' => $vehicles->perPage(),
+                    'total' => $vehicles->total(),
+                    'from' => $vehicles->firstItem(),
+                    'to' => $vehicles->lastItem(),
                 ],
-                'timestamp' => now()->toISOString()
+                'filters' => [
+                    'status' => $status,
+                    'location' => $location,
+                    'search' => $search,
+                ]
             ]);
-            
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'error' => 'Failed to retrieve vehicles',
-                'message' => $e->getMessage()
+                'message' => 'Error fetching vehicles: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Create a new vehicle
+     */
+    public function store(Request $request): JsonResponse
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'plate_number' => 'required|string|max:255|unique:vehicles,plate_number',
+                'make' => 'required|string|max:255',
+                'model' => 'required|string|max:255',
+                'year' => 'required|integer|min:1900|max:' . (date('Y') + 1),
+                'color' => 'required|string|max:255',
+                'seats' => 'nullable|integer|min:1|max:50',
+                'doors' => 'nullable|integer|min:1|max:10',
+                'category' => 'required|string|max:255',
+                'price_daily' => 'nullable|numeric|min:0',
+                'price_weekly' => 'nullable|numeric|min:0',
+                'price_monthly' => 'nullable|numeric|min:0',
+                'location_id' => 'nullable|uuid|exists:locations,id',
+                'status' => 'required|in:available,rented,maintenance,out_of_service',
+                'ownership_status' => 'required|in:owned,borrowed',
+                'odometer' => 'required|integer|min:0',
+                'chassis_number' => 'required|string|max:255|unique:vehicles,chassis_number',
+                'license_expiry_date' => 'required|date',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $vehicle = Vehicle::create($request->all());
+            $vehicle->load('location');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Vehicle created successfully',
+                'data' => $vehicle
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error creating vehicle: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update a vehicle
+     */
+    public function update(Request $request, string $id): JsonResponse
+    {
+        try {
+            $vehicle = Vehicle::findOrFail($id);
+
+            $validator = Validator::make($request->all(), [
+                'plate_number' => 'sometimes|required|string|max:255|unique:vehicles,plate_number,' . $vehicle->id,
+                'make' => 'sometimes|required|string|max:255',
+                'model' => 'sometimes|required|string|max:255',
+                'year' => 'sometimes|required|integer|min:1900|max:' . (date('Y') + 1),
+                'color' => 'sometimes|required|string|max:255',
+                'seats' => 'nullable|integer|min:1|max:50',
+                'doors' => 'nullable|integer|min:1|max:10',
+                'category' => 'sometimes|required|string|max:255',
+                'price_daily' => 'nullable|numeric|min:0',
+                'price_weekly' => 'nullable|numeric|min:0',
+                'price_monthly' => 'nullable|numeric|min:0',
+                'location_id' => 'nullable|uuid|exists:locations,id',
+                'status' => 'sometimes|required|in:available,rented,maintenance,out_of_service',
+                'ownership_status' => 'sometimes|required|in:owned,borrowed',
+                'odometer' => 'sometimes|required|integer|min:0',
+                'chassis_number' => 'sometimes|required|string|max:255|unique:vehicles,chassis_number,' . $vehicle->id,
+                'license_expiry_date' => 'sometimes|required|date',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $vehicle->update($request->all());
+            $vehicle->load('location');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Vehicle updated successfully',
+                'data' => $vehicle
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating vehicle: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete a vehicle
+     */
+    public function destroy(Request $request, string $id): JsonResponse
+    {
+        try {
+            $vehicle = Vehicle::findOrFail($id);
+            $vehicle->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Vehicle deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error deleting vehicle: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Search vehicles
+     */
+    public function search(Request $request): JsonResponse
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'query' => 'required|string|min:2',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $searchQuery = $request->query;
+
+            $vehicles = Vehicle::with('location')
+                ->where('is_active', true)
+                ->where(function ($q) use ($searchQuery) {
+                    $q->where('make', 'like', "%{$searchQuery}%")
+                      ->orWhere('model', 'like', "%{$searchQuery}%")
+                      ->orWhere('plate_number', 'like', "%{$searchQuery}%")
+                      ->orWhere('chassis_number', 'like', "%{$searchQuery}%");
+                })
+                ->orderBy('plate_number')
+                ->limit(50)
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $vehicles,
+                'query' => $searchQuery,
+                'count' => $vehicles->count()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error searching vehicles: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get available vehicles
+     */
+    public function available(Request $request): JsonResponse
+    {
+        try {
+            $vehicles = Vehicle::with('location')
+                ->where('status', 'available')
+                ->where('is_active', true)
+                ->orderBy('plate_number')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $vehicles,
+                'count' => $vehicles->count()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching available vehicles: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -213,4 +411,4 @@ class VehicleApiController extends Controller
             ], 500);
         }
     }
-} 
+}
