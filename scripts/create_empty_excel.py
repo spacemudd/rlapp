@@ -194,7 +194,7 @@ try:
     print("Database configuration:", db_config_result.stdout)
 
     # اختبار الاتصال بقاعدة البيانات
-    db_test_cmd = ["php", "artisan", "tinker", "--execute='try { DB::connection()->getPdo(); echo \"Database connection: SUCCESS\"; } catch (Exception \$e) { echo \"Database connection: FAILED - \" . \$e->getMessage(); }'"]
+    db_test_cmd = ["php", "artisan", "tinker", "--execute='try { DB::connection()->getPdo(); echo \"Database connection: SUCCESS\"; } catch (Exception $e) { echo \"Database connection: FAILED - \" . $e->getMessage(); }'"]
     db_test_result = subprocess.run(db_test_cmd, capture_output=True, text=True, timeout=30)
     print("Database connection test:", db_test_result.stdout)
 

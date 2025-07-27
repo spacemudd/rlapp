@@ -284,7 +284,13 @@ try:
         print(f'All details saved in {details_excel_path}', flush=True)
         set_progress(40)  # بعد جمع الصفوف وحفظ التفاصيل
     else:
-        print('No details found!')
+        print('No details found! Creating empty details file...')
+        # Create empty details file to prevent errors
+        df = pd.DataFrame([{'Details': 'No details found'}])
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        details_excel_path = os.path.join(base_dir, 'violations_details.xlsx')
+        df.to_excel(details_excel_path, index=False)
+        print(f'Empty details file created: {details_excel_path}')
         set_progress(40)
 
     # Print all tr elements
@@ -322,6 +328,10 @@ try:
             txt = 'N/A'
         print(f"Element {i}: tag={tag}, class={cls}, text={txt}")
 
+        # Check if this element contains violation data
+        if 'finesRowList' in str(cls) or 'violation' in str(txt).lower():
+            print(f"*** POTENTIAL VIOLATION DATA FOUND: {txt} ***")
+
     # Wait for results or no results message
     try:
         wait.until(
@@ -349,14 +359,27 @@ try:
     page_num = 1
     while True:
         print(f"--- Collecting violations from page {page_num} ---")
+
+        # Try multiple selectors to find violations
         violations = driver.find_elements(By.CSS_SELECTOR, '.row.fines_violation_list')
+        if not violations:
+            violations = driver.find_elements(By.CSS_SELECTOR, '.finesRowList')
+        if not violations:
+            violations = driver.find_elements(By.CSS_SELECTOR, '[class*="fines"]')
+        if not violations:
+            violations = driver.find_elements(By.CSS_SELECTOR, '[class*="violation"]')
+
+        print(f"Found {len(violations)} violation elements using CSS selectors")
+
         for v in violations:
             text = v.text.strip()
+            print(f"Violation text: {text[:200]}...")
             # Split text if it contains more than one violation (empty lines '\n\n')
             violations_split = [vi.strip() for vi in text.split('\n\n') if vi.strip()]
             for single_violation in violations_split:
                 if single_violation and single_violation not in violations_list:
                     violations_list.append(single_violation)
+                    print(f"Added violation: {single_violation[:100]}...")
         # Search for next button
         try:
             next_btn = driver.find_element(By.CSS_SELECTOR, '.p-paginator-next.p-paginator-element.p-link')
@@ -378,6 +401,19 @@ try:
             break
 
     print(f"Collected {len(violations_list)} violations from all pages.")
+
+    # If no violations found through normal method, try direct extraction
+    if not violations_list:
+        print("Trying direct extraction from page elements...")
+        # Look for elements with violation data
+        all_elements = driver.find_elements(By.XPATH, '//*[contains(@class, "fines") or contains(@class, "violation") or contains(text(), "AED")]')
+        for elem in all_elements:
+            text = elem.text.strip()
+            if text and ('AED' in text or 'Police' in text or 'Fine' in text):
+                if text not in violations_list:
+                    violations_list.append(text)
+                    print(f"Direct extraction found: {text[:100]}...")
+
     # Save cleaned_violations part in violations.xlsx as before
     # Save results in Excel file (each violation in a separate row)
     if violations_list:
