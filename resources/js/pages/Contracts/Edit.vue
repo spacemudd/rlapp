@@ -248,7 +248,7 @@ const submit = () => {
                                     ref="vehicleCombobox"
                                     :selected="selectedVehicle"
                                     @select="onVehicleSelect"
-                                    search-url="/api/vehicles/search"
+                                    search-url="/api/vehicle-search"
                                     placeholder="Search vehicles..."
                                     empty-message="No vehicles found"
                                 />

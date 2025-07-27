@@ -561,7 +561,7 @@ const selectedContractVehicleName = computed(() => {
                                             <AsyncCombobox
                                                 v-model="form.vehicle_id"
                                                 placeholder="Search vehicles..."
-                                                search-url="/api/vehicles/search"
+                                                search-url="/api/vehicle-search"
                                                 :required="true"
                                                 @option-selected="handleVehicleSelected"
                                             />
