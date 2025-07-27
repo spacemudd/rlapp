@@ -3,9 +3,10 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ReservationApiController;
-use App\Http\Controllers\Api\TestReservationApiController;
 use App\Http\Controllers\Api\CustomerApiController;
 use App\Http\Controllers\Api\VehicleApiController;
+use App\Http\Controllers\Api\AuthApiController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -23,51 +24,97 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 // Public API Routes (بدون CSRF protection)
 Route::prefix('v1')->group(function () {
-    // Reservations API
-    Route::prefix('reservations')->group(function () {
+    // Authentication routes
+    Route::post('/login', [AuthApiController::class, 'login']);
+});
+
+// Protected API Routes (مع API key authentication)
+Route::middleware(['api.key'])->group(function () {
+
+    // ========================================
+    // RESERVATIONS API
+    // ========================================
+    Route::prefix('v1/reservations')->group(function () {
+        // Get all reservations with filtering and pagination
         Route::get('/', [ReservationApiController::class, 'index']);
+
+        // Get reservations by status
+        Route::get('/status/{status}', [ReservationApiController::class, 'byStatus']);
+
+        // Get specific reservation
+        Route::get('/{id}', [ReservationApiController::class, 'show']);
+
+        // Create new reservation
         Route::post('/', [ReservationApiController::class, 'store']);
+
+        // Update reservation
+        Route::put('/{id}', [ReservationApiController::class, 'update']);
+
+        // Delete reservation
+        Route::delete('/{id}', [ReservationApiController::class, 'destroy']);
+
+        // Update reservation status only
+        Route::patch('/{id}/status', [ReservationApiController::class, 'updateStatus']);
+
+        // Statistics and reports
         Route::get('/statistics', [ReservationApiController::class, 'statistics']);
         Route::get('/today', [ReservationApiController::class, 'today']);
         Route::get('/tomorrow', [ReservationApiController::class, 'tomorrow']);
-        Route::get('/available-vehicles', [ReservationApiController::class, 'availableVehicles']);
+
+        // Search and filters
         Route::get('/search', [ReservationApiController::class, 'search']);
-        Route::get('/status/{status}', [ReservationApiController::class, 'byStatus']);
-        Route::get('/{id}', [ReservationApiController::class, 'show']);
-        Route::put('/{id}', [ReservationApiController::class, 'update']);
-        Route::delete('/{id}', [ReservationApiController::class, 'destroy']);
-        Route::patch('/{id}/status', [ReservationApiController::class, 'updateStatus']);
+        Route::get('/available-vehicles', [ReservationApiController::class, 'availableVehicles']);
     });
 
-    // Test API endpoints (بدون authentication للاختبار)
-    Route::prefix('test')->group(function () {
-        Route::get('/data', [TestReservationApiController::class, 'testData']);
-        Route::get('/ids', [TestReservationApiController::class, 'getAvailableIds']);
-        Route::get('/reservations', [TestReservationApiController::class, 'index']);
-        Route::post('/reservations', [TestReservationApiController::class, 'store']);
-        Route::post('/custom-reservation', [TestReservationApiController::class, 'createCustom']);
-        Route::post('/customers', [CustomerApiController::class, 'store']);
+    // ========================================
+    // VEHICLES API
+    // ========================================
+    Route::prefix('v1/vehicles')->group(function () {
+        // Get all vehicles
+        Route::get('/', [VehicleApiController::class, 'index']);
+
+        // Get specific vehicle
+        Route::get('/{id}', [VehicleApiController::class, 'show']);
+
+        // Create new vehicle
+        Route::post('/', [VehicleApiController::class, 'store']);
+
+        // Update vehicle
+        Route::put('/{id}', [VehicleApiController::class, 'update']);
+
+        // Delete vehicle
+        Route::delete('/{id}', [VehicleApiController::class, 'destroy']);
+
+        // Search vehicles
+        Route::get('/search', [VehicleApiController::class, 'search']);
+
+        // Get available vehicles
+        Route::get('/available', [VehicleApiController::class, 'available']);
     });
 
-    // Add login route
-    Route::post('/login', [\App\Http\Controllers\Api\AuthApiController::class, 'login']);
-});
+    // ========================================
+    // CUSTOMERS API
+    // ========================================
+    Route::prefix('v1/customers')->group(function () {
+        // Get all customers
+        Route::get('/', [CustomerApiController::class, 'index']);
 
-// Search endpoints (requires web authentication but no API key - used by frontend)
-Route::middleware(['auth:web'])->group(function () {
-    Route::prefix('vehicles')->group(function () {
-        Route::get('/search', [App\Http\Controllers\ContractController::class, 'searchVehicles'])->name('api.vehicles.search');
-    });
+        // Get specific customer
+        Route::get('/{id}', [CustomerApiController::class, 'show']);
 
-    Route::prefix('customers')->group(function () {
-        Route::get('/search', [App\Http\Controllers\ContractController::class, 'searchCustomers'])->name('api.customers.search');
-    });
-});
+        // Create new customer
+        Route::post('/', [CustomerApiController::class, 'store']);
 
-Route::middleware(['api.key'])->group(function () {
-    // Vehicle API endpoints (requires API key)
-    Route::prefix('vehicles')->group(function () {
-        Route::get('/', [VehicleApiController::class, 'index'])->name('api.vehicles.index');
-        Route::get('/{id}', [VehicleApiController::class, 'show'])->name('api.vehicles.show');
+        // Update customer
+        Route::put('/{id}', [CustomerApiController::class, 'update']);
+
+        // Delete customer
+        Route::delete('/{id}', [CustomerApiController::class, 'destroy']);
+
+        // Search customers
+        Route::get('/search', [CustomerApiController::class, 'search']);
+
+        // Get customer reservations
+        Route::get('/{id}/reservations', [CustomerApiController::class, 'reservations']);
     });
 });
