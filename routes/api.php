@@ -30,6 +30,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/statistics', [ReservationApiController::class, 'statistics']);
         Route::get('/today', [ReservationApiController::class, 'today']);
         Route::get('/tomorrow', [ReservationApiController::class, 'tomorrow']);
+        Route::get('/pending', [ReservationApiController::class, 'pending']);
         Route::get('/available-vehicles', [ReservationApiController::class, 'availableVehicles']);
         Route::get('/search', [ReservationApiController::class, 'search']);
         Route::get('/status/{status}', [ReservationApiController::class, 'byStatus']);
@@ -37,6 +38,7 @@ Route::prefix('v1')->group(function () {
         Route::put('/{id}', [ReservationApiController::class, 'update']);
         Route::delete('/{id}', [ReservationApiController::class, 'destroy']);
         Route::patch('/{id}/status', [ReservationApiController::class, 'updateStatus']);
+        Route::patch('/{id}/change-status', [ReservationApiController::class, 'changeStatus']);
     });
 
     // Test API endpoints (بدون authentication للاختبار)
@@ -47,6 +49,10 @@ Route::prefix('v1')->group(function () {
         Route::post('/reservations', [TestReservationApiController::class, 'store']);
         Route::post('/custom-reservation', [TestReservationApiController::class, 'createCustom']);
         Route::post('/customers', [CustomerApiController::class, 'store']);
+
+        // Test endpoints للحجوزات المعلقة بدون authentication
+        Route::get('/pending-reservations', [ReservationApiController::class, 'pending'])->withoutMiddleware(['auth:sanctum']);
+        Route::get('/reservations-by-status/{status}', [ReservationApiController::class, 'byStatus'])->withoutMiddleware(['auth:sanctum']);
     });
 
     // Add login route

@@ -312,6 +312,95 @@ class ReservationApiController extends Controller
     }
 
     /**
+     * Change reservation status only (مخصص لتغيير الحالة فقط)
+     *
+     * @param Request $request
+     * @param string $id
+     * @return JsonResponse
+     */
+    public function changeStatus(Request $request, string $id): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'status' => 'required|in:pending,confirmed,completed,canceled,expired'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $reservation = Reservation::where('team_id', Auth::user()->team_id)
+            ->findOrFail($id);
+
+        $oldStatus = $reservation->status;
+        $newStatus = $request->status;
+
+        // تحديث الحالة فقط
+        $reservation->update(['status' => $newStatus]);
+        $reservation->load(['customer', 'vehicle', 'team']);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Reservation status changed from {$oldStatus} to {$newStatus}",
+            'data' => [
+                'id' => $reservation->id,
+                'uid' => $reservation->uid,
+                'old_status' => $oldStatus,
+                'new_status' => $newStatus,
+                'status_changed_at' => now()->toISOString(),
+                'reservation' => $reservation
+            ]
+        ]);
+    }
+
+    /**
+     * Get pending reservations only
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function pending(Request $request): JsonResponse
+    {
+        $query = Reservation::with(['customer', 'vehicle', 'team'])
+            ->where('team_id', Auth::user()->team_id)
+            ->where('status', 'pending');
+
+        // Apply additional filters
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('uid', 'like', "%{$search}%")
+                  ->orWhere('pickup_location', 'like', "%{$search}%")
+                  ->orWhereHas('customer', function ($customerQuery) use ($search) {
+                      $customerQuery->where('name', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('vehicle', function ($vehicleQuery) use ($search) {
+                      $vehicleQuery->where('name', 'like', "%{$search}%")
+                                  ->orWhere('plate_number', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $perPage = min($request->get('per_page', 15), 100);
+        $reservations = $query->orderBy('pickup_date', 'desc')->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => $reservations->items(),
+            'pagination' => [
+                'current_page' => $reservations->currentPage(),
+                'last_page' => $reservations->lastPage(),
+                'per_page' => $reservations->perPage(),
+                'total' => $reservations->total(),
+            ],
+            'status' => 'pending'
+        ]);
+    }
+
+    /**
      * Get reservations by status
      *
      * @param Request $request
