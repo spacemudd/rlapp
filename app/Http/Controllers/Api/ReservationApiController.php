@@ -22,8 +22,17 @@ class ReservationApiController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated. Please provide a valid token.'
+            ], 401);
+        }
+
         $query = Reservation::with(['customer', 'vehicle', 'team'])
-            ->where('team_id', Auth::user()->team_id);
+            ->where('team_id', $user->team_id);
 
         // Apply filters
         if ($request->has('status')) {
@@ -120,8 +129,17 @@ class ReservationApiController extends Controller
      */
     public function show(string $id): JsonResponse
     {
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated. Please provide a valid token.'
+            ], 401);
+        }
+
         $reservation = Reservation::with(['customer', 'vehicle', 'team'])
-            ->where('team_id', Auth::user()->team_id)
+            ->where('team_id', $user->team_id)
             ->findOrFail($id);
 
         return response()->json([
@@ -177,8 +195,17 @@ class ReservationApiController extends Controller
             ], 409);
         }
 
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated. Please provide a valid token.'
+            ], 401);
+        }
+
         $reservationData = $request->all();
-        $reservationData['team_id'] = Auth::user()->team_id;
+        $reservationData['team_id'] = $user->team_id;
 
         $reservation = Reservation::create($reservationData);
         $reservation->load(['customer', 'vehicle', 'team']);
@@ -199,7 +226,16 @@ class ReservationApiController extends Controller
      */
     public function update(Request $request, string $id): JsonResponse
     {
-        $reservation = Reservation::where('team_id', Auth::user()->team_id)
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated. Please provide a valid token.'
+            ], 401);
+        }
+
+        $reservation = Reservation::where('team_id', $user->team_id)
             ->findOrFail($id);
 
         $validator = Validator::make($request->all(), [
@@ -266,7 +302,16 @@ class ReservationApiController extends Controller
      */
     public function destroy(string $id): JsonResponse
     {
-        $reservation = Reservation::where('team_id', Auth::user()->team_id)
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated. Please provide a valid token.'
+            ], 401);
+        }
+
+        $reservation = Reservation::where('team_id', $user->team_id)
             ->findOrFail($id);
 
         $reservation->delete();
@@ -298,7 +343,16 @@ class ReservationApiController extends Controller
             ], 422);
         }
 
-        $reservation = Reservation::where('team_id', Auth::user()->team_id)
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated. Please provide a valid token.'
+            ], 401);
+        }
+
+        $reservation = Reservation::where('team_id', $user->team_id)
             ->findOrFail($id);
 
         $reservation->update(['status' => $request->status]);
@@ -332,7 +386,16 @@ class ReservationApiController extends Controller
             ], 422);
         }
 
-        $reservation = Reservation::where('team_id', Auth::user()->team_id)
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated. Please provide a valid token.'
+            ], 401);
+        }
+
+        $reservation = Reservation::where('team_id', $user->team_id)
             ->findOrFail($id);
 
         $oldStatus = $reservation->status;
@@ -364,8 +427,17 @@ class ReservationApiController extends Controller
      */
     public function pending(Request $request): JsonResponse
     {
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated. Please provide a valid token.'
+            ], 401);
+        }
+
         $query = Reservation::with(['customer', 'vehicle', 'team'])
-            ->where('team_id', Auth::user()->team_id)
+            ->where('team_id', $user->team_id)
             ->where('status', 'pending');
 
         // Apply additional filters
@@ -409,6 +481,15 @@ class ReservationApiController extends Controller
      */
     public function byStatus(Request $request, string $status): JsonResponse
     {
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated. Please provide a valid token.'
+            ], 401);
+        }
+
         $allowedStatuses = ['pending', 'confirmed', 'completed', 'canceled', 'expired'];
 
         if (!in_array($status, $allowedStatuses)) {
@@ -419,7 +500,7 @@ class ReservationApiController extends Controller
         }
 
         $query = Reservation::with(['customer', 'vehicle', 'team'])
-            ->where('team_id', Auth::user()->team_id)
+            ->where('team_id', $user->team_id)
             ->where('status', $status);
 
         // Apply additional filters
@@ -462,8 +543,17 @@ class ReservationApiController extends Controller
      */
     public function today(Request $request): JsonResponse
     {
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated. Please provide a valid token.'
+            ], 401);
+        }
+
         $reservations = Reservation::with(['customer', 'vehicle', 'team'])
-            ->where('team_id', Auth::user()->team_id)
+            ->where('team_id', $user->team_id)
             ->today()
             ->orderBy('pickup_date', 'asc')
             ->get();
@@ -483,8 +573,17 @@ class ReservationApiController extends Controller
      */
     public function tomorrow(Request $request): JsonResponse
     {
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated. Please provide a valid token.'
+            ], 401);
+        }
+
         $reservations = Reservation::with(['customer', 'vehicle', 'team'])
-            ->where('team_id', Auth::user()->team_id)
+            ->where('team_id', $user->team_id)
             ->tomorrow()
             ->orderBy('pickup_date', 'asc')
             ->get();
@@ -503,7 +602,16 @@ class ReservationApiController extends Controller
      */
     public function statistics(): JsonResponse
     {
-        $teamId = Auth::user()->team_id;
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated. Please provide a valid token.'
+            ], 401);
+        }
+
+        $teamId = $user->team_id;
 
         $stats = [
             'total' => Reservation::where('team_id', $teamId)->count(),
@@ -576,8 +684,17 @@ class ReservationApiController extends Controller
             })
             ->pluck('vehicle_id');
 
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated. Please provide a valid token.'
+            ], 401);
+        }
+
         $availableVehicles = Vehicle::with(['location'])
-            ->where('team_id', Auth::user()->team_id)
+            ->where('team_id', $user->team_id)
             ->where('status', 'available')
             ->whereNotIn('id', $reservedVehicleIds)
             ->get();
@@ -614,8 +731,17 @@ class ReservationApiController extends Controller
 
         $searchQuery = $request->query;
 
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated. Please provide a valid token.'
+            ], 401);
+        }
+
         $reservations = Reservation::with(['customer', 'vehicle', 'team'])
-            ->where('team_id', Auth::user()->team_id)
+            ->where('team_id', $user->team_id)
             ->where(function ($q) use ($searchQuery) {
                 $q->where('uid', 'like', "%{$searchQuery}%")
                   ->orWhere('pickup_location', 'like', "%{$searchQuery}%")
