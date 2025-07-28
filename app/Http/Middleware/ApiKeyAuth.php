@@ -17,7 +17,7 @@ class ApiKeyAuth
     public function handle(Request $request, Closure $next)
     {
         $apiKey = $request->header('X-API-KEY');
-        $validKey = '1234567890'; // قيمة ثابتة مؤقتًا
+        $validKey = '28izx09iasdasd'; // قيمة ثابتة مؤقتًا
 
         // Debug information
         \Log::info('API Key Debug', [
