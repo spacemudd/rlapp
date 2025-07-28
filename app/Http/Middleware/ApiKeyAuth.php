@@ -17,11 +17,22 @@ class ApiKeyAuth
     public function handle(Request $request, Closure $next)
     {
         $apiKey = $request->header('X-API-KEY');
-        $validKey = env('MY_API_KEY');
+        $validKey = '1234567890'; // قيمة ثابتة مؤقتًا
+
+        // Debug information
+        \Log::info('API Key Debug', [
+            'received_key' => $apiKey,
+            'valid_key' => $validKey,
+            'match' => $apiKey === $validKey
+        ]);
 
         if (!$apiKey || $apiKey !== $validKey) {
             return response()->json([
-                'message' => 'Unauthorized: Invalid API Key.'
+                'message' => 'Unauthorized: Invalid API Key.',
+                'debug' => [
+                    'received' => $apiKey,
+                    'expected' => $validKey
+                ]
             ], 401);
         }
 
