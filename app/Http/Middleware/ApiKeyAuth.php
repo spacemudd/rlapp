@@ -4,27 +4,27 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
 
 class ApiKeyAuth
 {
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \Closure  $next
+     * @return mixed
      */
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next)
     {
-        $apiKey = $request->header('X-RLAPP-KEY');
-        $expectedApiKey = env('RLAPP_API_AUTH');
-        
-        if (!$apiKey || !$expectedApiKey || $apiKey !== $expectedApiKey) {
+        $apiKey = $request->header('X-API-KEY');
+        $validKey = env('MY_API_KEY');
+
+        if (!$apiKey || $apiKey !== $validKey) {
             return response()->json([
-                'error' => 'Unauthorized',
-                'message' => 'Invalid or missing API key'
+                'message' => 'Unauthorized: Invalid API Key.'
             ], 401);
         }
 
         return $next($request);
     }
-} 
+}
