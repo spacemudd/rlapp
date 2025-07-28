@@ -49,6 +49,10 @@ Route::prefix('v1')->group(function () {
         Route::post('/reservations', [TestReservationApiController::class, 'store']);
         Route::post('/custom-reservation', [TestReservationApiController::class, 'createCustom']);
         Route::post('/customers', [CustomerApiController::class, 'store']);
+
+        // Test endpoints للحجوزات المعلقة بدون authentication
+        Route::get('/pending-reservations', [ReservationApiController::class, 'pending'])->withoutMiddleware(['auth:sanctum']);
+        Route::get('/reservations-by-status/{status}', [ReservationApiController::class, 'byStatus'])->withoutMiddleware(['auth:sanctum']);
     });
 
     // Add login route
