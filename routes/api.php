@@ -67,4 +67,12 @@ Route::middleware(['api.key'])->group(function () {
         Route::get('/', [VehicleApiController::class, 'index'])->name('api.vehicles.index');
         Route::get('/{id}', [VehicleApiController::class, 'show'])->name('api.vehicles.show');
     });
+
+    // Test API Key endpoint
+    Route::get('/v1/test-api-key', function() {
+        return response()->json([
+            'success' => true,
+            'message' => 'API Key is valid!'
+        ]);
+    });
 });
