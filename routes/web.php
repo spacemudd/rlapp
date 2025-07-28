@@ -120,6 +120,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/statistics', [\App\Http\Controllers\Api\ReservationApiController::class, 'statistics'])->name('api.reservations.statistics');
         Route::get('/today', [\App\Http\Controllers\Api\ReservationApiController::class, 'today'])->name('api.reservations.today');
         Route::get('/tomorrow', [\App\Http\Controllers\Api\ReservationApiController::class, 'tomorrow'])->name('api.reservations.tomorrow');
+        Route::get('/pending', [\App\Http\Controllers\Api\ReservationApiController::class, 'pending'])->name('api.reservations.pending');
         Route::get('/available-vehicles', [\App\Http\Controllers\Api\ReservationApiController::class, 'availableVehicles'])->name('api.reservations.available-vehicles');
         Route::get('/search', [\App\Http\Controllers\Api\ReservationApiController::class, 'search'])->name('api.reservations.search');
         Route::get('/status/{status}', [\App\Http\Controllers\Api\ReservationApiController::class, 'byStatus'])->name('api.reservations.by-status');
@@ -127,6 +128,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/{id}', [\App\Http\Controllers\Api\ReservationApiController::class, 'update'])->name('api.reservations.update');
         Route::delete('/{id}', [\App\Http\Controllers\Api\ReservationApiController::class, 'destroy'])->name('api.reservations.destroy');
         Route::patch('/{id}/status', [\App\Http\Controllers\Api\ReservationApiController::class, 'updateStatus'])->name('api.reservations.update-status');
+        Route::patch('/{id}/change-status', [\App\Http\Controllers\Api\ReservationApiController::class, 'changeStatus'])->name('api.reservations.change-status');
     });
 
     // Route للحصول على CSRF Token للاختبار (بدون middleware)

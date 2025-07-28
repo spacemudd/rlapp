@@ -30,6 +30,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/statistics', [ReservationApiController::class, 'statistics']);
         Route::get('/today', [ReservationApiController::class, 'today']);
         Route::get('/tomorrow', [ReservationApiController::class, 'tomorrow']);
+        Route::get('/pending', [ReservationApiController::class, 'pending']);
         Route::get('/available-vehicles', [ReservationApiController::class, 'availableVehicles']);
         Route::get('/search', [ReservationApiController::class, 'search']);
         Route::get('/status/{status}', [ReservationApiController::class, 'byStatus']);
@@ -37,6 +38,7 @@ Route::prefix('v1')->group(function () {
         Route::put('/{id}', [ReservationApiController::class, 'update']);
         Route::delete('/{id}', [ReservationApiController::class, 'destroy']);
         Route::patch('/{id}/status', [ReservationApiController::class, 'updateStatus']);
+        Route::patch('/{id}/change-status', [ReservationApiController::class, 'changeStatus']);
     });
 
     // Test API endpoints (بدون authentication للاختبار)
