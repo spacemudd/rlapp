@@ -207,6 +207,11 @@ class ContractController extends Controller
             'excess_mileage_rate' => 'nullable|numeric|min:0',
             'terms_and_conditions' => 'nullable|string',
             'notes' => 'nullable|string',
+            // Override validation
+            'override_daily_rate' => 'nullable|boolean',
+            'override_final_price' => 'nullable|boolean',
+            'final_price_override' => 'nullable|numeric|min:0',
+            'override_reason' => 'nullable|string|max:500',
             // Vehicle condition validation
             'current_mileage' => 'required|integer|min:0',
             'fuel_level' => 'required|in:full,3/4,1/2,1/4,low,empty',
@@ -235,11 +240,39 @@ class ContractController extends Controller
             }
         }
 
-        // Calculate total days and amount
+        // Calculate total days
         $startDate = \Carbon\Carbon::parse($validated['start_date']);
         $endDate = \Carbon\Carbon::parse($validated['end_date']);
         $totalDays = $startDate->diffInDays($endDate) + 1;
-        $totalAmount = $validated['daily_rate'] * $totalDays;
+
+        // Handle pricing overrides
+        $dailyRate = $validated['daily_rate'];
+        $totalAmount = $dailyRate * $totalDays;
+        $originalCalculatedAmount = null;
+        $overrideDailyRate = false;
+        $overrideFinalPrice = false;
+
+        // If daily rate override is enabled, use the provided rate
+        if ($validated['override_daily_rate'] ?? false) {
+            $overrideDailyRate = true;
+            $totalAmount = $dailyRate * $totalDays;
+        }
+        // If final price override is enabled, calculate daily rate from final price
+        elseif ($validated['override_final_price'] ?? false) {
+            $overrideFinalPrice = true;
+            $totalAmount = $validated['final_price_override'];
+            $dailyRate = $totalAmount / $totalDays;
+        }
+        // Use calculated pricing from PricingService
+        else {
+            $pricingService = new \App\Services\PricingService();
+            $vehicle = Vehicle::find($validated['vehicle_id']);
+            $pricing = $pricingService->calculateRentalPricing($vehicle, $validated['start_date'], $validated['end_date']);
+            
+            $originalCalculatedAmount = $pricing['total_amount'];
+            $dailyRate = $pricing['daily_rate'];
+            $totalAmount = $pricing['total_amount'];
+        }
 
         $contract = Contract::create([
             'contract_number' => Contract::generateContractNumber(),
@@ -248,7 +281,7 @@ class ContractController extends Controller
             'vehicle_id' => $validated['vehicle_id'],
             'start_date' => $validated['start_date'],
             'end_date' => $validated['end_date'],
-            'daily_rate' => $validated['daily_rate'],
+            'daily_rate' => $dailyRate,
             'total_days' => $totalDays,
             'total_amount' => $totalAmount,
             'deposit_amount' => $validated['deposit_amount'] ?? 0,
@@ -258,6 +291,11 @@ class ContractController extends Controller
             'notes' => $validated['notes'],
             'created_by' => auth()->user()->name,
             'status' => 'draft',
+            // Override fields
+            'override_daily_rate' => $overrideDailyRate,
+            'override_final_price' => $overrideFinalPrice,
+            'original_calculated_amount' => $originalCalculatedAmount,
+            'override_reason' => $validated['override_reason'] ?? null,
             // Vehicle pickup condition
             'pickup_mileage' => $validated['current_mileage'],
             'pickup_fuel_level' => $validated['fuel_level'],

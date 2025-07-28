@@ -48,6 +48,11 @@ interface Contract {
     currency: string;
     terms_and_conditions?: string;
     notes?: string;
+    // Override fields
+    override_daily_rate?: boolean;
+    override_final_price?: boolean;
+    original_calculated_amount?: number;
+    override_reason?: string;
     created_by: string;
     created_at: string;
     invoices?: Array<{
@@ -533,6 +538,24 @@ function goToCreateInvoice() {
                             <p class="text-sm text-green-700 mt-1">
                                 {{ contract.total_days }} days × {{ formatCurrency(contract.daily_rate, contract.currency) }}
                             </p>
+                            
+                            <!-- Override information -->
+                            <div v-if="contract.override_daily_rate || contract.override_final_price" class="mt-3 pt-3 border-t border-green-200">
+                                <div class="flex items-center gap-2 text-sm">
+                                    <span class="font-medium text-orange-700">⚠️ Pricing Override Applied</span>
+                                    <span v-if="contract.override_daily_rate" class="text-orange-600">(Daily Rate Override)</span>
+                                    <span v-else-if="contract.override_final_price" class="text-orange-600">(Final Price Override)</span>
+                                </div>
+                                <div v-if="contract.original_calculated_amount" class="text-sm text-orange-600 mt-1">
+                                    Original calculated amount: {{ formatCurrency(contract.original_calculated_amount, contract.currency) }}
+                                    <span class="ml-2">
+                                        (Difference: {{ formatCurrency(contract.total_amount - contract.original_calculated_amount, contract.currency) }})
+                                    </span>
+                                </div>
+                                <div v-if="contract.override_reason" class="text-sm text-orange-600 mt-1">
+                                    <span class="font-medium">Reason:</span> {{ contract.override_reason }}
+                                </div>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

@@ -49,6 +49,11 @@ class Contract extends Model
         'return_condition_photos',
         'excess_mileage_charge',
         'fuel_charge',
+        // Override fields
+        'override_daily_rate',
+        'override_final_price',
+        'original_calculated_amount',
+        'override_reason',
     ];
 
     /**
@@ -76,6 +81,10 @@ class Contract extends Model
         'return_condition_photos' => 'array',
         'excess_mileage_charge' => 'decimal:2',
         'fuel_charge' => 'decimal:2',
+        // Override field casts
+        'override_daily_rate' => 'boolean',
+        'override_final_price' => 'boolean',
+        'original_calculated_amount' => 'decimal:2',
     ];
 
     /**
@@ -455,5 +464,54 @@ class Contract extends Model
         ]);
         
         return $extension;
+    }
+
+    /**
+     * Check if this contract has any pricing overrides.
+     */
+    public function hasPricingOverrides(): bool
+    {
+        return $this->override_daily_rate || $this->override_final_price;
+    }
+
+    /**
+     * Get the override percentage compared to original calculated amount.
+     */
+    public function getOverridePercentage(): float
+    {
+        if (!$this->original_calculated_amount || $this->original_calculated_amount == 0) {
+            return 0;
+        }
+        
+        $difference = abs($this->total_amount - $this->original_calculated_amount);
+        return ($difference / $this->original_calculated_amount) * 100;
+    }
+
+    /**
+     * Get the override difference amount.
+     */
+    public function getOverrideDifference(): float
+    {
+        if (!$this->original_calculated_amount) {
+            return 0;
+        }
+        
+        return $this->total_amount - $this->original_calculated_amount;
+    }
+
+    /**
+     * Check if the override is a discount (negative difference).
+     */
+    public function isOverrideDiscount(): bool
+    {
+        return $this->getOverrideDifference() < 0;
+    }
+
+    /**
+     * Check if the override is a markup (positive difference).
+     */
+    public function isOverrideMarkup(): bool
+    {
+        return $this->getOverrideDifference() > 0;
     }
 }
