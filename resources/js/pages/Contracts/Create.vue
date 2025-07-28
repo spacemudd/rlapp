@@ -579,7 +579,7 @@ watch(() => props.newCustomer, (customer) => {
                                 v-model="form.vehicle_id"
                                 label="Vehicle"
                                 placeholder="Search vehicles..."
-                                search-url="/api/vehicles/search"
+                                search-url="/api/vehicle-search"
                                 :required="true"
                                 :error="form.errors.vehicle_id"
                                 @option-selected="handleVehicleSelected"
