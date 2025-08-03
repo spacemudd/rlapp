@@ -248,7 +248,7 @@ class TestReservationApiController extends Controller
 
         return response()->json([
             'success' => true,
-            'customers' => Customer::take(3)->get(['id', 'name', 'email', 'phone']),
+            'customers' => Customer::take(3)->get(['id', 'first_name', 'last_name', 'email', 'phone']),
             'vehicles' => Vehicle::take(3)->get(['id', 'make', 'model', 'year', 'plate_number', 'price_daily']),
             'sample_request_body' => [
                 'customer_id' => $customer?->id,
@@ -280,10 +280,10 @@ class TestReservationApiController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Use these real IDs for testing',
-            'available_customers' => Customer::take(5)->get(['id', 'name', 'email'])->map(function($customer) {
+            'available_customers' => Customer::take(5)->get(['id', 'first_name', 'last_name', 'email'])->map(function($customer) {
                 return [
                     'id' => $customer->id,
-                    'name' => $customer->name ?: 'Customer',
+                    'name' => ($customer->first_name . ' ' . $customer->last_name) ?: 'Customer',
                     'email' => $customer->email
                 ];
             }),
