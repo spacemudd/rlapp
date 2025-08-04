@@ -106,7 +106,8 @@ const activateContract = () => {
 };
 
 const completeContract = () => {
-    useForm({}).patch(route('contracts.complete', props.contract.id));
+    // Redirect to finalization page instead of directly completing
+    window.location.href = route('contracts.finalize', props.contract.id);
 };
 
 const createInvoice = () => {
@@ -354,7 +355,7 @@ function goToCreateInvoice() {
                                         class="cursor-pointer"
                                     >
                                         <CheckCircle class="w-4 h-4 mr-2" />
-                                        Complete Contract
+                                        Finalize & Complete Contract
                                     </DropdownMenuItem>
 
                                     <!-- Create Invoice -->

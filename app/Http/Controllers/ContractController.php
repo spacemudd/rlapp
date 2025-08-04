@@ -429,10 +429,72 @@ class ContractController extends Controller
                 ->with('error', 'Only active contracts can be completed.');
         }
 
+        // Redirect to finalization page instead of directly completing
+        return redirect()->route('contracts.finalize', $contract);
+    }
+
+    /**
+     * Show the contract finalization form.
+     */
+    public function showFinalize(Contract $contract)
+    {
+        if ($contract->status !== 'active') {
+            return redirect()->route('contracts.show', $contract)
+                ->with('error', 'Only active contracts can be finalized.');
+        }
+
+        return inertia('Contracts/Finalize', [
+            'contract' => $contract->load(['customer', 'vehicle']),
+        ]);
+    }
+
+    /**
+     * Finalize and complete a contract with return conditions.
+     */
+    public function finalize(Request $request, Contract $contract): RedirectResponse
+    {
+        if ($contract->status !== 'active') {
+            return redirect()->route('contracts.show', $contract)
+                ->with('error', 'Only active contracts can be finalized.');
+        }
+
+        $validated = $request->validate([
+            'return_mileage' => [
+                'required',
+                'integer',
+                'min:' . ($contract->pickup_mileage ?? 0),
+            ],
+            'return_fuel_level' => 'required|in:full,3/4,1/2,1/4,low,empty',
+            'finalization_notes' => 'nullable|string|max:2000',
+        ]);
+
+        // Record vehicle return using the model method
+        $contract->recordVehicleReturn(
+            $validated['return_mileage'],
+            $validated['return_fuel_level'],
+            []
+        );
+
+        // Add finalization notes to the contract notes
+        if (!empty($validated['finalization_notes'])) {
+            $existingNotes = $contract->notes ? $contract->notes . "\n\n" : '';
+            $contract->update([
+                'notes' => $existingNotes . "Finalization Notes:\n" . $validated['finalization_notes']
+            ]);
+        }
+
+        // Complete the contract
         $contract->complete();
 
+        $additionalCharges = $contract->getTotalAdditionalCharges();
+        $message = 'Contract finalized and completed successfully.';
+
+        if ($additionalCharges > 0) {
+            $message .= ' Additional charges of ' . $contract->currency . ' ' . number_format($additionalCharges, 2) . ' have been calculated.';
+        }
+
         return redirect()->route('contracts.show', $contract)
-            ->with('success', 'Contract completed successfully.');
+            ->with('success', $message);
     }
 
     /**

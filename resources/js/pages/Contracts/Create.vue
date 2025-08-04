@@ -233,7 +233,38 @@ const handleFinalPriceOverride = () => {
 
 // Watch for changes that require pricing recalculation
 watch([() => form.vehicle_id, () => form.start_date, () => form.end_date], async () => {
-    await calculatePricing();
+    // Only recalculate if no overrides are active
+    if (!form.override_daily_rate && !form.override_final_price) {
+        await calculatePricing();
+    } else if (form.override_daily_rate) {
+        // If daily rate is overridden, recalculate total based on new duration
+        totalAmount.value = form.daily_rate * totalDays.value;
+        effectiveDailyRate.value = form.daily_rate;
+    } else if (form.override_final_price) {
+        // If final price is overridden, recalculate daily rate based on new duration
+        if (form.final_price_override && totalDays.value > 0) {
+            totalAmount.value = form.final_price_override;
+            effectiveDailyRate.value = form.final_price_override / totalDays.value;
+            form.daily_rate = effectiveDailyRate.value;
+        }
+    }
+});
+
+// Watch for daily rate changes when override is active to dynamically update total
+watch(() => form.daily_rate, (newRate) => {
+    if (form.override_daily_rate && newRate && totalDays.value > 0) {
+        totalAmount.value = newRate * totalDays.value;
+        effectiveDailyRate.value = newRate;
+    }
+});
+
+// Watch for final price override changes to dynamically update total and daily rate
+watch(() => form.final_price_override, (newFinalPrice) => {
+    if (form.override_final_price && newFinalPrice && totalDays.value > 0) {
+        totalAmount.value = newFinalPrice;
+        effectiveDailyRate.value = newFinalPrice / totalDays.value;
+        form.daily_rate = effectiveDailyRate.value;
+    }
 });
 
 // Handle vehicle selection

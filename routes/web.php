@@ -50,6 +50,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/contracts/{contract}/pdf', [App\Http\Controllers\ContractController::class, 'downloadPdf'])->name('contracts.pdf');
     Route::post('/contracts/{contract}/extend', [App\Http\Controllers\ContractController::class, 'extend'])->name('contracts.extend');
     Route::get('/contracts/{contract}/extension-pricing', [App\Http\Controllers\ContractController::class, 'calculateExtensionPricing'])->name('contracts.extension-pricing');
+    Route::get('/contracts/{contract}/finalize', [App\Http\Controllers\ContractController::class, 'showFinalize'])->name('contracts.finalize');
+    Route::post('/contracts/{contract}/finalize', [App\Http\Controllers\ContractController::class, 'finalize'])->name('contracts.finalize');
 
     // Test routes
     Route::get('/test-arabic', function() {
