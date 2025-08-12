@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\Vehicle;
 use App\Models\Invoice;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -21,7 +22,7 @@ class ContractController extends Controller
     public function index(Request $request): Response
     {
         $query = Contract::with(['customer', 'vehicle', 'invoices'])
-            ->where('team_id', auth()->user()->team_id);
+            ->where('team_id', Auth::user()->team_id);
 
         // Search functionality
         if ($request->has('search') && $request->search) {
@@ -63,11 +64,48 @@ class ContractController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create(): Response
+    public function create(Request $request): Response
     {
         $props = [
             'contractNumber' => Contract::generateContractNumber(),
         ];
+
+        // Optional prefill from query params (e.g., coming from reservations list)
+        $prefill = [];
+        if ($request->filled('customer_id')) {
+            $prefill['customer_id'] = (string) $request->query('customer_id');
+            // Try to load customer for label
+            $customer = Customer::find($prefill['customer_id']);
+            if ($customer) {
+                $prefill['customer_name'] = trim($customer->first_name . ' ' . $customer->last_name) ?: $customer->name ?? '';
+            }
+        }
+
+        if ($request->filled('vehicle_id')) {
+            $prefill['vehicle_id'] = (string) $request->query('vehicle_id');
+            // Try to load vehicle for label
+            $vehicle = Vehicle::find($prefill['vehicle_id']);
+            if ($vehicle) {
+                $vehicleTitle = trim("{$vehicle->year} {$vehicle->make} {$vehicle->model}");
+                $prefill['vehicle_label'] = $vehicleTitle !== '' ? $vehicleTitle : ($vehicle->plate_number ?? '');
+            }
+        }
+
+        if ($request->filled('start_date')) {
+            $prefill['start_date'] = (string) $request->query('start_date');
+        }
+
+        if ($request->filled('end_date')) {
+            $prefill['end_date'] = (string) $request->query('end_date');
+        }
+
+        if ($request->filled('daily_rate')) {
+            $prefill['daily_rate'] = (float) $request->query('daily_rate');
+        }
+
+        if (!empty($prefill)) {
+            $props['prefill'] = $prefill;
+        }
 
         // If there's a newly created customer in flash data, include it
         if (session()->has('newCustomer')) {
@@ -84,7 +122,7 @@ class ContractController extends Controller
     {
         $query = $request->get('query', '');
 
-        $customers = Customer::where('team_id', auth()->user()->team_id)
+        $customers = Customer::where('team_id', Auth::user()->team_id)
             ->where(function ($q) use ($query) {
                 $q->where('first_name', 'like', "%{$query}%")
                     ->orWhere('last_name', 'like', "%{$query}%")
@@ -221,7 +259,7 @@ class ContractController extends Controller
         // Check if customer is blocked
         $customer = Customer::findOrFail($validated['customer_id']);
 
-        if ($customer->team_id !== auth()->user()->team_id) {
+        if ($customer->team_id !== Auth::user()->team_id) {
             abort(403);
         }
 
@@ -268,7 +306,7 @@ class ContractController extends Controller
             $pricingService = new \App\Services\PricingService();
             $vehicle = Vehicle::find($validated['vehicle_id']);
             $pricing = $pricingService->calculateRentalPricing($vehicle, $validated['start_date'], $validated['end_date']);
-            
+
             $originalCalculatedAmount = $pricing['total_amount'];
             $dailyRate = $pricing['daily_rate'];
             $totalAmount = $pricing['total_amount'];
@@ -276,7 +314,7 @@ class ContractController extends Controller
 
         $contract = Contract::create([
             'contract_number' => Contract::generateContractNumber(),
-            'team_id' => auth()->user()->team_id,
+            'team_id' => Auth::user()->team_id,
             'customer_id' => $validated['customer_id'],
             'vehicle_id' => $validated['vehicle_id'],
             'start_date' => $validated['start_date'],
@@ -289,7 +327,7 @@ class ContractController extends Controller
             'excess_mileage_rate' => $validated['excess_mileage_rate'],
             'terms_and_conditions' => $validated['terms_and_conditions'],
             'notes' => $validated['notes'],
-            'created_by' => auth()->user()->name,
+            'created_by' => Auth::user()->name,
             'status' => 'draft',
             // Override fields
             'override_daily_rate' => $overrideDailyRate,
