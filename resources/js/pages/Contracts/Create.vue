@@ -17,6 +17,15 @@ import { Checkbox } from '@/components/ui/checkbox';
 interface Props {
     contractNumber: string;
     newCustomer?: any;
+    prefill?: {
+        customer_id?: string;
+        customer_name?: string;
+        vehicle_id?: string;
+        vehicle_label?: string;
+        start_date?: string;
+        end_date?: string;
+        daily_rate?: number;
+    };
 }
 
 interface PricingBreakdown {
@@ -54,6 +63,7 @@ const form = useForm({
 });
 
 const selectedVehicle = ref<any>(null);
+const vehicleComboboxRef = ref<any>(null);
 const showCreateCustomerDialog = ref(false);
 const customerComboboxRef = ref<any>(null);
 const durationDays = ref<number>(1);
@@ -85,7 +95,7 @@ const originalTotalAmount = ref(0);
 const handlePhotoUpload = (event: Event) => {
     const target = event.target as HTMLInputElement;
     const files = target.files;
-    
+
     if (files) {
         const fileArray = Array.from(files);
         // Limit to 10 photos and 10MB each
@@ -94,7 +104,7 @@ const handlePhotoUpload = (event: Event) => {
             const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB
             return isValidType && isValidSize;
         }).slice(0, 10);
-        
+
         form.condition_photos = validFiles;
     }
 };
@@ -137,7 +147,7 @@ const calculatePricing = async () => {
     }
 
     isCalculatingPricing.value = true;
-    
+
     try {
         const params = new URLSearchParams({
             vehicle_id: form.vehicle_id,
@@ -158,20 +168,20 @@ const calculatePricing = async () => {
         }
 
         const pricing = await response.json();
-        
+
         totalAmount.value = pricing.total_amount;
         effectiveDailyRate.value = pricing.daily_rate;
         pricingTier.value = pricing.pricing_tier;
         rateType.value = pricing.rate_type;
         pricingBreakdown.value = pricing.breakdown;
-        
+
         // Update the form daily rate
         form.daily_rate = pricing.daily_rate;
-        
+
         // Store calculated values for override comparison
         calculatedDailyRate.value = pricing.daily_rate;
         originalTotalAmount.value = pricing.total_amount;
-        
+
     } catch (error) {
         console.error('Error calculating pricing:', error);
         totalAmount.value = 0;
@@ -193,11 +203,11 @@ const handleRateOverride = () => {
         // Store original calculated values
         calculatedDailyRate.value = effectiveDailyRate.value;
         originalTotalAmount.value = totalAmount.value;
-        
+
         // Recalculate total amount based on new daily rate
         totalAmount.value = form.daily_rate * totalDays.value;
         effectiveDailyRate.value = form.daily_rate;
-        
+
         // Clear final price override if it was active
         if (form.override_final_price) {
             form.override_final_price = false;
@@ -213,14 +223,14 @@ const handleFinalPriceOverride = () => {
     if (form.override_final_price) {
         // Store original calculated values
         originalTotalAmount.value = totalAmount.value;
-        
+
         // Update total amount
         totalAmount.value = form.final_price_override;
-        
+
         // Calculate new effective daily rate
         effectiveDailyRate.value = form.final_price_override / totalDays.value;
         form.daily_rate = effectiveDailyRate.value;
-        
+
         // Clear daily rate override if it was active
         if (form.override_daily_rate) {
             form.override_daily_rate = false;
@@ -431,7 +441,7 @@ watch(() => form.start_date, () => {
 
 const handleCustomerSelected = (customer: any) => {
     console.log('Customer selected:', customer);
-    
+
     if (customer.is_blocked) {
         selectedBlockedCustomer.value = customer;
         blockedCustomerError.value = `Customer is blocked: ${customer.block_reason}`;
@@ -471,7 +481,7 @@ const submit = () => {
         alert('Cannot create contract for blocked customer. Please select a different customer.');
         return;
     }
-    
+
     // Convert Dubai time to UTC for backend storage
     const formData = { ...form.data() };
 
@@ -493,7 +503,42 @@ const submit = () => {
 
 // Initialize component
 onMounted(() => {
-    // Set default start date to current Dubai time if not already set
+    // Prefill values if provided (from reservations list)
+    if (props.prefill) {
+        if (props.prefill.customer_id) {
+            form.customer_id = props.prefill.customer_id;
+            if (customerComboboxRef.value && props.prefill.customer_name) {
+                customerComboboxRef.value.selectOption({
+                    id: props.prefill.customer_id,
+                    value: props.prefill.customer_id,
+                    label: props.prefill.customer_name,
+                });
+            }
+        }
+
+        if (props.prefill.vehicle_id) {
+            form.vehicle_id = props.prefill.vehicle_id;
+            if (vehicleComboboxRef.value && props.prefill.vehicle_label) {
+                vehicleComboboxRef.value.selectOption({
+                    id: props.prefill.vehicle_id,
+                    value: props.prefill.vehicle_id,
+                    label: props.prefill.vehicle_label,
+                });
+            }
+        }
+
+        if (props.prefill.start_date) {
+            form.start_date = props.prefill.start_date;
+        }
+        if (props.prefill.end_date) {
+            form.end_date = props.prefill.end_date;
+        }
+        if (props.prefill.daily_rate) {
+            form.daily_rate = props.prefill.daily_rate;
+        }
+    }
+
+    // Set default start date if not already set
     if (!form.start_date) {
         form.start_date = getCurrentDubaiTime();
         updateEndDate();
@@ -558,9 +603,9 @@ watch(() => props.newCustomer, (customer) => {
                                 @option-selected="handleCustomerSelected"
                                 @blocked-customer-selected="handleBlockedCustomerSelected"
                             />
-                            
+
                             <!-- Show blocked customer details if selected -->
-                            <div v-if="selectedBlockedCustomer" 
+                            <div v-if="selectedBlockedCustomer"
                                  class="p-4 bg-red-50 border border-red-200 rounded-md">
                                 <div class="flex items-start space-x-3">
                                     <div class="text-red-500 text-2xl">🚫</div>
@@ -568,7 +613,7 @@ watch(() => props.newCustomer, (customer) => {
                                         <h3 class="text-lg font-medium text-red-800 mb-2">
                                             Cannot Create Contract - Customer Blocked
                                         </h3>
-                                        
+
                                         <div class="space-y-2 text-sm">
                                             <div class="grid grid-cols-2 gap-4">
                                                 <div>
@@ -580,12 +625,12 @@ watch(() => props.newCustomer, (customer) => {
                                                     <p class="text-red-600">{{ selectedBlockedCustomer.phone }}</p>
                                                 </div>
                                             </div>
-                                            
+
                                             <div>
                                                 <span class="font-medium text-red-700">Block Reason:</span>
                                                 <p class="text-red-600">{{ translateBlockReason(selectedBlockedCustomer.block_reason) }}</p>
                                             </div>
-                                            
+
                                             <div class="grid grid-cols-2 gap-4">
                                                 <div>
                                                     <span class="font-medium text-red-700">Blocked Date:</span>
@@ -597,22 +642,22 @@ watch(() => props.newCustomer, (customer) => {
                                                 </div>
                                             </div>
                                         </div>
-                                        
+
                                         <div class="mt-4 pt-3 border-t border-red-200">
                                             <div class="flex items-center justify-between">
                                                 <div class="text-sm text-red-600">
                                                     To create a contract, this customer must first be unblocked.
                                                 </div>
                                                 <div class="flex gap-2">
-                                                    <Button 
-                                                        variant="outline" 
+                                                    <Button
+                                                        variant="outline"
                                                         size="sm"
                                                         @click="viewCustomerDetails"
                                                     >
                                                         View Customer Details
                                                     </Button>
-                                                    <Button 
-                                                        variant="outline" 
+                                                    <Button
+                                                        variant="outline"
                                                         size="sm"
                                                         @click="clearCustomerSelection"
                                                     >
@@ -667,6 +712,7 @@ watch(() => props.newCustomer, (customer) => {
                         </CardHeader>
                         <CardContent class="space-y-4">
                             <AsyncCombobox
+                                ref="vehicleComboboxRef"
                                 v-model="form.vehicle_id"
                                 label="Vehicle"
                                 placeholder="Search vehicles..."
@@ -809,15 +855,15 @@ watch(() => props.newCustomer, (customer) => {
                                 <div class="flex items-center justify-between">
                                     <Label for="daily_rate">Daily Rate (AED) *</Label>
                                     <div class="flex items-center gap-2">
-                                        <Checkbox 
-                                            id="override_rate" 
+                                        <Checkbox
+                                            id="override_rate"
                                             v-model="form.override_daily_rate"
                                             @change="handleRateOverride"
                                         />
                                         <Label for="override_rate" class="text-sm">Override calculated rate</Label>
                                     </div>
                                 </div>
-                                
+
                                 <Input
                                     id="daily_rate"
                                     type="number"
@@ -830,7 +876,7 @@ watch(() => props.newCustomer, (customer) => {
                                 <div v-if="form.errors.daily_rate" class="text-sm text-red-600">
                                     {{ form.errors.daily_rate }}
                                 </div>
-                                
+
                                 <!-- Show original calculated rate when overridden -->
                                 <div v-if="form.override_daily_rate && calculatedDailyRate" class="text-sm text-gray-500">
                                     Original calculated rate: {{ formatCurrency(calculatedDailyRate) }}
@@ -857,15 +903,15 @@ watch(() => props.newCustomer, (customer) => {
                             <div class="flex items-center justify-between">
                                 <Label for="final_price_override">Final Price Override</Label>
                                 <div class="flex items-center gap-2">
-                                    <Checkbox 
-                                        id="override_final_price" 
+                                    <Checkbox
+                                        id="override_final_price"
                                         v-model="form.override_final_price"
                                         @change="handleFinalPriceOverride"
                                     />
                                     <Label for="override_final_price" class="text-sm">Override total amount</Label>
                                 </div>
                             </div>
-                            
+
                             <Input
                                 id="final_price_override"
                                 type="number"
@@ -875,7 +921,7 @@ watch(() => props.newCustomer, (customer) => {
                                 :disabled="!form.override_final_price"
                                 placeholder="Enter final amount"
                             />
-                            
+
                             <!-- Show breakdown when final price is overridden -->
                             <div v-if="form.override_final_price && form.final_price_override" class="text-sm text-gray-500">
                                 <div>Original calculated amount: {{ formatCurrency(originalTotalAmount) }}</div>
@@ -914,7 +960,7 @@ watch(() => props.newCustomer, (customer) => {
                                 <span>Pricing Tier: {{ pricingTier }} ({{ rateType }})</span>
                                 <span>Effective Daily Rate: {{ formatCurrency(effectiveDailyRate) }}</span>
                             </div>
-                            
+
                             <!-- Override indicators -->
                             <div v-if="form.override_daily_rate || form.override_final_price" class="mt-3 pt-3 border-t border-green-200">
                                 <div class="flex items-center gap-2 text-sm">
@@ -929,7 +975,7 @@ watch(() => props.newCustomer, (customer) => {
                                     </span>
                                 </div>
                             </div>
-                            
+
                             <!-- Pricing breakdown -->
                             <div v-if="pricingBreakdown" class="mt-3 pt-3 border-t border-green-200">
                                 <h4 class="text-sm font-medium text-green-800 mb-2">Pricing Breakdown:</h4>
@@ -939,7 +985,7 @@ watch(() => props.newCustomer, (customer) => {
                                         <span>{{ pricingBreakdown.days }} days @ {{ formatCurrency(form.daily_rate) }}/day</span>
                                         <span>{{ formatCurrency(pricingBreakdown.daily_cost || 0) }}</span>
                                     </div>
-                                    
+
                                     <!-- Weekly + days pricing -->
                                     <template v-if="pricingBreakdown?.complete_weeks !== undefined">
                                         <div v-if="(pricingBreakdown.complete_weeks || 0) > 0" class="flex justify-between">
@@ -951,7 +997,7 @@ watch(() => props.newCustomer, (customer) => {
                                             <span>{{ formatCurrency(pricingBreakdown.daily_cost || 0) }}</span>
                                         </div>
                                     </template>
-                                    
+
                                     <!-- Monthly + weekly + days pricing -->
                                     <template v-if="pricingBreakdown?.complete_months !== undefined">
                                         <div v-if="(pricingBreakdown.complete_months || 0) > 0" class="flex justify-between">
@@ -1039,9 +1085,9 @@ watch(() => props.newCustomer, (customer) => {
                             <!-- Fuel Level -->
                             <div class="space-y-2">
                                 <Label for="fuel_level">Current Fuel Level *</Label>
-                                <select 
+                                <select
                                     id="fuel_level"
-                                    v-model="form.fuel_level" 
+                                    v-model="form.fuel_level"
                                     required
                                     class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
@@ -1075,7 +1121,7 @@ watch(() => props.newCustomer, (customer) => {
                                     Optional
                                 </div>
                             </div>
-                            
+
                             <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-gray-400 transition-colors">
                                 <div class="text-center">
                                     <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
@@ -1106,13 +1152,13 @@ watch(() => props.newCustomer, (customer) => {
                             <!-- Selected Photos Preview -->
                             <div v-if="form.condition_photos && form.condition_photos.length > 0" class="mt-4">
                                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                                    <div 
-                                        v-for="(file, index) in form.condition_photos" 
+                                    <div
+                                        v-for="(file, index) in form.condition_photos"
                                         :key="index"
                                         class="relative group"
                                     >
-                                        <img 
-                                            :src="getFilePreview(file)" 
+                                        <img
+                                            :src="getFilePreview(file)"
                                             :alt="`Vehicle condition ${index + 1}`"
                                             class="h-20 w-full object-cover rounded-md border border-gray-200"
                                         />

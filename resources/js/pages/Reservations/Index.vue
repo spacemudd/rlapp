@@ -5,7 +5,7 @@ import { ref, computed } from 'vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Clock, User, Car, MapPin, DollarSign, Eye, Edit, Trash2 } from 'lucide-vue-next';
+import { Calendar, Clock, User, Car, MapPin, DollarSign, Eye, Edit, Trash2, FilePlus2 } from 'lucide-vue-next';
 
 interface Reservation {
   id: string;
@@ -285,6 +285,22 @@ const deleteReservation = (id: string) => {
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div class="flex items-center space-x-2">
+                      <Button
+                        v-if="reservation.status === 'confirmed'"
+                        variant="outline"
+                        size="sm"
+                        class="text-green-700 border-green-600 hover:bg-green-50"
+                        @click="router.visit(route('contracts.create', {
+                          customer_id: reservation.customer.id,
+                          vehicle_id: reservation.vehicle.id,
+                          start_date: reservation.pickup_date,
+                          end_date: reservation.return_date,
+                          daily_rate: reservation.rate,
+                        }))"
+                      >
+                        <FilePlus2 class="h-4 w-4 mr-1" />
+                        Create Contract
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"
