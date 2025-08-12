@@ -78,6 +78,6 @@ Route::middleware(['api.key'])->group(function () {
     });
 
     // Update reservation status by UID (requires API key)
-    Route::patch('/v1/reservations/{uid}/status', [ReservationApiControllerAlias::class, 'updateStatusByUid'])
+    Route::patch('/v1/reservations/by-uid/{uid}/status', [ReservationApiControllerAlias::class, 'updateStatusByUid'])
         ->name('api.v1.reservations.update-status-by-uid');
 });
