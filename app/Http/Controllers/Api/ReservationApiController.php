@@ -15,6 +15,43 @@ use Carbon\Carbon;
 class ReservationApiController extends Controller
 {
     /**
+     * Update reservation status by UID (API-Key protected)
+     *
+     * Expected: X-API-KEY header, and JSON body with { "status": "..." }
+     */
+    public function updateStatusByUid(Request $request, string $uid): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'status' => 'required|in:pending,confirmed,completed,canceled,expired',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $reservation = Reservation::where('uid', $uid)->first();
+
+        if (!$reservation) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Reservation not found',
+            ], 404);
+        }
+
+        $reservation->update(['status' => $request->string('status')->toString()]);
+        $reservation->load(['customer', 'vehicle', 'team']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Reservation status updated successfully',
+            'data' => $reservation,
+        ]);
+    }
+    /**
      * Get all reservations with filtering and pagination
      *
      * @param Request $request
@@ -729,7 +766,7 @@ class ReservationApiController extends Controller
             ], 422);
         }
 
-        $searchQuery = $request->query;
+        $searchQuery = (string) $request->input('query');
 
         $user = Auth::user();
 
