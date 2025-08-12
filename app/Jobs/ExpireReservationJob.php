@@ -32,33 +32,52 @@ class ExpireReservationJob implements ShouldQueue
         // Find the reservation
         $reservation = Reservation::find($this->reservationId);
 
-        // Check if reservation exists and is still pending
-        if ($reservation && $reservation->status === Reservation::STATUS_PENDING) {
-            // Update status to expired
-            $reservation->update(['status' => Reservation::STATUS_EXPIRED]);
-
-            Log::info("Reservation {$reservation->uid} has been expired after 5 minutes", [
-                'reservation_id' => $reservation->id,
-                'customer_id' => $reservation->customer_id,
-                'vehicle_id' => $reservation->vehicle_id,
-                'original_status' => Reservation::STATUS_PENDING,
-                'new_status' => Reservation::STATUS_EXPIRED,
-                'expired_at' => now()
+        if (!$reservation) {
+            Log::warning('Reservation not found for expiration job', [
+                'reservation_id' => $this->reservationId,
             ]);
-        } else {
-            // Log if reservation was not found or already changed status
-            if (!$reservation) {
-                Log::warning("Reservation not found for expiration job", [
-                    'reservation_id' => $this->reservationId
-                ]);
-            } else {
-                Log::info("Reservation {$reservation->uid} was not expired because status changed", [
-                    'reservation_id' => $reservation->id,
-                    'current_status' => $reservation->status,
-                    'checked_at' => now()
-                ]);
-            }
+            return;
         }
+
+        // Only act on pending reservations
+        if ($reservation->status !== Reservation::STATUS_PENDING) {
+            Log::info('Reservation was not expired because status changed', [
+                'reservation_id' => $reservation->id,
+                'uid' => $reservation->uid,
+                'current_status' => $reservation->status,
+                'checked_at' => now(),
+            ]);
+            return;
+        }
+
+        // If the reservation was updated within the last 5 minutes, reschedule the job
+        $expireAt = $reservation->updated_at->copy()->addMinutes(5);
+        if (now()->lt($expireAt)) {
+            $delayInSeconds = now()->diffInSeconds($expireAt);
+            self::dispatch($reservation->id)->delay(now()->addSeconds($delayInSeconds));
+
+            Log::info('Rescheduled expiration due to recent activity', [
+                'reservation_id' => $reservation->id,
+                'uid' => $reservation->uid,
+                'updated_at' => $reservation->updated_at,
+                'will_expire_at' => $expireAt,
+                'delay_seconds' => $delayInSeconds,
+            ]);
+            return;
+        }
+
+        // No activity for 5+ minutes while still pending → expire
+        $reservation->update(['status' => Reservation::STATUS_EXPIRED]);
+
+        Log::info('Reservation has been expired after 5 minutes of inactivity', [
+            'reservation_id' => $reservation->id,
+            'uid' => $reservation->uid,
+            'customer_id' => $reservation->customer_id,
+            'vehicle_id' => $reservation->vehicle_id,
+            'original_status' => Reservation::STATUS_PENDING,
+            'new_status' => Reservation::STATUS_EXPIRED,
+            'expired_at' => now(),
+        ]);
     }
 
     /**
