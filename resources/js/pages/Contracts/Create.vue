@@ -12,6 +12,7 @@ import CreateCustomerForm from '@/components/CreateCustomerForm.vue';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import { ref, computed, watch, onMounted } from 'vue';
 import { ArrowLeft, Calendar, DollarSign, FileText, User, Car, Plus } from 'lucide-vue-next';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface Props {
     contractNumber: string;
@@ -41,6 +42,11 @@ const form = useForm({
     excess_mileage_rate: '' as string | number,
     terms_and_conditions: '',
     notes: '',
+    // Override fields
+    override_daily_rate: false,
+    override_final_price: false,
+    final_price_override: 0,
+    override_reason: '',
     // New vehicle condition fields
     current_mileage: '',
     fuel_level: '',
@@ -70,6 +76,10 @@ const pricingTier = ref('');
 const rateType = ref('');
 const pricingBreakdown = ref<PricingBreakdown | null>(null);
 const isCalculatingPricing = ref(false);
+
+// Override tracking
+const calculatedDailyRate = ref(0);
+const originalTotalAmount = ref(0);
 
 // Photo handling methods
 const handlePhotoUpload = (event: Event) => {
@@ -158,6 +168,10 @@ const calculatePricing = async () => {
         // Update the form daily rate
         form.daily_rate = pricing.daily_rate;
         
+        // Store calculated values for override comparison
+        calculatedDailyRate.value = pricing.daily_rate;
+        originalTotalAmount.value = pricing.total_amount;
+        
     } catch (error) {
         console.error('Error calculating pricing:', error);
         totalAmount.value = 0;
@@ -166,14 +180,91 @@ const calculatePricing = async () => {
         rateType.value = '';
         pricingBreakdown.value = null;
         form.daily_rate = 0;
+        calculatedDailyRate.value = 0;
+        originalTotalAmount.value = 0;
     } finally {
         isCalculatingPricing.value = false;
     }
 };
 
+// Override handler functions
+const handleRateOverride = () => {
+    if (form.override_daily_rate) {
+        // Store original calculated values
+        calculatedDailyRate.value = effectiveDailyRate.value;
+        originalTotalAmount.value = totalAmount.value;
+        
+        // Recalculate total amount based on new daily rate
+        totalAmount.value = form.daily_rate * totalDays.value;
+        effectiveDailyRate.value = form.daily_rate;
+        
+        // Clear final price override if it was active
+        if (form.override_final_price) {
+            form.override_final_price = false;
+            form.final_price_override = 0;
+        }
+    } else {
+        // Revert to calculated pricing
+        calculatePricing();
+    }
+};
+
+const handleFinalPriceOverride = () => {
+    if (form.override_final_price) {
+        // Store original calculated values
+        originalTotalAmount.value = totalAmount.value;
+        
+        // Update total amount
+        totalAmount.value = form.final_price_override;
+        
+        // Calculate new effective daily rate
+        effectiveDailyRate.value = form.final_price_override / totalDays.value;
+        form.daily_rate = effectiveDailyRate.value;
+        
+        // Clear daily rate override if it was active
+        if (form.override_daily_rate) {
+            form.override_daily_rate = false;
+        }
+    } else {
+        // Revert to calculated pricing
+        calculatePricing();
+    }
+};
+
 // Watch for changes that require pricing recalculation
 watch([() => form.vehicle_id, () => form.start_date, () => form.end_date], async () => {
-    await calculatePricing();
+    // Only recalculate if no overrides are active
+    if (!form.override_daily_rate && !form.override_final_price) {
+        await calculatePricing();
+    } else if (form.override_daily_rate) {
+        // If daily rate is overridden, recalculate total based on new duration
+        totalAmount.value = form.daily_rate * totalDays.value;
+        effectiveDailyRate.value = form.daily_rate;
+    } else if (form.override_final_price) {
+        // If final price is overridden, recalculate daily rate based on new duration
+        if (form.final_price_override && totalDays.value > 0) {
+            totalAmount.value = form.final_price_override;
+            effectiveDailyRate.value = form.final_price_override / totalDays.value;
+            form.daily_rate = effectiveDailyRate.value;
+        }
+    }
+});
+
+// Watch for daily rate changes when override is active to dynamically update total
+watch(() => form.daily_rate, (newRate) => {
+    if (form.override_daily_rate && newRate && totalDays.value > 0) {
+        totalAmount.value = newRate * totalDays.value;
+        effectiveDailyRate.value = newRate;
+    }
+});
+
+// Watch for final price override changes to dynamically update total and daily rate
+watch(() => form.final_price_override, (newFinalPrice) => {
+    if (form.override_final_price && newFinalPrice && totalDays.value > 0) {
+        totalAmount.value = newFinalPrice;
+        effectiveDailyRate.value = newFinalPrice / totalDays.value;
+        form.daily_rate = effectiveDailyRate.value;
+    }
 });
 
 // Handle vehicle selection
@@ -715,17 +806,34 @@ watch(() => props.newCustomer, (customer) => {
                     <CardContent class="space-y-6">
                         <div class="grid gap-4 md:grid-cols-2">
                             <div class="space-y-2">
-                                <Label for="daily_rate">Daily Rate (AED) *</Label>
+                                <div class="flex items-center justify-between">
+                                    <Label for="daily_rate">Daily Rate (AED) *</Label>
+                                    <div class="flex items-center gap-2">
+                                        <Checkbox 
+                                            id="override_rate" 
+                                            v-model="form.override_daily_rate"
+                                            @change="handleRateOverride"
+                                        />
+                                        <Label for="override_rate" class="text-sm">Override calculated rate</Label>
+                                    </div>
+                                </div>
+                                
                                 <Input
                                     id="daily_rate"
                                     type="number"
                                     step="0.01"
                                     min="0"
                                     v-model="form.daily_rate"
+                                    :disabled="!form.override_daily_rate && !form.override_final_price"
                                     required
                                 />
                                 <div v-if="form.errors.daily_rate" class="text-sm text-red-600">
                                     {{ form.errors.daily_rate }}
+                                </div>
+                                
+                                <!-- Show original calculated rate when overridden -->
+                                <div v-if="form.override_daily_rate && calculatedDailyRate" class="text-sm text-gray-500">
+                                    Original calculated rate: {{ formatCurrency(calculatedDailyRate) }}
                                 </div>
                             </div>
 
@@ -741,6 +849,51 @@ watch(() => props.newCustomer, (customer) => {
                                 <div v-if="form.errors.deposit_amount" class="text-sm text-red-600">
                                     {{ form.errors.deposit_amount }}
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- Final Price Override -->
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between">
+                                <Label for="final_price_override">Final Price Override</Label>
+                                <div class="flex items-center gap-2">
+                                    <Checkbox 
+                                        id="override_final_price" 
+                                        v-model="form.override_final_price"
+                                        @change="handleFinalPriceOverride"
+                                    />
+                                    <Label for="override_final_price" class="text-sm">Override total amount</Label>
+                                </div>
+                            </div>
+                            
+                            <Input
+                                id="final_price_override"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                v-model="form.final_price_override"
+                                :disabled="!form.override_final_price"
+                                placeholder="Enter final amount"
+                            />
+                            
+                            <!-- Show breakdown when final price is overridden -->
+                            <div v-if="form.override_final_price && form.final_price_override" class="text-sm text-gray-500">
+                                <div>Original calculated amount: {{ formatCurrency(originalTotalAmount) }}</div>
+                                <div>Override difference: {{ formatCurrency(form.final_price_override - originalTotalAmount) }}</div>
+                            </div>
+                        </div>
+
+                        <!-- Override Reason -->
+                        <div v-if="form.override_daily_rate || form.override_final_price" class="space-y-2">
+                            <Label for="override_reason">Override Reason (Optional)</Label>
+                            <Textarea
+                                id="override_reason"
+                                v-model="form.override_reason"
+                                placeholder="Explain why this override is necessary..."
+                                rows="2"
+                            />
+                            <div v-if="form.errors.override_reason" class="text-sm text-red-600">
+                                {{ form.errors.override_reason }}
                             </div>
                         </div>
 
@@ -760,6 +913,21 @@ watch(() => props.newCustomer, (customer) => {
                             <div class="flex justify-between items-center text-sm text-green-700 mt-2">
                                 <span>Pricing Tier: {{ pricingTier }} ({{ rateType }})</span>
                                 <span>Effective Daily Rate: {{ formatCurrency(effectiveDailyRate) }}</span>
+                            </div>
+                            
+                            <!-- Override indicators -->
+                            <div v-if="form.override_daily_rate || form.override_final_price" class="mt-3 pt-3 border-t border-green-200">
+                                <div class="flex items-center gap-2 text-sm">
+                                    <span class="font-medium text-orange-700">⚠️ Pricing Override Active</span>
+                                    <span v-if="form.override_daily_rate" class="text-orange-600">(Daily Rate Override)</span>
+                                    <span v-else-if="form.override_final_price" class="text-orange-600">(Final Price Override)</span>
+                                </div>
+                                <div v-if="originalTotalAmount" class="text-sm text-orange-600 mt-1">
+                                    Original calculated amount: {{ formatCurrency(originalTotalAmount) }}
+                                    <span v-if="form.override_final_price" class="ml-2">
+                                        (Difference: {{ formatCurrency(form.final_price_override - originalTotalAmount) }})
+                                    </span>
+                                </div>
                             </div>
                             
                             <!-- Pricing breakdown -->

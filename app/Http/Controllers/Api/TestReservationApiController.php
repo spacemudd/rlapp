@@ -283,7 +283,7 @@ class TestReservationApiController extends Controller
             'available_customers' => Customer::take(5)->get(['id', 'first_name', 'last_name', 'email'])->map(function($customer) {
                 return [
                     'id' => $customer->id,
-                    'name' => $customer->full_name ?: 'Customer',
+                    'name' => ($customer->first_name . ' ' . $customer->last_name) ?: 'Customer',
                     'email' => $customer->email
                 ];
             }),
