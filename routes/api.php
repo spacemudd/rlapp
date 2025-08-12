@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ReservationApiController;
+use App\Http\Controllers\Api\ReservationApiController as ReservationApiControllerAlias;
 use App\Http\Controllers\Api\TestReservationApiController;
 use App\Http\Controllers\Api\CustomerApiController;
 use App\Http\Controllers\Api\VehicleApiController;
@@ -75,4 +76,8 @@ Route::middleware(['api.key'])->group(function () {
             'message' => 'API Key is valid!'
         ]);
     });
+
+    // Update reservation status by UID (requires API key)
+    Route::patch('/v1/reservations/{uid}/status', [ReservationApiControllerAlias::class, 'updateStatusByUid'])
+        ->name('api.v1.reservations.update-status-by-uid');
 });
