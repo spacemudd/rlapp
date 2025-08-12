@@ -11,7 +11,8 @@ interface Reservation {
   uid: string;
   customer: {
     id: number;
-    name: string;
+    first_name: string;
+    last_name: string;
     email: string;
     phone: string;
   };
@@ -127,7 +128,7 @@ const deleteReservation = () => {
           <CardContent class="space-y-4">
             <div>
               <div class="text-sm font-medium text-gray-500">Name</div>
-              <div class="text-lg font-semibold">{{ reservation.customer.name }}</div>
+              <div class="text-lg font-semibold">{{ reservation.customer.first_name }} {{ reservation.customer.last_name }}</div>
             </div>
             <div>
               <div class="text-sm font-medium text-gray-500">Email</div>

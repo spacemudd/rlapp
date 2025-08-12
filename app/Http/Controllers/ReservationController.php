@@ -20,7 +20,7 @@ class ReservationController extends Controller
     {
         $filter = $request->get('filter', 'all');
 
-        $query = Reservation::with(['customer', 'vehicle', 'team'])
+        $query = Reservation::with(['customer:id,first_name,last_name,email,phone', 'vehicle', 'team'])
             ->where('team_id', Auth::user()->team_id);
 
         // Apply filters based on the selected tab
@@ -75,8 +75,8 @@ class ReservationController extends Controller
     public function create(): Response
     {
         $customers = Customer::where('team_id', Auth::user()->team_id)
-            ->orderBy('name')
-            ->get(['id', 'name', 'email', 'phone']);
+            ->orderBy('first_name')
+            ->get(['id', 'first_name', 'last_name', 'email', 'phone']);
 
         $vehicles = Vehicle::where('is_active', true)
             ->with('location')
@@ -122,7 +122,7 @@ class ReservationController extends Controller
      */
     public function show(Reservation $reservation): Response
     {
-        $reservation->load(['customer', 'vehicle.location', 'team']);
+        $reservation->load(['customer:id,first_name,last_name,email,phone', 'vehicle.location', 'team']);
 
         return Inertia::render('Reservations/Show', [
             'reservation' => $reservation,
@@ -135,8 +135,8 @@ class ReservationController extends Controller
     public function edit(Reservation $reservation): Response
     {
         $customers = Customer::where('team_id', Auth::user()->team_id)
-            ->orderBy('name')
-            ->get(['id', 'name', 'email', 'phone']);
+            ->orderBy('first_name')
+            ->get(['id', 'first_name', 'last_name', 'email', 'phone']);
 
         $vehicles = Vehicle::where('is_active', true)
             ->with('location')

@@ -31,7 +31,7 @@ class ReservationApiController extends Controller
             ], 401);
         }
 
-        $query = Reservation::with(['customer', 'vehicle', 'team'])
+        $query = Reservation::with(['customer:id,first_name,last_name,email,phone', 'vehicle', 'team'])
             ->where('team_id', $user->team_id);
 
         // Apply filters
@@ -70,7 +70,8 @@ class ReservationApiController extends Controller
                   ->orWhere('pickup_location', 'like', "%{$search}%")
                   ->orWhere('notes', 'like', "%{$search}%")
                   ->orWhereHas('customer', function ($customerQuery) use ($search) {
-                      $customerQuery->where('name', 'like', "%{$search}%")
+                      $customerQuery->where('first_name', 'like', "%{$search}%")
+                                   ->orWhere('last_name', 'like', "%{$search}%")
                                    ->orWhere('email', 'like', "%{$search}%")
                                    ->orWhere('phone', 'like', "%{$search}%");
                   })
@@ -138,7 +139,7 @@ class ReservationApiController extends Controller
             ], 401);
         }
 
-        $reservation = Reservation::with(['customer', 'vehicle', 'team'])
+        $reservation = Reservation::with(['customer:id,first_name,last_name,email,phone', 'vehicle', 'team'])
             ->where('team_id', $user->team_id)
             ->findOrFail($id);
 
@@ -436,7 +437,7 @@ class ReservationApiController extends Controller
             ], 401);
         }
 
-        $query = Reservation::with(['customer', 'vehicle', 'team'])
+        $query = Reservation::with(['customer:id,first_name,last_name,email,phone', 'vehicle', 'team'])
             ->where('team_id', $user->team_id)
             ->where('status', 'pending');
 
@@ -447,7 +448,8 @@ class ReservationApiController extends Controller
                 $q->where('uid', 'like', "%{$search}%")
                   ->orWhere('pickup_location', 'like', "%{$search}%")
                   ->orWhereHas('customer', function ($customerQuery) use ($search) {
-                      $customerQuery->where('name', 'like', "%{$search}%");
+                      $customerQuery->where('first_name', 'like', "%{$search}%")
+                                   ->orWhere('last_name', 'like', "%{$search}%");
                   })
                   ->orWhereHas('vehicle', function ($vehicleQuery) use ($search) {
                       $vehicleQuery->where('name', 'like', "%{$search}%")
@@ -499,7 +501,7 @@ class ReservationApiController extends Controller
             ], 400);
         }
 
-        $query = Reservation::with(['customer', 'vehicle', 'team'])
+        $query = Reservation::with(['customer:id,first_name,last_name,email,phone', 'vehicle', 'team'])
             ->where('team_id', $user->team_id)
             ->where('status', $status);
 
@@ -510,7 +512,8 @@ class ReservationApiController extends Controller
                 $q->where('uid', 'like', "%{$search}%")
                   ->orWhere('pickup_location', 'like', "%{$search}%")
                   ->orWhereHas('customer', function ($customerQuery) use ($search) {
-                      $customerQuery->where('name', 'like', "%{$search}%");
+                      $customerQuery->where('first_name', 'like', "%{$search}%")
+                                   ->orWhere('last_name', 'like', "%{$search}%");
                   })
                   ->orWhereHas('vehicle', function ($vehicleQuery) use ($search) {
                       $vehicleQuery->where('name', 'like', "%{$search}%")
@@ -552,7 +555,7 @@ class ReservationApiController extends Controller
             ], 401);
         }
 
-        $reservations = Reservation::with(['customer', 'vehicle', 'team'])
+        $reservations = Reservation::with(['customer:id,first_name,last_name,email,phone', 'vehicle', 'team'])
             ->where('team_id', $user->team_id)
             ->today()
             ->orderBy('pickup_date', 'asc')
@@ -582,7 +585,7 @@ class ReservationApiController extends Controller
             ], 401);
         }
 
-        $reservations = Reservation::with(['customer', 'vehicle', 'team'])
+        $reservations = Reservation::with(['customer:id,first_name,last_name,email,phone', 'vehicle', 'team'])
             ->where('team_id', $user->team_id)
             ->tomorrow()
             ->orderBy('pickup_date', 'asc')
@@ -740,14 +743,15 @@ class ReservationApiController extends Controller
             ], 401);
         }
 
-        $reservations = Reservation::with(['customer', 'vehicle', 'team'])
+        $reservations = Reservation::with(['customer:id,first_name,last_name,email,phone', 'vehicle', 'team'])
             ->where('team_id', $user->team_id)
             ->where(function ($q) use ($searchQuery) {
                 $q->where('uid', 'like', "%{$searchQuery}%")
                   ->orWhere('pickup_location', 'like', "%{$searchQuery}%")
                   ->orWhere('notes', 'like', "%{$searchQuery}%")
                   ->orWhereHas('customer', function ($customerQuery) use ($searchQuery) {
-                      $customerQuery->where('name', 'like', "%{$searchQuery}%")
+                      $customerQuery->where('first_name', 'like', "%{$searchQuery}%")
+                                   ->orWhere('last_name', 'like', "%{$searchQuery}%")
                                    ->orWhere('email', 'like', "%{$searchQuery}%")
                                    ->orWhere('phone', 'like', "%{$searchQuery}%");
                   })

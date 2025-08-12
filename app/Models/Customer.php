@@ -162,6 +162,14 @@ class Customer extends Model
     }
 
     /**
+     * Get the customer's name (alias for full_name).
+     */
+    public function getNameAttribute(): string
+    {
+        return $this->full_name;
+    }
+
+    /**
      * Get the payment terms label.
      */
     public function getPaymentTermsLabelAttribute()
@@ -353,7 +361,7 @@ class Customer extends Model
             'blocked_at' => now(),
             'blocked_by_user_id' => $user->id,
         ]);
-        
+
         $this->recordBlockAction('blocked', $reason, $user, $notes);
     }
 
@@ -368,7 +376,7 @@ class Customer extends Model
             'blocked_at' => null,
             'blocked_by_user_id' => null,
         ]);
-        
+
         $this->recordBlockAction('unblocked', null, $user, $notes);
     }
 

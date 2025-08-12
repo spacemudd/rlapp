@@ -12,7 +12,8 @@ import { ref, onMounted } from 'vue';
 
 interface Customer {
   id: number;
-  name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   phone: string;
 }
@@ -129,7 +130,7 @@ onMounted(() => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem v-for="customer in customers" :key="customer.id" :value="customer.id.toString()">
-                      {{ customer.name }} - {{ customer.email }}
+                      {{ customer.first_name }} {{ customer.last_name }} - {{ customer.email }}
                     </SelectItem>
                   </SelectContent>
                 </Select>
