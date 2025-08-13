@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 interface Contract {
     id: string;
@@ -83,6 +84,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const { t, locale } = useI18n();
 
 // Form for void action
 const voidForm = useForm({
@@ -147,7 +149,7 @@ const calculateExtensionPricing = async () => {
 
     try {
         const url = route('contracts.extension-pricing', props.contract.id) + `?days=${extensionForm.days}`;
-        
+
         const response = await fetch(url, {
             method: 'GET',
             headers: {
@@ -155,7 +157,7 @@ const calculateExtensionPricing = async () => {
                 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
             }
         });
-        
+
         if (!response.ok) {
             throw new Error(`Failed to calculate extension pricing: ${response.status}`);
         }
@@ -220,12 +222,12 @@ const getInvoiceStatusColor = (status: string) => {
 const formatCurrency = (amount: number, currency: string = 'AED') => {
     // List of valid currency codes
     const validCurrencies = ['USD', 'EUR', 'AED', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'SEK', 'NZD'];
-    
+
     // Use the provided currency if it's valid, otherwise default to AED
     if (!validCurrencies.includes(currency.toUpperCase())) {
         currency = 'AED'; // Default fallback currency
     }
-    
+
     try {
         return new Intl.NumberFormat('en-AE', {
             style: 'currency',
@@ -262,7 +264,7 @@ function goToCreateInvoice() {
 </script>
 
 <template>
-    <Head :title="`Contract ${contract.contract_number}`" />
+    <Head :title="`${t('contract')} ${contract.contract_number}`" />
 
     <AppLayout>
         <div class="p-6">
@@ -273,7 +275,7 @@ function goToCreateInvoice() {
                         <Link :href="route('contracts.index')">
                             <Button variant="ghost" size="sm">
                                 <ArrowLeft class="w-4 h-4 mr-2" />
-                                Back to Contracts
+                                {{ t('back_to_contracts') }}
                             </Button>
                         </Link>
                     </div>
@@ -284,9 +286,9 @@ function goToCreateInvoice() {
                             <h1 class="text-2xl font-semibold text-gray-900">{{ contract.contract_number }}</h1>
                             <div class="flex items-center gap-3 mt-1">
                                 <Badge :class="getStatusColor(contract.status)" class="text-xs">
-                                    {{ contract.status.charAt(0).toUpperCase() + contract.status.slice(1) }}
+                                    {{ t(contract.status) }}
                                 </Badge>
-                                <span class="text-gray-500 text-sm">Created by {{ contract.created_by }}</span>
+                                <span class="text-gray-500 text-sm">{{ t('created_by') }} {{ contract.created_by }}</span>
                             </div>
                         </div>
 
@@ -294,14 +296,14 @@ function goToCreateInvoice() {
                             <Link v-if="contract.status === 'draft'" :href="route('contracts.edit', contract.id)">
                                 <Button variant="outline">
                                     <Edit class="w-4 h-4 mr-2" />
-                                    Edit Contract
+                                    {{ t('edit_contract') }}
                                 </Button>
                             </Link>
                             <DropdownMenu v-if="contract.invoices && contract.invoices.length > 0">
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="outline">
                                         <Receipt class="w-4 h-4 mr-2" />
-                                        View Invoices ({{ contract.invoices.length }})
+                                        {{ t('view_invoices') }} ({{ contract.invoices.length }})
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" class="w-64">
@@ -333,7 +335,7 @@ function goToCreateInvoice() {
                                         class="cursor-pointer"
                                     >
                                         <Download class="w-4 h-4 mr-2" />
-                                        Download PDF
+                                        {{ t('download_pdf') }}
                                     </DropdownMenuItem>
 
                                     <DropdownMenuSeparator />
@@ -345,7 +347,7 @@ function goToCreateInvoice() {
                                         class="cursor-pointer"
                                     >
                                         <Play class="w-4 h-4 mr-2" />
-                                        Activate Contract
+                                        {{ t('activate_contract') }}
                                     </DropdownMenuItem>
 
                                     <!-- Complete Contract -->
@@ -355,7 +357,7 @@ function goToCreateInvoice() {
                                         class="cursor-pointer"
                                     >
                                         <CheckCircle class="w-4 h-4 mr-2" />
-                                        Finalize & Complete Contract
+                                        {{ t('finalize_complete_contract') }}
                                     </DropdownMenuItem>
 
                                     <!-- Create Invoice -->
@@ -365,7 +367,7 @@ function goToCreateInvoice() {
                                         class="cursor-pointer"
                                     >
                                         <Receipt class="w-4 h-4 mr-2" />
-                                        Create Invoice
+                                        {{ t('create_invoice') }}
                                     </DropdownMenuItem>
 
                                     <!-- Extend Contract -->
@@ -375,7 +377,7 @@ function goToCreateInvoice() {
                                         class="cursor-pointer"
                                     >
                                         <Calendar class="w-4 h-4 mr-2" />
-                                        Extend Contract
+                                        {{ t('extend_contract') }}
                                     </DropdownMenuItem>
 
                                     <DropdownMenuSeparator v-if="contract.status !== 'completed' && contract.status !== 'void'" />
@@ -387,7 +389,7 @@ function goToCreateInvoice() {
                                         class="cursor-pointer text-red-600 focus:text-red-600"
                                     >
                                         <XCircle class="w-4 h-4 mr-2" />
-                                        Void Contract
+                                        {{ t('void_contract') }}
                                     </DropdownMenuItem>
 
                                     <!-- Delete Contract -->
@@ -397,7 +399,7 @@ function goToCreateInvoice() {
                                         class="cursor-pointer text-red-600 focus:text-red-600"
                                     >
                                         <Trash2 class="w-4 h-4 mr-2" />
-                                        Delete Contract
+                                        {{ t('delete_contract') }}
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -411,7 +413,7 @@ function goToCreateInvoice() {
                         <CardHeader>
                             <CardTitle class="flex items-center gap-2">
                                 <User class="w-5 h-5" />
-                                Customer Information
+                                {{ t('customer_information') }}
                             </CardTitle>
                         </CardHeader>
                         <CardContent class="space-y-4">
@@ -419,23 +421,23 @@ function goToCreateInvoice() {
                                 <h3 class="font-semibold text-lg">{{ contract.customer.first_name }} {{ contract.customer.last_name }}</h3>
                                 <div class="grid grid-cols-1 gap-2 mt-2 text-sm">
                                     <div class="flex justify-between">
-                                        <span class="text-gray-500">Email:</span>
+                                        <span class="text-gray-500">{{ t('email') }}:</span>
                                         <span>{{ contract.customer.email }}</span>
                                     </div>
                                     <div class="flex justify-between">
-                                        <span class="text-gray-500">Phone:</span>
+                                        <span class="text-gray-500">{{ t('phone') }}:</span>
                                         <span>{{ contract.customer.phone }}</span>
                                     </div>
                                     <div class="flex justify-between">
-                                        <span class="text-gray-500">Address:</span>
+                                        <span class="text-gray-500">{{ t('address') }}:</span>
                                         <span class="text-right">{{ contract.customer.address }}, {{ contract.customer.city }}, {{ contract.customer.country }}</span>
                                     </div>
                                     <div class="flex justify-between">
-                                        <span class="text-gray-500">License:</span>
+                                        <span class="text-gray-500">{{ t('drivers_license') }}:</span>
                                         <span>{{ contract.customer.drivers_license_number }}</span>
                                     </div>
                                     <div class="flex justify-between">
-                                        <span class="text-gray-500">License Expiry:</span>
+                                        <span class="text-gray-500">{{ t('license_expiry') }}:</span>
                                         <span>{{ formatDate(contract.customer.drivers_license_expiry) }}</span>
                                     </div>
                                 </div>
@@ -448,7 +450,7 @@ function goToCreateInvoice() {
                         <CardHeader>
                             <CardTitle class="flex items-center gap-2">
                                 <Car class="w-5 h-5" />
-                                Vehicle Information
+                                {{ t('vehicle_information') }}
                             </CardTitle>
                         </CardHeader>
                         <CardContent class="space-y-4">
@@ -456,15 +458,15 @@ function goToCreateInvoice() {
                                 <h3 class="font-semibold text-lg">{{ contract.vehicle.year }} {{ contract.vehicle.make }} {{ contract.vehicle.model }}</h3>
                                 <div class="grid grid-cols-1 gap-2 mt-2 text-sm">
                                     <div class="flex justify-between">
-                                        <span class="text-gray-500">Plate Number:</span>
+                                        <span class="text-gray-500">{{ t('plate_number') }}:</span>
                                         <span class="font-medium">{{ contract.vehicle.plate_number }}</span>
                                     </div>
                                     <div class="flex justify-between">
-                                        <span class="text-gray-500">Color:</span>
+                                        <span class="text-gray-500">{{ t('color') }}:</span>
                                         <span>{{ contract.vehicle.color }}</span>
                                     </div>
                                     <div class="flex justify-between">
-                                        <span class="text-gray-500">Chassis Number:</span>
+                                        <span class="text-gray-500">{{ t('chassis_number') || 'Chassis Number' }}:</span>
                                         <span class="text-right">{{ contract.vehicle.chassis_number }}</span>
                                     </div>
                                 </div>
@@ -478,25 +480,25 @@ function goToCreateInvoice() {
                     <CardHeader>
                         <CardTitle class="flex items-center gap-2">
                             <Calendar class="w-5 h-5" />
-                            Contract Details
+                            {{ t('contract_details') }}
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                             <div>
-                                <span class="text-sm text-gray-500">Start Date</span>
+                                <span class="text-sm text-gray-500">{{ t('start_date') }}</span>
                                 <p class="font-medium">{{ formatDate(contract.start_date) }}</p>
                             </div>
                             <div>
-                                <span class="text-sm text-gray-500">End Date</span>
+                                <span class="text-sm text-gray-500">{{ t('end_date') }}</span>
                                 <p class="font-medium">{{ formatDate(contract.end_date) }}</p>
                             </div>
                             <div>
-                                <span class="text-sm text-gray-500">Total Days</span>
-                                <p class="font-medium">{{ contract.total_days }} days</p>
+                                <span class="text-sm text-gray-500">{{ t('total_days') }}</span>
+                                <p class="font-medium">{{ contract.total_days }} {{ t('days') }}</p>
                             </div>
                             <div>
-                                <span class="text-sm text-gray-500">Created</span>
+                                <span class="text-sm text-gray-500">{{ t('created_at') }}</span>
                                 <p class="font-medium">{{ formatDateTime(contract.created_at) }}</p>
                             </div>
                         </div>
@@ -508,53 +510,53 @@ function goToCreateInvoice() {
                     <CardHeader>
                         <CardTitle class="flex items-center gap-2">
                             <DollarSign class="w-5 h-5" />
-                            Financial Details
+                            {{ t('financial_details') }}
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                             <div>
-                                <span class="text-sm text-gray-500">Daily Rate</span>
+                                <span class="text-sm text-gray-500">{{ t('daily_rate') }}</span>
                                 <p class="font-medium">{{ formatCurrency(contract.daily_rate, contract.currency) }}</p>
                             </div>
                             <div>
-                                <span class="text-sm text-gray-500">Security Deposit</span>
+                                <span class="text-sm text-gray-500">{{ t('deposit_amount') }}</span>
                                 <p class="font-medium">{{ formatCurrency(contract.deposit_amount, contract.currency) }}</p>
                             </div>
                             <div v-if="contract.mileage_limit">
-                                <span class="text-sm text-gray-500">Mileage Limit</span>
+                                <span class="text-sm text-gray-500">{{ t('mileage_limit') }}</span>
                                 <p class="font-medium">{{ contract.mileage_limit.toLocaleString() }} KM</p>
                             </div>
                             <div v-if="contract.excess_mileage_rate">
-                                <span class="text-sm text-gray-500">Excess Mileage Rate</span>
+                                <span class="text-sm text-gray-500">{{ t('excess_mileage_rate') }}</span>
                                 <p class="font-medium">{{ formatCurrency(contract.excess_mileage_rate, contract.currency) }}/KM</p>
                             </div>
                         </div>
 
                         <div class="mt-6 p-4 bg-green-50 border border-green-200 rounded-md">
                             <div class="flex justify-between items-center">
-                                <span class="text-green-800 font-medium">Total Contract Amount:</span>
+                                <span class="text-green-800 font-medium">{{ t('total_contract_amount') }}</span>
                                 <span class="text-2xl font-bold text-green-900">{{ formatCurrency(contract.total_amount, contract.currency) }}</span>
                             </div>
                             <p class="text-sm text-green-700 mt-1">
-                                {{ contract.total_days }} days × {{ formatCurrency(contract.daily_rate, contract.currency) }}
+                                {{ contract.total_days }} {{ t('days') }} × {{ formatCurrency(contract.daily_rate, contract.currency) }}
                             </p>
-                            
+
                             <!-- Override information -->
                             <div v-if="contract.override_daily_rate || contract.override_final_price" class="mt-3 pt-3 border-t border-green-200">
                                 <div class="flex items-center gap-2 text-sm">
-                                    <span class="font-medium text-orange-700">⚠️ Pricing Override Applied</span>
-                                    <span v-if="contract.override_daily_rate" class="text-orange-600">(Daily Rate Override)</span>
-                                    <span v-else-if="contract.override_final_price" class="text-orange-600">(Final Price Override)</span>
+                                     <span class="font-medium text-orange-700">⚠️ {{ t('pricing_override_applied') }}</span>
+                                     <span v-if="contract.override_daily_rate" class="text-orange-600">({{ t('daily_rate_override') }})</span>
+                                     <span v-else-if="contract.override_final_price" class="text-orange-600">({{ t('final_price_override') }})</span>
                                 </div>
                                 <div v-if="contract.original_calculated_amount" class="text-sm text-orange-600 mt-1">
-                                    Original calculated amount: {{ formatCurrency(contract.original_calculated_amount, contract.currency) }}
+                                     {{ t('original_calculated_amount') }}: {{ formatCurrency(contract.original_calculated_amount, contract.currency) }}
                                     <span class="ml-2">
                                         (Difference: {{ formatCurrency(contract.total_amount - contract.original_calculated_amount, contract.currency) }})
                                     </span>
                                 </div>
                                 <div v-if="contract.override_reason" class="text-sm text-orange-600 mt-1">
-                                    <span class="font-medium">Reason:</span> {{ contract.override_reason }}
+                                     <span class="font-medium">{{ t('reason') }}:</span> {{ contract.override_reason }}
                                 </div>
                             </div>
                         </div>
@@ -567,7 +569,7 @@ function goToCreateInvoice() {
                         <CardHeader>
                             <CardTitle class="flex items-center gap-2">
                                 <FileText class="w-5 h-5" />
-                                Terms and Conditions
+                            {{ t('terms_and_conditions') }}
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -579,7 +581,7 @@ function goToCreateInvoice() {
                         <CardHeader>
                             <CardTitle class="flex items-center gap-2">
                                 <FileText class="w-5 h-5" />
-                                Internal Notes
+                            {{ t('internal_notes') }}
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -593,7 +595,7 @@ function goToCreateInvoice() {
                     <CardHeader>
                         <CardTitle class="flex items-center gap-2">
                             <Receipt class="w-5 h-5" />
-                            Associated Invoices ({{ contract.invoices.length }})
+                            {{ t('associated_invoices') }} ({{ contract.invoices.length }})
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -643,7 +645,7 @@ function goToCreateInvoice() {
                                     <div>
                                         <p class="font-medium">Extension #{{ extension.extension_number }}</p>
                                         <p class="text-sm text-gray-500">
-                                            +{{ extension.extension_days }} days 
+                                            +{{ extension.extension_days }} days
                                             ({{ formatDate(extension.original_end_date) }} → {{ formatDate(extension.new_end_date) }})
                                         </p>
                                         <p v-if="extension.reason" class="text-sm text-gray-600 mt-1">{{ extension.reason }}</p>
@@ -664,7 +666,7 @@ function goToCreateInvoice() {
                 <!-- Void Reason (if applicable) -->
                 <Card v-if="contract.status === 'void' && contract.void_reason">
                     <CardHeader>
-                        <CardTitle class="text-red-600">Void Reason</CardTitle>
+                            <CardTitle class="text-red-600">{{ t('void_reason') }}</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p class="text-sm">{{ contract.void_reason }}</p>
@@ -676,19 +678,19 @@ function goToCreateInvoice() {
         <Dialog v-model:open="showVoidDialog">
             <DialogContent class="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Void Contract</DialogTitle>
+                    <DialogTitle>{{ t('void_contract') }}</DialogTitle>
                     <DialogDescription>
-                        Please provide a reason for voiding this contract. This action cannot be undone.
+                        {{ t('void_contract_warning') }}
                     </DialogDescription>
                 </DialogHeader>
 
                 <form @submit.prevent="submitVoid" class="space-y-4">
                     <div class="space-y-2">
-                        <Label for="void_reason">Void Reason *</Label>
+                        <Label for="void_reason">{{ t('void_reason') }} *</Label>
                         <Textarea
                             id="void_reason"
                             v-model="voidForm.void_reason"
-                            placeholder="Enter the reason for voiding this contract..."
+                            :placeholder="t('void_reason_placeholder')"
                             required
                             rows="4"
                         />
@@ -698,11 +700,9 @@ function goToCreateInvoice() {
                     </div>
 
                     <DialogFooter>
-                        <Button type="button" variant="outline" @click="showVoidDialog = false">
-                            Cancel
-                        </Button>
+                            <Button type="button" variant="outline" @click="showVoidDialog = false">{{ t('cancel') }}</Button>
                         <Button type="submit" variant="destructive" :disabled="voidForm.processing">
-                            {{ voidForm.processing ? 'Voiding...' : 'Void Contract' }}
+                            {{ voidForm.processing ? t('voiding') : t('void_contract') }}
                         </Button>
                     </DialogFooter>
                 </form>
@@ -713,15 +713,15 @@ function goToCreateInvoice() {
         <Dialog v-model:open="showExtendDialog">
             <DialogContent class="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Extend Contract</DialogTitle>
+                    <DialogTitle>{{ t('extend_contract') }}</DialogTitle>
                     <DialogDescription>
-                        Extend the contract duration with automatic pricing calculation based on current vehicle rates.
+                        {{ t('extend_contract_description') }}
                     </DialogDescription>
                 </DialogHeader>
 
                 <form @submit.prevent="submitExtension" class="space-y-4">
                     <div class="space-y-2">
-                        <Label for="extension_days">Additional Days *</Label>
+                        <Label for="extension_days">{{ t('additional_days') }} *</Label>
                         <Input
                             id="extension_days"
                             v-model.number="extensionForm.days"
@@ -729,7 +729,7 @@ function goToCreateInvoice() {
                             min="1"
                             max="365"
                             required
-                            placeholder="Enter number of days"
+                            :placeholder="t('enter_number_of_days')"
                         />
                         <div v-if="extensionForm.errors.days" class="text-sm text-red-600">
                             {{ extensionForm.errors.days }}
@@ -737,11 +737,11 @@ function goToCreateInvoice() {
                     </div>
 
                     <div class="space-y-2">
-                        <Label for="extension_reason">Reason for Extension</Label>
+                        <Label for="extension_reason">{{ t('reason_for_extension') }}</Label>
                         <Textarea
                             id="extension_reason"
                             v-model="extensionForm.reason"
-                            placeholder="Enter reason for extending the contract..."
+                            :placeholder="t('reason_for_extension_placeholder')"
                             rows="3"
                         />
                         <div v-if="extensionForm.errors.reason" class="text-sm text-red-600">
@@ -751,33 +751,31 @@ function goToCreateInvoice() {
 
                     <!-- Pricing Preview -->
                     <div v-if="extensionPricing" class="p-4 bg-green-50 border border-green-200 rounded-md">
-                        <h4 class="font-medium text-green-800 mb-2">Extension Pricing Preview:</h4>
+                        <h4 class="font-medium text-green-800 mb-2">{{ t('extension_pricing_preview') }}</h4>
                         <div class="space-y-1 text-sm text-green-700">
                             <div class="flex justify-between">
-                                <span>Duration:</span>
-                                <span>{{ extensionForm.days }} days</span>
+                                <span>{{ t('duration') }}:</span>
+                                <span>{{ extensionForm.days }} {{ t('days') }}</span>
                             </div>
                             <div class="flex justify-between">
-                                <span>Rate:</span>
-                                <span>{{ formatCurrency(extensionPricing.daily_rate) }}/day</span>
+                                <span>{{ t('rate') }}:</span>
+                                <span>{{ formatCurrency(extensionPricing.daily_rate) }}/{{ t('day') }}</span>
                             </div>
                             <div class="flex justify-between">
-                                <span>Pricing Tier:</span>
+                                <span>{{ t('pricing_tier') }}:</span>
                                 <span class="capitalize">{{ extensionPricing.pricing_tier }}</span>
                             </div>
                             <div class="flex justify-between font-bold border-t border-green-300 pt-1 mt-2">
-                                <span>Total Extension Cost:</span>
+                                <span>{{ t('total_extension_cost') }}:</span>
                                 <span>{{ formatCurrency(extensionPricing.total_amount) }}</span>
                             </div>
                         </div>
                     </div>
 
                     <DialogFooter>
-                        <Button type="button" variant="outline" @click="showExtendDialog = false">
-                            Cancel
-                        </Button>
+                        <Button type="button" variant="outline" @click="showExtendDialog = false">{{ t('cancel') }}</Button>
                         <Button type="submit" :disabled="extensionForm.processing || !extensionPricing">
-                            {{ extensionForm.processing ? 'Extending...' : 'Extend Contract' }}
+                            {{ extensionForm.processing ? t('extending') : t('extend_contract') }}
                         </Button>
                     </DialogFooter>
                 </form>

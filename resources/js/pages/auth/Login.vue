@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { LoaderCircle } from 'lucide-vue-next';
 
 const { t, locale } = useI18n();
-locale.value = 'en';
+// Use the currently configured locale; do not force English so Arabic works when selected
 
 const page = usePage();
 const props = defineProps({

@@ -15,11 +15,14 @@ createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
     resolve: (name) => resolvePageComponent(`./pages/${name}.vue`, import.meta.glob<DefineComponent>('./pages/**/*.vue')),
     setup({ el, App, props, plugin }) {
-        // Set initial language and direction from user preferences
-        const userLanguage = (props.initialPage.props as any).auth?.user?.language || 'en';
-        i18n.global.locale.value = userLanguage;
-        setDirection(userLanguage);
-        
+        // Set initial language and direction from user preferences or backend app locale
+        const pageProps: any = props.initialPage.props as any;
+        const userLanguage = pageProps.auth?.user?.language;
+        const backendLocale = pageProps.locale;
+        const initialLocale = userLanguage || backendLocale || 'en';
+        i18n.global.locale.value = initialLocale;
+        setDirection(initialLocale);
+
         createApp({ render: () => h(App, props) })
             .use(plugin)
             .use(ZiggyVue)

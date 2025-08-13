@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, Clock, User, Car, MapPin, DollarSign, Eye, Edit, Trash2, FilePlus2 } from 'lucide-vue-next';
+import { useI18n } from 'vue-i18n';
 
 interface Reservation {
   id: string;
@@ -46,20 +47,21 @@ interface Stats {
 }
 
 const page = usePage();
+const { t, locale } = useI18n();
 const reservations = page.props.reservations as Reservation[];
 const stats = page.props.stats as Stats;
 const currentFilter = page.props.currentFilter as string;
 
-const tabs = [
-  { key: 'all', label: 'All', count: stats.all },
-  { key: 'today', label: 'Today', count: stats.today },
-  { key: 'tomorrow', label: 'Tomorrow', count: stats.tomorrow },
-  { key: 'pending', label: 'Pending', count: stats.pending },
-  { key: 'confirmed', label: 'Confirmed', count: stats.confirmed },
-  { key: 'completed', label: 'Completed', count: stats.completed },
-  { key: 'canceled', label: 'Canceled', count: stats.canceled },
-  { key: 'expired', label: 'Expired', count: stats.expired },
-];
+const tabs = computed(() => [
+  { key: 'all', label: t('all'), count: stats.all },
+  { key: 'today', label: t('today'), count: stats.today },
+  { key: 'tomorrow', label: t('tomorrow'), count: stats.tomorrow },
+  { key: 'pending', label: t('pending'), count: stats.pending },
+  { key: 'confirmed', label: t('confirmed'), count: stats.confirmed },
+  { key: 'completed', label: t('completed'), count: stats.completed },
+  { key: 'canceled', label: t('cancelled'), count: stats.canceled },
+  { key: 'expired', label: t('expired'), count: stats.expired },
+]);
 
 const switchTab = (tabKey: string) => {
   router.get(route('reservations.index', { filter: tabKey }));
@@ -82,50 +84,69 @@ const getStatusColor = (status: string) => {
   }
 };
 
+const localeTag = computed(() => (locale.value === 'ar' ? 'ar-EG' : 'en-US'));
+
 const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString('en-US', {
+  return new Intl.DateTimeFormat(localeTag.value, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  });
+  }).format(new Date(date));
 };
 
 const formatDateOnly = (date: string) => {
-  return new Date(date).toLocaleDateString('en-US', {
+  return new Intl.DateTimeFormat(localeTag.value, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
-  });
+  }).format(new Date(date));
 };
 
 const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat(localeTag.value === 'ar-EG' ? 'ar-AE' : 'en-US', {
     style: 'currency',
     currency: 'AED',
   }).format(amount);
 };
 
 const deleteReservation = (id: string) => {
-  if (confirm('Are you sure you want to delete this reservation?')) {
+  if (confirm(t('delete_reservation_confirm'))) {
     router.delete(route('reservations.destroy', id));
+  }
+};
+
+const translateStatus = (status: string) => {
+  switch (status) {
+    case 'pending':
+      return t('pending');
+    case 'confirmed':
+      return t('confirmed');
+    case 'completed':
+      return t('completed');
+    case 'canceled':
+      return t('cancelled');
+    case 'expired':
+      return t('expired');
+    default:
+      return status;
   }
 };
 </script>
 
 <template>
-  <AppSidebarLayout :breadcrumbs="[{ title: 'Reservations', href: '/reservations' }]">
+  <AppSidebarLayout :breadcrumbs="[{ title: t('reservations'), href: '/reservations' }]">
     <div class="p-6">
       <!-- Header -->
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-3xl font-bold text-gray-900">Reservations</h1>
-          <p class="text-gray-600 mt-1">Manage vehicle reservations and bookings</p>
+          <h1 class="text-3xl font-bold text-gray-900">{{ t('reservations') }}</h1>
+          <p class="text-gray-600 mt-1">{{ t('manage_reservations') }}</p>
         </div>
         <Button @click="router.visit(route('reservations.create'))" class="bg-blue-600 hover:bg-blue-700">
           <Calendar class="w-4 h-4 mr-2" />
-          New Reservation
+          {{ t('create_reservation') }}
         </Button>
       </div>
 
@@ -165,9 +186,9 @@ const deleteReservation = (id: string) => {
         <CardHeader>
           <CardTitle class="flex items-center">
             <Calendar class="w-5 h-5 mr-2" />
-            Reservations
+            {{ t('reservations') }}
             <span class="ml-2 text-sm font-normal text-gray-500">
-              ({{ reservations.length }} items)
+              ({{ reservations.length }} {{ t('items') }})
             </span>
           </CardTitle>
         </CardHeader>
@@ -177,37 +198,37 @@ const deleteReservation = (id: string) => {
               <thead class="bg-gray-50">
                 <tr>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    UID
+                    {{ t('uid') }}
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Customer
+                    {{ t('customer') }}
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Vehicle
+                    {{ t('vehicle') }}
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Plate Number
+                    {{ t('plate_number') }}
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Rate
+                    {{ t('daily_rate') }}
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Pickup Date
+                    {{ t('pickup_date') }}
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Pickup Location
+                    {{ t('pickup_location') }}
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Return Date
+                    {{ t('return_date') }}
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
+                    {{ t('status') }}
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Reservation Date
+                    {{ t('reservation_date') }}
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
+                    {{ t('actions') }}
                   </th>
                 </tr>
               </thead>
@@ -251,7 +272,7 @@ const deleteReservation = (id: string) => {
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <div class="flex items-center">
                       <DollarSign class="h-4 w-4 text-green-500 mr-1" />
-                      {{ formatCurrency(reservation.rate) }}/day
+                      {{ formatCurrency(reservation.rate) }}/{{ t('day') }}
                     </div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -274,7 +295,7 @@ const deleteReservation = (id: string) => {
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <Badge :class="getStatusColor(reservation.status)" variant="outline">
-                      {{ reservation.status.charAt(0).toUpperCase() + reservation.status.slice(1) }}
+                      {{ translateStatus(reservation.status) }}
                     </Badge>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -299,7 +320,7 @@ const deleteReservation = (id: string) => {
                         }))"
                       >
                         <FilePlus2 class="h-4 w-4 mr-1" />
-                        Create Contract
+                        {{ t('create_contract') }}
                       </Button>
                       <Button
                         variant="ghost"
@@ -331,11 +352,11 @@ const deleteReservation = (id: string) => {
                 <tr v-if="reservations.length === 0">
                   <td colspan="11" class="px-6 py-12 text-center text-gray-500">
                     <Calendar class="h-12 w-12 mx-auto text-gray-300 mb-4" />
-                    <p class="text-lg font-medium">No reservations found</p>
-                    <p class="text-sm">Get started by creating your first reservation.</p>
+                    <p class="text-lg font-medium">{{ t('no_reservations_found') }}</p>
+                    <p class="text-sm">{{ t('get_started_first_reservation') }}</p>
                     <Button @click="router.visit(route('reservations.create'))" class="mt-4 bg-blue-600 hover:bg-blue-700">
                       <Calendar class="w-4 h-4 mr-2" />
-                      Create Reservation
+                      {{ t('create_reservation') }}
                     </Button>
                   </td>
                 </tr>

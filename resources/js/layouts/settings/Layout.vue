@@ -31,7 +31,7 @@ const currentPath = page.props.ziggy?.location ? new URL(page.props.ziggy.locati
 
 <template>
     <div class="px-4 py-6">
-        <Heading :title="t('settings')" :description="'Manage your profile and account settings'" />
+        <Heading :title="t('settings')" :description="t('manage_profile_and_account_settings')" />
 
         <div class="flex flex-col space-y-8 md:space-y-0 lg:flex-row lg:space-y-0 lg:space-x-12 rtl:lg:space-x-reverse">
             <aside class="w-full max-w-xl lg:w-48">
