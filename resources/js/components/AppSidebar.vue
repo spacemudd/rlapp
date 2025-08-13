@@ -54,7 +54,7 @@ const mainNavItems = computed<NavItem[]>(() => {
             icon: Car,
         },
         {
-            title: 'Reservations',
+            title: t('reservations'),
             href: '/reservations',
             icon: Calendar,
         },
@@ -80,7 +80,7 @@ const mainNavItems = computed<NavItem[]>(() => {
     }
 
     items.push({
-        title: 'Traffic violations',
+        title: t('traffic_violations'),
         href: '/traffic-violations',
         icon: FileText,
     });
