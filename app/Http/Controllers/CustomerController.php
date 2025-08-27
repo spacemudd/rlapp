@@ -19,11 +19,11 @@ class CustomerController extends Controller
         $teamId = auth()->user()->team_id;
         $search = $request->get('search', '');
         $filter = $request->get('filter', 'all'); // all, blocked, active
-        
+
         // Build the query for paginated customers
         $query = Customer::with(['team', 'blockedBy'])
             ->where('team_id', $teamId);
-        
+
         // Apply search filters if search term is provided
         if (!empty($search)) {
             $query->where(function ($q) use ($search) {
@@ -43,16 +43,16 @@ class CustomerController extends Controller
                   ->orWhereRaw("CONCAT(first_name, ' ', last_name) like ?", ["%{$search}%"]);
             });
         }
-        
+
         // Apply status filter
         if ($filter === 'blocked') {
             $query->where('is_blocked', true);
         } elseif ($filter === 'active') {
             $query->where('is_blocked', false)->where('status', 'active');
         }
-        
+
         $customers = $query->orderBy('created_at', 'desc')->paginate(10);
-        
+
         // Preserve search and filter parameters in pagination links
         $customers->appends(['search' => $search, 'filter' => $filter]);
 
@@ -131,8 +131,17 @@ class CustomerController extends Controller
             $validated['trade_license_pdf_path'] = $path;
         }
 
+        // Handle visit visa PDF upload
+        if ($request->hasFile('visit_visa_pdf')) {
+            $file = $request->file('visit_visa_pdf');
+            $filename = 'visit_visa_' . time() . '_' . $file->getClientOriginalName();
+            $path = $file->storeAs('visit_visas', $filename, 'public');
+            $validated['visit_visa_pdf_path'] = $path;
+        }
+
         // Remove the file from validated data since it's not a database field
         unset($validated['trade_license_pdf']);
+        unset($validated['visit_visa_pdf']);
 
         $customer = Customer::create($validated);
 
@@ -204,8 +213,22 @@ class CustomerController extends Controller
             $validated['trade_license_pdf_path'] = $path;
         }
 
+        // Handle visit visa PDF upload
+        if ($request->hasFile('visit_visa_pdf')) {
+            // Delete old file if it exists
+            if ($customer->visit_visa_pdf_path && \Storage::disk('public')->exists($customer->visit_visa_pdf_path)) {
+                \Storage::disk('public')->delete($customer->visit_visa_pdf_path);
+            }
+
+            $file = $request->file('visit_visa_pdf');
+            $filename = 'visit_visa_' . time() . '_' . $file->getClientOriginalName();
+            $path = $file->storeAs('visit_visas', $filename, 'public');
+            $validated['visit_visa_pdf_path'] = $path;
+        }
+
         // Remove the file from validated data since it's not a database field
         unset($validated['trade_license_pdf']);
+        unset($validated['visit_visa_pdf']);
 
         $customer->update($validated);
 
@@ -236,17 +259,17 @@ class CustomerController extends Controller
             'reason' => 'required|string|max:255',
             'notes' => 'nullable|string|max:1000'
         ]);
-        
+
         if ($customer->team_id !== auth()->user()->team_id) {
             abort(403);
         }
-        
+
         if ($customer->isBlocked()) {
             return back()->with('error', 'Customer is already blocked.');
         }
-        
+
         $customer->block($request->reason, auth()->user(), $request->notes);
-        
+
         return back()->with('success', 'Customer has been blocked successfully.');
     }
 
@@ -258,17 +281,17 @@ class CustomerController extends Controller
         $request->validate([
             'notes' => 'nullable|string|max:1000'
         ]);
-        
+
         if ($customer->team_id !== auth()->user()->team_id) {
             abort(403);
         }
-        
+
         if (!$customer->isBlocked()) {
             return back()->with('error', 'Customer is not blocked.');
         }
-        
+
         $customer->unblock(auth()->user(), $request->notes);
-        
+
         return back()->with('success', 'Customer has been unblocked successfully.');
     }
 
@@ -280,12 +303,12 @@ class CustomerController extends Controller
         if ($customer->team_id !== auth()->user()->team_id) {
             abort(403);
         }
-        
+
         $history = $customer->blockHistory()->with('performedBy')->paginate(10);
-        
+
         return Inertia::render('Customers/BlockHistory', [
             'customer' => $customer,
             'history' => $history
         ]);
     }
-} 
+}

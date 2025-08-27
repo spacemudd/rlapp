@@ -14,7 +14,7 @@ return [
     'saved' => 'تم الحفظ.',
     'language' => 'اللغة',
     'select_language' => 'اختر اللغة',
-    
+
     // Navigation & Layout
     'dashboard' => 'لوحة التحكم',
     'customers' => 'العملاء',
@@ -32,7 +32,7 @@ return [
     'login' => 'تسجيل الدخول',
     'logout' => 'تسجيل الخروج',
     'register' => 'التسجيل',
-    
+
     // Common Actions
     'create' => 'إنشاء',
     'edit' => 'تعديل',
@@ -54,7 +54,7 @@ return [
     'print' => 'طباعة',
     'actions' => 'إجراءات',
     'more' => 'المزيد',
-    
+
     // Status & Messages
     'active' => 'نشط',
     'inactive' => 'غير نشط',
@@ -70,11 +70,11 @@ return [
     'partial' => 'جزئي',
     'void' => 'ملغي',
     'draft' => 'مسودة',
-    
+
     // Dashboard
     'welcome_dashboard' => 'مرحباً بك في لوحة التحكم',
     'dashboard_overview' => 'إليك نظرة عامة على عملك',
-    
+
     // Customers
     'manage_customers' => 'إدارة قاعدة بيانات العملاء والعلاقات',
     'customer_information' => 'معلومات العميل',
@@ -124,7 +124,22 @@ return [
     'trade_license_document' => 'وثيقة الرخصة التجارية',
     'download_trade_license' => 'تحميل الرخصة التجارية',
     'no_trade_license_information' => 'لا توجد معلومات رخصة تجارية متاحة',
-    
+    'secondary_identification' => 'الهوية الثانوية',
+    'secondary_identification_details' => 'وثائق الهوية الثانوية',
+    'passport_number' => 'رقم جواز السفر',
+    'passport_expiry' => 'تاريخ انتهاء جواز السفر',
+    'resident_id_number' => 'رقم الهوية الإقامة',
+    'resident_id_expiry' => 'تاريخ انتهاء الهوية الإقامة',
+    'visit_visa_document' => 'وثيقة تأشيرة الزيارة',
+    'download_visit_visa' => 'تحميل تأشيرة الزيارة',
+    'cash_payments_total' => 'إجمالي النقد',
+    'cash_payments_count' => 'عدد النقد',
+    'credit_card_payments_total' => 'إجمالي البطاقة الائتمانية',
+    'credit_card_payments_count' => 'عدد البطاقة الائتمانية',
+    'bank_transfer_payments_total' => 'إجمالي التحويل البنكي',
+    'bank_transfer_payments_count' => 'عدد التحويل البنكي',
+    'transactions' => 'المعاملات',
+
     // Invoices
     'manage_invoices' => 'إدارة وتتبع جميع فواتيرك',
     'invoice_information' => 'معلومات الفاتورة',
@@ -151,7 +166,7 @@ return [
     'delete_invoice_confirm' => 'هل أنت متأكد من رغبتك في حذف هذه الفاتورة؟',
     'download_pdf' => 'تحميل PDF',
     'send_invoice' => 'إرسال الفاتورة',
-    
+
     // Vehicles
     'manage_vehicles' => 'إدارة أسطول المركبات',
     'vehicle_information' => 'معلومات المركبة',
@@ -183,7 +198,7 @@ return [
     'search_vehicles' => 'البحث في المركبات...',
     'vehicle_deleted' => 'تم حذف المركبة بنجاح',
     'delete_vehicle_confirm' => 'هل أنت متأكد من رغبتك في حذف هذه المركبة؟',
-    
+
     // Contracts
     'manage_contracts' => 'إدارة عقود الإيجار والاتفاقيات',
     'contract_information' => 'معلومات العقد',
@@ -208,7 +223,7 @@ return [
     'activate_contract' => 'تنشيط العقد',
     'complete_contract' => 'إكمال العقد',
     'void_contract' => 'إلغاء العقد',
-    
+
     // Locations
     'manage_locations' => 'إدارة مواقع الاستلام والإرجاع',
     'location_information' => 'معلومات الموقع',
@@ -228,7 +243,7 @@ return [
     'active_locations' => 'المواقع النشطة',
     'location_deleted' => 'تم حذف الموقع بنجاح',
     'delete_location_confirm' => 'هل أنت متأكد من رغبتك في حذف هذا الموقع؟',
-    
+
     // Team Management
     'manage_team' => 'إدارة أعضاء الفريق والصلاحيات',
     'team_members' => 'أعضاء الفريق',
@@ -247,7 +262,7 @@ return [
     'manager' => 'مدير تنفيذي',
     'employee' => 'موظف',
     'pending_invitations' => 'الدعوات المعلقة',
-    
+
     // Common UI Elements
     'id' => 'المعرف',
     'date' => 'التاريخ',
@@ -276,7 +291,7 @@ return [
     'off' => 'معطل',
     'enabled' => 'مفعل',
     'disabled' => 'معطل',
-    
+
     // Messages and Notifications
     'created_successfully' => 'تم الإنشاء بنجاح',
     'updated_successfully' => 'تم التحديث بنجاح',
@@ -287,7 +302,7 @@ return [
     'validation_error' => 'يرجى التحقق من الأخطاء في النموذج',
     'confirm_action' => 'هل أنت متأكد من رغبتك في المتابعة؟',
     'unsaved_changes' => 'لديك تغييرات غير محفوظة. هل أنت متأكد من رغبتك في المغادرة؟',
-    
+
     // Time and Dates
     'today' => 'اليوم',
     'yesterday' => 'أمس',
@@ -298,12 +313,12 @@ return [
     'last_week' => 'الأسبوع الماضي',
     'last_month' => 'الشهر الماضي',
     'last_year' => 'العام الماضي',
-    
+
     // Welcome Page
     'welcome' => 'أهلاً وسهلاً',
     'app_name' => 'تطبيق لوكشوريا لتأجير السيارات',
     'welcome_message' => 'أهلاً بكم في خدمة تأجير السيارات المتميزة',
-    
+
     // Authentication
     'auth' => [
         'welcome' => 'أهلاً وسهلاً',
@@ -328,7 +343,7 @@ return [
         'terms' => 'أوافق على الشروط والأحكام',
         'privacy' => 'أوافق على سياسة الخصوصية',
     ],
-    
+
     // Accounting & Finance
     'accounting_dashboard' => 'لوحة تحكم المحاسبة',
     'comprehensive_financial_overview_and_analytics' => 'نظرة عامة مالية شاملة وتحليلات',
@@ -384,7 +399,7 @@ return [
     'average_age' => 'متوسط العمر',
     'years' => 'سنوات',
     'refresh' => 'تحديث',
-    
+
     // Bank & Cash Management
     'bank_accounts' => 'الحسابات البنكية',
     'cash_accounts' => 'الحسابات النقدية',
@@ -446,7 +461,7 @@ return [
     'creating' => 'جاري الإنشاء...',
     'create_bank_account' => 'إنشاء حساب بنكي',
     'clear' => 'مسح',
-    
+
     // Financial Reports & Analytics
     'financial_reports' => 'التقارير المالية',
     'generate_ifrs_compliant_financial_reports_and_analytics' => 'إنشاء تقارير مالية متوافقة مع معايير الإبلاغ المالي الدولية وتحليلات',
@@ -546,7 +561,7 @@ return [
     'report_generated_on' => 'تم إنشاء التقرير في',
     'report_parameters' => 'معايير التقرير',
     'accounting_equation' => 'المعادلة المحاسبية',
-    
+
     // Asset Management & Depreciation
     'asset_management' => 'إدارة الأصول',
     'depreciation' => 'الاستهلاك',
@@ -639,7 +654,7 @@ return [
     'failed_to_record_depreciation' => 'فشل في تسجيل الاستهلاك',
     'failed_to_record_disposal' => 'فشل في تسجيل التخلص من الأصل',
     'failed_to_update_depreciation_settings' => 'فشل في تحديث إعدادات الاستهلاك',
-    
+
     // VAT Management & Compliance
     'vat' => 'ضريبة القيمة المضافة',
     'vat_management' => 'إدارة ضريبة القيمة المضافة',
@@ -870,4 +885,4 @@ return [
     'correlation' => 'الارتباط',
     'variance' => 'التباين',
     'standard_deviation' => 'الانحراف المعياري',
-]; 
+];

@@ -425,6 +425,8 @@ async function sendEmail() {
                         <option value="cash">Cash</option>
                         <option value="credit_card">Credit Card</option>
                         <option value="bank_transfer">Bank Transfer</option>
+                        <option value="tabby">Tabby</option>
+                        <option value="tamara">Tamara</option>
                         <option value="other">Other</option>
                     </select>
                 </div>

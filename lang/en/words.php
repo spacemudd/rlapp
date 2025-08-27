@@ -14,7 +14,7 @@ return [
     'saved' => 'Saved.',
     'language' => 'Language',
     'select_language' => 'Select language',
-    
+
     // Navigation & Layout
     'dashboard' => 'Dashboard',
     'customers' => 'Customers',
@@ -32,7 +32,7 @@ return [
     'login' => 'Log in',
     'logout' => 'Log out',
     'register' => 'Register',
-    
+
     // Common Actions
     'create' => 'Create',
     'edit' => 'Edit',
@@ -48,7 +48,7 @@ return [
     'export' => 'Export',
     'import' => 'Import',
     'open' => 'Open',
-    
+
     // Customer Blocking
     'block_customer' => 'Block Customer',
     'unblock_customer' => 'Unblock Customer',
@@ -81,7 +81,7 @@ return [
     'print' => 'Print',
     'actions' => 'Actions',
     'more' => 'More',
-    
+
     // Status & Messages
     'active' => 'Active',
     'inactive' => 'Inactive',
@@ -97,11 +97,11 @@ return [
     'partial' => 'Partial',
     'void' => 'Void',
     'draft' => 'Draft',
-    
+
     // Dashboard
     'welcome_dashboard' => 'Welcome to your dashboard',
     'dashboard_overview' => 'Here\'s an overview of your business',
-    
+
     // Customers
     'manage_customers' => 'Manage your customer database and relationships',
     'customer_information' => 'Customer Information',
@@ -151,7 +151,22 @@ return [
     'trade_license_document' => 'Trade License Document',
     'download_trade_license' => 'Download Trade License',
     'no_trade_license_information' => 'No trade license information available',
-    
+    'secondary_identification' => 'Secondary Identification',
+    'secondary_identification_details' => 'Secondary identification documents',
+    'passport_number' => 'Passport Number',
+    'passport_expiry' => 'Passport Expiry',
+    'resident_id_number' => 'Resident ID Number',
+    'resident_id_expiry' => 'Resident ID Expiry',
+    'visit_visa_document' => 'Visit Visa Document',
+    'download_visit_visa' => 'Download Visit Visa',
+    'cash_payments_total' => 'Cash Total',
+    'cash_payments_count' => 'Cash Count',
+    'credit_card_payments_total' => 'Credit Card Total',
+    'credit_card_payments_count' => 'Credit Card Count',
+    'bank_transfer_payments_total' => 'Bank Transfer Total',
+    'bank_transfer_payments_count' => 'Bank Transfer Count',
+    'transactions' => 'Transactions',
+
     // Invoices
     'manage_invoices' => 'Manage and track all your invoices',
     'invoice_information' => 'Invoice Information',
@@ -178,7 +193,7 @@ return [
     'delete_invoice_confirm' => 'Are you sure you want to delete this invoice?',
     'download_pdf' => 'Download PDF',
     'send_invoice' => 'Send Invoice',
-    
+
     // Vehicles
     'manage_vehicles' => 'Manage your vehicle fleet',
     'vehicle_information' => 'Vehicle Information',
@@ -210,7 +225,7 @@ return [
     'search_vehicles' => 'Search vehicles...',
     'vehicle_deleted' => 'Vehicle deleted successfully',
     'delete_vehicle_confirm' => 'Are you sure you want to delete this vehicle?',
-    
+
     // Contracts
     'manage_contracts' => 'Manage rental contracts and agreements',
     'contract_information' => 'Contract Information',
@@ -235,7 +250,7 @@ return [
     'activate_contract' => 'Activate Contract',
     'complete_contract' => 'Complete Contract',
     'void_contract' => 'Void Contract',
-    
+
     // Locations
     'manage_locations' => 'Manage pickup and drop-off locations',
     'location_information' => 'Location Information',
@@ -255,7 +270,7 @@ return [
     'active_locations' => 'Active Locations',
     'location_deleted' => 'Location deleted successfully',
     'delete_location_confirm' => 'Are you sure you want to delete this location?',
-    
+
     // Team Management
     'manage_team' => 'Manage team members and permissions',
     'team_members' => 'Team Members',
@@ -274,7 +289,7 @@ return [
     'manager' => 'Manager',
     'employee' => 'Employee',
     'pending_invitations' => 'Pending Invitations',
-    
+
     // Common UI Elements
     'id' => 'ID',
     'date' => 'Date',
@@ -303,7 +318,7 @@ return [
     'off' => 'Off',
     'enabled' => 'Enabled',
     'disabled' => 'Disabled',
-    
+
     // Messages and Notifications
     'created_successfully' => 'Created successfully',
     'updated_successfully' => 'Updated successfully',
@@ -314,7 +329,7 @@ return [
     'validation_error' => 'Please check the form for errors',
     'confirm_action' => 'Are you sure you want to proceed?',
     'unsaved_changes' => 'You have unsaved changes. Are you sure you want to leave?',
-    
+
     // Time and Dates
     'today' => 'Today',
     'yesterday' => 'Yesterday',
@@ -325,12 +340,12 @@ return [
     'last_week' => 'Last Week',
     'last_month' => 'Last Month',
     'last_year' => 'Last Year',
-    
+
     // Welcome Page
     'welcome' => 'Welcome',
     'app_name' => 'Luxuria Cars Rental Application',
     'welcome_message' => 'Welcome to our premium car rental service',
-    
+
     // Authentication
     'auth' => [
         'welcome' => 'Welcome',
@@ -355,7 +370,7 @@ return [
         'terms' => 'I agree to the terms and conditions',
         'privacy' => 'I agree to the privacy policy',
     ],
-    
+
     // Accounting & Finance
     'accounting_dashboard' => 'Accounting Dashboard',
     'comprehensive_financial_overview_and_analytics' => 'Comprehensive financial overview and analytics',
@@ -411,7 +426,7 @@ return [
     'average_age' => 'Average Age',
     'years' => 'years',
     'refresh' => 'Refresh',
-    
+
     // Bank & Cash Management
     'bank_accounts' => 'Bank Accounts',
     'cash_accounts' => 'Cash Accounts',
@@ -473,7 +488,7 @@ return [
     'creating' => 'Creating...',
     'create_bank_account' => 'Create Bank Account',
     'clear' => 'Clear',
-    
+
     // Financial Reports & Analytics
     'financial_reports' => 'Financial Reports',
     'generate_ifrs_compliant_financial_reports_and_analytics' => 'Generate IFRS-compliant financial reports and analytics',
@@ -573,7 +588,7 @@ return [
     'report_generated_on' => 'Report Generated On',
     'report_parameters' => 'Report Parameters',
     'accounting_equation' => 'Accounting Equation',
-    
+
     // Asset Management & Depreciation
     'asset_management' => 'Asset Management',
     'depreciation' => 'Depreciation',
@@ -666,7 +681,7 @@ return [
     'failed_to_record_depreciation' => 'Failed to record depreciation',
     'failed_to_record_disposal' => 'Failed to record asset disposal',
     'failed_to_update_depreciation_settings' => 'Failed to update depreciation settings',
-    
+
     // VAT Management & Compliance
     'vat' => 'VAT',
     'vat_management' => 'VAT Management',
@@ -897,4 +912,4 @@ return [
     'correlation' => 'Correlation',
     'variance' => 'Variance',
     'standard_deviation' => 'Standard Deviation',
-]; 
+];
