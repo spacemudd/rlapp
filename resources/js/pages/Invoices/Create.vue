@@ -68,7 +68,12 @@ const form = useForm({
     type: 'Rental',
     items: [
         { description: '', amount: 0, discount: 0 }
-    ]
+    ],
+    // Discount fields
+    general_manager_discount: 0,
+    fazaa_discount: 0,
+    esaad_discount: 0,
+    discount_reason: ''
 });
 
 const selectedCustomer = ref<any>(null);
@@ -77,11 +82,17 @@ const showCreateCustomerDialog = ref(false);
 const customerComboboxRef = ref<any>(null);
 
 const invoiceAmount = computed(() => {
-    return (form.items as InvoiceItem[]).reduce((sum: number, item: InvoiceItem) => sum + (Number(item.amount || 0) - Number(item.discount || 0)), 0);
+    const itemsTotal = (form.items as InvoiceItem[]).reduce((sum: number, item: InvoiceItem) => sum + (Number(item.amount || 0) - Number(item.discount || 0)), 0);
+    const totalDiscounts = Number(form.general_manager_discount || 0) + Number(form.fazaa_discount || 0) + Number(form.esaad_discount || 0);
+    return itemsTotal - totalDiscounts;
 });
 
 const remainingAmount = computed(() => {
     return invoiceAmount.value - Number(form.total_amount || 0);
+});
+
+const totalDiscounts = computed(() => {
+    return Number(form.general_manager_discount || 0) + Number(form.fazaa_discount || 0) + Number(form.esaad_discount || 0);
 });
 
 const contractTotalAmount = computed(() => {
@@ -100,6 +111,19 @@ watch(
         form.total_amount = form.sub_total - form.total_discount;
     },
     { deep: true }
+);
+
+// Watch for discount changes
+watch(
+    [() => form.general_manager_discount, () => form.fazaa_discount, () => form.esaad_discount],
+    () => {
+        // Update total amount when discounts change
+        const itemsArray = form.items as InvoiceItem[];
+        const subTotal = itemsArray.reduce((sum: number, item: InvoiceItem) => sum + (Number(item.amount) || 0), 0);
+        const itemDiscounts = itemsArray.reduce((sum: number, item: InvoiceItem) => sum + (Number(item.discount) || 0), 0);
+        const totalDiscounts = Number(form.general_manager_discount || 0) + Number(form.fazaa_discount || 0) + Number(form.esaad_discount || 0);
+        form.total_amount = subTotal - itemDiscounts - totalDiscounts;
+    }
 );
 
 // Watch for paid amount changes
@@ -215,6 +239,11 @@ const handleSubmit = () => {
     // Calculate totals one last time before submission
     form.sub_total = itemsArray.reduce((sum: number, item: InvoiceItem) => sum + (Number(item.amount) || 0), 0);
     form.total_discount = itemsArray.reduce((sum: number, item: InvoiceItem) => sum + (Number(item.discount) || 0), 0);
+
+    // Add the additional discounts to total_discount
+    const additionalDiscounts = Number(form.general_manager_discount || 0) + Number(form.fazaa_discount || 0) + Number(form.esaad_discount || 0);
+    form.total_discount += additionalDiscounts;
+
     form.total_amount = form.sub_total - form.total_discount;
 
     // Ensure all items have required fields
@@ -733,6 +762,106 @@ const selectedContractVehicleName = computed(() => {
                   </div>
                 </div>
 
+                <!-- Discounts Section -->
+                <Card class="border-none shadow-md lg:col-span-2">
+                    <CardHeader class="pb-4">
+                        <CardTitle class="text-lg font-medium">Discounts</CardTitle>
+                        <CardDescription>Apply discounts to the total invoice amount</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="space-y-2">
+                                <Label for="general_manager_discount" class="text-sm font-medium">General Manager Discount (AED)</Label>
+                                <div class="relative">
+                                    <DollarSign class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                                    <Input
+                                        id="general_manager_discount"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        v-model="form.general_manager_discount"
+                                        class="h-10 pl-10"
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                                <div v-if="form.errors.general_manager_discount" class="text-sm text-red-600">
+                                    {{ form.errors.general_manager_discount }}
+                                </div>
+                            </div>
+
+                            <div class="space-y-2">
+                                <Label for="fazaa_discount" class="text-sm font-medium">Faza'a Discount (AED)</Label>
+                                <div class="relative">
+                                    <DollarSign class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                                    <Input
+                                        id="fazaa_discount"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        v-model="form.fazaa_discount"
+                                        class="h-10 pl-10"
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                                <div v-if="form.errors.fazaa_discount" class="text-sm text-red-600">
+                                    {{ form.errors.fazaa_discount }}
+                                </div>
+                            </div>
+
+                            <div class="space-y-2">
+                                <Label for="esaad_discount" class="text-sm font-medium">Esaad Discount (AED)</Label>
+                                <div class="relative">
+                                    <DollarSign class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                                    <Input
+                                        id="esaad_discount"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        v-model="form.esaad_discount"
+                                        class="h-10 pl-10"
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                                <div v-if="form.errors.esaad_discount" class="text-sm text-red-600">
+                                    {{ form.errors.esaad_discount }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 space-y-2">
+                            <Label for="discount_reason" class="text-sm font-medium">Discount Reason (Optional)</Label>
+                            <Textarea
+                                id="discount_reason"
+                                v-model="form.discount_reason"
+                                placeholder="Enter the reason for applying these discounts..."
+                                rows="2"
+                            />
+                            <div v-if="form.errors.discount_reason" class="text-sm text-red-600">
+                                {{ form.errors.discount_reason }}
+                            </div>
+                        </div>
+
+                        <!-- Discount Summary -->
+                        <div v-if="totalDiscounts > 0" class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                            <div class="flex items-center justify-between">
+                                <span class="text-blue-800 font-medium">Total Discounts Applied:</span>
+                                <span class="text-xl font-bold text-blue-900">{{ totalDiscounts.toFixed(2) }} AED</span>
+                            </div>
+                            <div class="mt-2 text-sm text-blue-700">
+                                <div v-if="form.general_manager_discount > 0">
+                                    General Manager: {{ Number(form.general_manager_discount).toFixed(2) }} AED
+                                </div>
+                                <div v-if="form.fazaa_discount > 0">
+                                    Faza'a: {{ Number(form.fazaa_discount).toFixed(2) }} AED
+                                </div>
+                                <div v-if="form.esaad_discount > 0">
+                                    Esaad: {{ Number(form.esaad_discount).toFixed(2) }} AED
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
                 <!-- Financial Details -->
                 <Card class="border-none shadow-md lg:col-span-2">
                     <CardHeader class="pb-4">
@@ -740,13 +869,17 @@ const selectedContractVehicleName = computed(() => {
                         <CardDescription>Enter the payment and amount information</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                             <div class="space-y-2">
                                 <Label for="invoice_amount" class="text-sm font-medium">Invoice Amount</Label>
                                 <div class="relative">
                                     <DollarSign class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                                     <Input id="invoice_amount" :value="contractTotalAmount !== null ? Number(contractTotalAmount).toFixed(2) : Number(invoiceAmount).toFixed(2)" readonly class="h-10 pl-10 bg-gray-100 cursor-not-allowed" />
                                 </div>
+                            </div>
+                            <div class="space-y-2">
+                                <Label class="block text-sm font-medium mb-1">Total Discounts</Label>
+                                <div class="input w-full bg-red-50 text-red-700 font-medium">{{ totalDiscounts.toFixed(2) }} AED</div>
                             </div>
                             <div class="space-y-2">
                                 <Label class="block text-sm font-medium mb-1">Paid Amount</Label>
