@@ -42,6 +42,8 @@ class Payment extends Model
     const METHOD_BANK_TRANSFER = 'bank_transfer';
     const METHOD_CREDIT_CARD = 'credit_card';
     const METHOD_ONLINE = 'online';
+    const METHOD_TABBY = 'tabby';
+    const METHOD_TAMARA = 'tamara';
 
     public static function getPaymentMethods()
     {
@@ -51,6 +53,8 @@ class Payment extends Model
             self::METHOD_BANK_TRANSFER => 'Bank Transfer',
             self::METHOD_CREDIT_CARD => 'Credit Card',
             self::METHOD_ONLINE => 'Online Payment',
+            self::METHOD_TABBY => 'Tabby',
+            self::METHOD_TAMARA => 'Tamara',
         ];
     }
 
@@ -110,7 +114,9 @@ class Payment extends Model
         return in_array($this->payment_method, [
             self::METHOD_BANK_TRANSFER,
             self::METHOD_CREDIT_CARD,
-            self::METHOD_ONLINE
+            self::METHOD_ONLINE,
+            self::METHOD_TABBY,
+            self::METHOD_TAMARA
         ]) && !is_null($this->bank_id);
     }
 
@@ -141,11 +147,11 @@ class Payment extends Model
         if ($this->bank_id) {
             return $this->bank;
         }
-        
+
         if ($this->cash_account_id) {
             return $this->cashAccount;
         }
-        
+
         return null;
     }
 
@@ -196,14 +202,14 @@ class Payment extends Model
     protected static function boot()
     {
         parent::boot();
-        
+
         // Sync invoice payment fields after payment is saved
         static::saved(function ($payment) {
             if ($payment->invoice_id && $payment->invoice) {
                 $payment->invoice->syncPaymentFields();
             }
         });
-        
+
         // Sync invoice payment fields after payment is deleted
         static::deleted(function ($payment) {
             if ($payment->invoice_id) {

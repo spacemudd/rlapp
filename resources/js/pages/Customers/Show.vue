@@ -38,6 +38,13 @@ interface Customer {
         id: string;
         name: string;
     };
+    // Secondary identification fields
+    secondary_identification_type?: 'passport' | 'resident_id' | 'visit_visa';
+    passport_number?: string;
+    passport_expiry?: string;
+    resident_id_number?: string;
+    resident_id_expiry?: string;
+    visit_visa_pdf_path?: string;
 }
 
 interface Props {
@@ -67,8 +74,8 @@ function getFullName() {
 }
 
 const getDisplayName = () => {
-    return props.customer.business_type === 'business' && props.customer.business_name 
-        ? props.customer.business_name 
+    return props.customer.business_type === 'business' && props.customer.business_name
+        ? props.customer.business_name
         : `${props.customer.first_name} ${props.customer.last_name}`;
 };
 
@@ -127,33 +134,33 @@ const handleCustomerUnblocked = () => {
                         </div>
 
                         <div class="flex items-center gap-2" :class="{ 'flex-row-reverse': isRtl }">
-                            <Badge 
+                            <Badge
                                 :variant="customer.status === 'active' ? 'default' : 'destructive'"
                             >
                                 {{ customer.status === 'active' ? t('active') : t('inactive') }}
                             </Badge>
-                            
+
                             <!-- Blocked status badge -->
-                            <Badge 
+                            <Badge
                                 v-if="customer.is_blocked"
                                 variant="destructive"
                                 class="bg-red-600"
                             >
                                 🚫 {{ t('blocked') }}
                             </Badge>
-                            
+
                             <!-- Block/Unblock actions -->
-                            <BlockCustomerDialog 
-                                v-if="!customer.is_blocked" 
-                                :customer="customer" 
-                                @blocked="handleCustomerBlocked" 
+                            <BlockCustomerDialog
+                                v-if="!customer.is_blocked"
+                                :customer="customer"
+                                @blocked="handleCustomerBlocked"
                             />
-                            <UnblockCustomerDialog 
-                                v-if="customer.is_blocked" 
-                                :customer="customer" 
-                                @unblocked="handleCustomerUnblocked" 
+                            <UnblockCustomerDialog
+                                v-if="customer.is_blocked"
+                                :customer="customer"
+                                @unblocked="handleCustomerUnblocked"
                             />
-                            
+
                             <Link :href="`/customers/${customer.id}/edit`">
                                 <Button>
                                     <Edit :class="[
@@ -397,6 +404,77 @@ const handleCustomerUnblocked = () => {
                             </CardContent>
                         </Card>
 
+                        <!-- Secondary Identification Documents -->
+                        <Card v-if="customer.secondary_identification_type">
+                            <CardHeader>
+                                <CardTitle :class="{ 'text-right': isRtl }">{{ t('secondary_identification') }}</CardTitle>
+                                <CardDescription :class="{ 'text-right': isRtl }">
+                                    {{ t('secondary_identification_details') }}
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent class="space-y-4">
+                                <!-- Passport Information -->
+                                <div v-if="customer.secondary_identification_type === 'passport'">
+                                    <div class="grid gap-2">
+                                        <label class="text-sm font-medium text-muted-foreground" :class="{ 'text-right': isRtl }">
+                                            {{ t('passport_number') }}
+                                        </label>
+                                        <div class="flex items-center gap-2 text-sm" :class="{ 'flex-row-reverse': isRtl }">
+                                            <FileText class="h-4 w-4" />
+                                            {{ customer.passport_number }}
+                                        </div>
+                                    </div>
+                                    <div v-if="customer.passport_expiry" class="grid gap-2 mt-3">
+                                        <label class="text-sm font-medium text-muted-foreground" :class="{ 'text-right': isRtl }">
+                                            {{ t('passport_expiry') }}
+                                        </label>
+                                        <div class="flex items-center gap-2 text-sm" :class="{ 'flex-row-reverse': isRtl }">
+                                            <Calendar class="h-4 w-4" />
+                                            {{ formatDate(customer.passport_expiry) }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Resident ID Information -->
+                                <div v-if="customer.secondary_identification_type === 'resident_id'">
+                                    <div class="grid gap-2">
+                                        <label class="text-sm font-medium text-muted-foreground" :class="{ 'text-right': isRtl }">
+                                            {{ t('resident_id_number') }}
+                                        </label>
+                                        <div class="flex items-center gap-2 text-sm" :class="{ 'flex-row-reverse': isRtl }">
+                                            <FileText class="h-4 w-4" />
+                                            {{ customer.resident_id_number }}
+                                        </div>
+                                    </div>
+                                    <div v-if="customer.resident_id_expiry" class="grid gap-2 mt-3">
+                                        <label class="text-sm font-medium text-muted-foreground" :class="{ 'text-right': isRtl }">
+                                            {{ t('resident_id_expiry') }}
+                                        </label>
+                                        <div class="flex items-center gap-2 text-sm" :class="{ 'flex-row-reverse': isRtl }">
+                                            <Calendar class="h-4 w-4" />
+                                            {{ formatDate(customer.resident_id_expiry) }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Visit Visa Document -->
+                                <div v-if="customer.secondary_identification_type === 'visit_visa' && customer.visit_visa_pdf_path" class="grid gap-2">
+                                    <label class="text-sm font-medium text-muted-foreground" :class="{ 'text-right': isRtl }">
+                                        {{ t('visit_visa_document') }}
+                                    </label>
+                                    <a
+                                        :href="`/storage/${customer.visit_visa_pdf_path}`"
+                                        target="_blank"
+                                        class="inline-flex items-center gap-2 px-3 py-2 text-sm bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors w-fit"
+                                        :class="{ 'flex-row-reverse': isRtl }"
+                                    >
+                                        <Download class="h-4 w-4" />
+                                        {{ t('download_visit_visa') }}
+                                    </a>
+                                </div>
+                            </CardContent>
+                        </Card>
+
                         <!-- Additional Information -->
                         <Card class="md:col-span-2">
                             <CardHeader>
@@ -431,4 +509,4 @@ const handleCustomerUnblocked = () => {
             </div>
         </div>
     </AppLayout>
-</template> 
+</template>

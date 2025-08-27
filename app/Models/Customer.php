@@ -25,6 +25,7 @@ class Customer extends Model
         'driver_name',
         'trade_license_number',
         'trade_license_pdf_path',
+        'visit_visa_pdf_path',
         'first_name',
         'last_name',
         'email',
@@ -353,7 +354,7 @@ class Customer extends Model
             'blocked_at' => now(),
             'blocked_by_user_id' => $user->id,
         ]);
-        
+
         $this->recordBlockAction('blocked', $reason, $user, $notes);
     }
 
@@ -368,7 +369,7 @@ class Customer extends Model
             'blocked_at' => null,
             'blocked_by_user_id' => null,
         ]);
-        
+
         $this->recordBlockAction('unblocked', null, $user, $notes);
     }
 

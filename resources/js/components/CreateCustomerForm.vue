@@ -30,6 +30,7 @@ const form = useForm({
     driver_name: '',
     trade_license_number: '',
     trade_license_pdf: null as File | null,
+    visit_visa_pdf: null as File | null,
     first_name: '',
     last_name: '',
     email: '',
@@ -57,17 +58,17 @@ watch(() => props.editingCustomer, (customer) => {
         Object.keys(form.data()).forEach(key => {
             if (key in customer) {
                 let value = customer[key] || '';
-                
+
                 // Format date fields for HTML date inputs (YYYY-MM-DD)
                 if ((key === 'date_of_birth' || key === 'drivers_license_expiry' || key === 'passport_expiry' || key === 'resident_id_expiry') && value) {
                     // Extract just the date part (YYYY-MM-DD) from datetime strings
                     value = value.split('T')[0];
                 }
-                
+
                 (form as any)[key] = value;
             }
         });
-        
+
         // Set secondary identification type based on existing data
         if (customer.passport_number) {
             form.secondary_identification_type = 'passport';
@@ -81,6 +82,11 @@ watch(() => props.editingCustomer, (customer) => {
         form.driver_name = '';
         form.trade_license_number = '';
         form.trade_license_pdf = null;
+        form.visit_visa_pdf = null;
+        form.passport_number = '';
+        form.passport_expiry = '';
+        form.resident_id_number = '';
+        form.resident_id_expiry = '';
         form.country = 'United Arab Emirates';
         form.status = 'active';
         form.drivers_license_number = '';
@@ -96,13 +102,21 @@ watch(() => props.editingCustomer, (customer) => {
 // Watch for secondary identification type changes to clear unused fields
 watch(() => form.secondary_identification_type, (newType) => {
     if (newType === 'passport') {
-        // Clear resident ID fields
+        // Clear resident ID and visit visa fields
         form.resident_id_number = '';
         form.resident_id_expiry = '';
+        form.visit_visa_pdf = null;
     } else if (newType === 'resident_id') {
-        // Clear passport fields
+        // Clear passport and visit visa fields
         form.passport_number = '';
         form.passport_expiry = '';
+        form.visit_visa_pdf = null;
+    } else if (newType === 'visit_visa') {
+        // Clear passport and resident ID fields
+        form.passport_number = '';
+        form.passport_expiry = '';
+        form.resident_id_number = '';
+        form.resident_id_expiry = '';
     }
 });
 
@@ -112,13 +126,13 @@ const submitForm = () => {
         alert('Please enter a business/company name for business customers');
         return;
     }
-    
+
     // Client-side validation for secondary identification
     if (!form.secondary_identification_type) {
-        alert('Please select either Passport or Emirates Resident ID');
+        alert('Please select either Passport, Emirates Resident ID, or Visit Visa');
         return;
     }
-    
+
     if (form.secondary_identification_type === 'passport') {
         if (!form.passport_number || !form.passport_expiry) {
             alert('Please fill in all passport information');
@@ -129,8 +143,13 @@ const submitForm = () => {
             alert('Please fill in all Emirates Resident ID information');
             return;
         }
+    } else if (form.secondary_identification_type === 'visit_visa') {
+        if (!form.visit_visa_pdf) {
+            alert('Please upload the visit visa PDF document');
+            return;
+        }
     }
-    
+
     console.log('Form data being submitted:', form.data());
     emit('submit', form);
 };
@@ -145,13 +164,13 @@ const cancelForm = () => {
         <!-- Required Fields Section -->
         <div class="space-y-4">
             <h3 class="text-lg font-medium text-gray-900">Required Information</h3>
-            
+
             <!-- Customer Type Selection -->
             <div class="space-y-4">
                 <Label>Customer Type *</Label>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <!-- Individual Customer -->
-                    <div 
+                    <div
                         class="relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:bg-gray-50"
                         :class="{
                             'border-blue-500 bg-blue-50': form.business_type === 'individual',
@@ -174,7 +193,7 @@ const cancelForm = () => {
                     </div>
 
                     <!-- Business Customer -->
-                    <div 
+                    <div
                         class="relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:bg-gray-50"
                         :class="{
                             'border-blue-500 bg-blue-50': form.business_type === 'business',
@@ -224,7 +243,7 @@ const cancelForm = () => {
                     <InputError :message="form.errors.driver_name" />
                     <p class="text-sm text-gray-600">Leave empty if the owner is the driver</p>
                 </div>
-                
+
                 <div class="space-y-2">
                     <Label for="trade_license_number">Trade License Number</Label>
                     <Input
@@ -235,7 +254,7 @@ const cancelForm = () => {
                     />
                     <InputError :message="form.errors.trade_license_number" />
                 </div>
-                
+
                 <div class="space-y-2">
                     <Label for="trade_license_pdf">Trade License PDF</Label>
                     <Input
@@ -247,6 +266,8 @@ const cancelForm = () => {
                     <InputError :message="form.errors.trade_license_pdf" />
                     <p class="text-sm text-gray-600">Upload trade license document (PDF only, optional)</p>
                 </div>
+
+
             </div>
 
             <!-- Owner/Personal Information -->
@@ -318,10 +339,10 @@ const cancelForm = () => {
             <!-- Secondary Identification -->
             <div class="space-y-4">
                 <Label>Secondary Identification (Choose One) *</Label>
-                <p class="text-sm text-gray-600">You must provide either a Passport OR Emirates ID/Resident ID</p>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <p class="text-sm text-gray-600">You must provide either a Passport, Emirates ID/Resident ID, or Visit Visa</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <!-- Passport Option -->
-                    <div 
+                    <div
                         class="relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:bg-gray-50"
                         :class="{
                             'border-blue-500 bg-blue-50': form.secondary_identification_type === 'passport',
@@ -345,7 +366,7 @@ const cancelForm = () => {
                     </div>
 
                     <!-- Resident ID Option -->
-                    <div 
+                    <div
                         class="relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:bg-gray-50"
                         :class="{
                             'border-blue-500 bg-blue-50': form.secondary_identification_type === 'resident_id',
@@ -362,6 +383,30 @@ const cancelForm = () => {
                             type="radio"
                             name="secondary_identification_type"
                             value="resident_id"
+                            v-model="form.secondary_identification_type"
+                            class="absolute top-2 right-2"
+                            required
+                        />
+                    </div>
+
+                    <!-- Visit Visa Option -->
+                    <div
+                        class="relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:bg-gray-50"
+                        :class="{
+                            'border-blue-500 bg-blue-50': form.secondary_identification_type === 'visit_visa',
+                            'border-gray-200': form.secondary_identification_type !== 'visit_visa'
+                        }"
+                        @click="form.secondary_identification_type = 'visit_visa'"
+                    >
+                        <div class="flex flex-col items-center text-center space-y-2">
+                            <FileText class="h-8 w-8 text-gray-600" />
+                            <h3 class="font-medium text-gray-900">Visit Visa</h3>
+                            <p class="text-sm text-gray-500">Visit Visa Document</p>
+                        </div>
+                        <input
+                            type="radio"
+                            name="secondary_identification_type"
+                            value="visit_visa"
                             v-model="form.secondary_identification_type"
                             class="absolute top-2 right-2"
                             required
@@ -420,6 +465,21 @@ const cancelForm = () => {
                 </div>
             </div>
 
+            <div v-if="form.secondary_identification_type === 'visit_visa'" class="space-y-4">
+                <div class="space-y-2">
+                    <Label for="visit_visa_pdf">Visit Visa PDF *</Label>
+                    <Input
+                        id="visit_visa_pdf"
+                        type="file"
+                        accept=".pdf"
+                        @input="form.visit_visa_pdf = $event.target.files[0]"
+                        :required="form.secondary_identification_type === 'visit_visa'"
+                    />
+                    <InputError :message="form.errors.visit_visa_pdf" />
+                    <p class="text-sm text-gray-600">Attach copy of client's visit visa (PDF only, required)</p>
+                </div>
+            </div>
+
             <!-- Country and Nationality Information -->
             <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">
@@ -444,7 +504,7 @@ const cancelForm = () => {
 
             <div class="space-y-2">
                 <Label for="status">Status *</Label>
-                <select 
+                <select
                     id="status"
                     v-model="form.status"
                     class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
@@ -513,7 +573,7 @@ const cancelForm = () => {
 
             <div class="space-y-2">
                 <Label for="notes">Notes</Label>
-                <Textarea 
+                <Textarea
                     id="notes"
                     v-model="form.notes"
                     placeholder="Additional notes about the customer..."
@@ -532,4 +592,4 @@ const cancelForm = () => {
             </Button>
         </DialogFooter>
     </form>
-</template> 
+</template>

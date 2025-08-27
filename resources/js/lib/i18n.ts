@@ -356,6 +356,15 @@ const messages = {
         pickup_date: 'Pickup Date',
         pickup_location: 'Pickup Location',
         return_date: 'Return Date',
+
+        // Payment Statistics
+        cash_payments_total: 'Cash Total',
+        cash_payments_count: 'Cash Count',
+        credit_card_payments_total: 'Credit Card Total',
+        credit_card_payments_count: 'Credit Card Count',
+        bank_transfer_payments_total: 'Bank Transfer Total',
+        bank_transfer_payments_count: 'Bank Transfer Count',
+        transactions: 'Transactions',
     },
     ar: {
         // Profile & Settings
@@ -711,6 +720,15 @@ const messages = {
         pickup_date: 'تاريخ الاستلام',
         pickup_location: 'موقع الاستلام',
         return_date: 'تاريخ الإرجاع',
+
+        // Payment Statistics
+        cash_payments_total: 'إجمالي النقد',
+        cash_payments_count: 'عدد النقد',
+        credit_card_payments_total: 'إجمالي البطاقة الائتمانية',
+        credit_card_payments_count: 'عدد البطاقة الائتمانية',
+        bank_transfer_payments_total: 'إجمالي التحويل البنكي',
+        bank_transfer_payments_count: 'عدد التحويل البنكي',
+        transactions: 'المعاملات',
     },
 };
 

@@ -22,13 +22,14 @@ class UpdateCustomerRequest extends FormRequest
     public function rules(): array
     {
         $customer = $this->route('customer');
-        
+
         $rules = [
             'business_type' => 'required|in:individual,business',
             'business_name' => 'nullable|string|max:255|required_if:business_type,business',
             'driver_name' => 'nullable|string|max:255',
             'trade_license_number' => 'nullable|string|max:255',
             'trade_license_pdf' => 'nullable|file|mimes:pdf|max:10240', // 10MB max
+            'visit_visa_pdf' => 'nullable|file|mimes:pdf|max:10240', // 10MB max
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'nullable|string|email|max:255|unique:customers,email,' . $customer->id,
@@ -38,7 +39,7 @@ class UpdateCustomerRequest extends FormRequest
             'drivers_license_number' => 'required|string|max:255',
             'drivers_license_expiry' => 'required|date|after:today',
             // Secondary identification type is required
-            'secondary_identification_type' => 'required|in:passport,resident_id',
+            'secondary_identification_type' => 'required|in:passport,resident_id,visit_visa',
             'country' => 'required|string|max:255',
             'nationality' => 'required|string|max:255',
             'emergency_contact_name' => 'nullable|string|max:255',
@@ -49,7 +50,7 @@ class UpdateCustomerRequest extends FormRequest
 
         // Add conditional validation based on secondary identification type
         $secondaryIdentificationType = $this->input('secondary_identification_type');
-        
+
         switch ($secondaryIdentificationType) {
             case 'passport':
                 $rules['passport_number'] = 'required|string|max:255';
@@ -58,6 +59,9 @@ class UpdateCustomerRequest extends FormRequest
             case 'resident_id':
                 $rules['resident_id_number'] = 'required|string|max:255';
                 $rules['resident_id_expiry'] = 'required|date|after:today';
+                break;
+            case 'visit_visa':
+                $rules['visit_visa_pdf'] = 'required|file|mimes:pdf|max:10240';
                 break;
         }
 
@@ -76,6 +80,9 @@ class UpdateCustomerRequest extends FormRequest
             'trade_license_pdf.file' => 'Trade license must be a valid file.',
             'trade_license_pdf.mimes' => 'Trade license must be a PDF file.',
             'trade_license_pdf.max' => 'Trade license file size must not exceed 10MB.',
+            'visit_visa_pdf.file' => 'Visit visa must be a valid file.',
+            'visit_visa_pdf.mimes' => 'Visit visa must be a PDF file.',
+            'visit_visa_pdf.max' => 'Visit visa file size must not exceed 10MB.',
             'secondary_identification_type.required' => 'Please select a secondary identification type.',
             'secondary_identification_type.in' => 'Invalid secondary identification type selected.',
             'drivers_license_number.required' => 'Driver\'s license number is required.',
@@ -98,19 +105,23 @@ class UpdateCustomerRequest extends FormRequest
     {
         // Clear identification fields that aren't relevant to the selected secondary type
         $secondaryIdentificationType = $this->input('secondary_identification_type');
-        
+
         $fieldsToNull = [];
-        
+
         // Driver's license is always required, so we don't null it
-        
+
         if ($secondaryIdentificationType !== 'passport') {
             $fieldsToNull = array_merge($fieldsToNull, ['passport_number', 'passport_expiry']);
         }
-        
+
         if ($secondaryIdentificationType !== 'resident_id') {
             $fieldsToNull = array_merge($fieldsToNull, ['resident_id_number', 'resident_id_expiry']);
         }
-        
+
+        if ($secondaryIdentificationType !== 'visit_visa') {
+            $fieldsToNull = array_merge($fieldsToNull, ['visit_visa_pdf']);
+        }
+
         // Set irrelevant fields to null
         foreach ($fieldsToNull as $field) {
             if ($this->has($field)) {
