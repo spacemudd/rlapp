@@ -21,13 +21,13 @@ class TeamRolesSeeder extends Seeder
             'create users',
             'edit users',
             'delete users',
-            
+
             // Customer management
             'view customers',
             'create customers',
             'edit customers',
             'delete customers',
-            
+
             // Invoice management
             'view invoices',
             'create invoices',
@@ -35,23 +35,23 @@ class TeamRolesSeeder extends Seeder
             'delete invoices',
             'approve invoices',
             'send invoices',
-            
+
             // Vehicle management
             'view vehicles',
             'create vehicles',
             'edit vehicles',
             'delete vehicles',
-            
+
             // Financial operations
             'view financial reports',
             'manage payments',
             'view payment history',
             'export financial data',
-            
+
             // Team management
             'manage team settings',
             'view team analytics',
-            
+
             // System administration
             'manage system settings',
             'view system logs',
@@ -67,7 +67,7 @@ class TeamRolesSeeder extends Seeder
 
         // Get all teams and create roles for each
         $teams = Team::all();
-        
+
         foreach ($teams as $team) {
             $this->createRolesForTeam($team);
         }
