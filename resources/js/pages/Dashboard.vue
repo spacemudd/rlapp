@@ -40,6 +40,26 @@ interface LateInvoice {
 }
 const lateInvoicesList = (usePage().props.late_invoices_list ?? []) as LateInvoice[];
 
+// Latest payments interface and data
+interface LatestPayment {
+  id: number | string;
+  amount: number;
+  payment_method: string;
+  status: string;
+  created_at: string;
+  invoice: {
+    id: number | string;
+    invoice_number: string;
+  } | null;
+  customer: {
+    id: number | string;
+    first_name: string;
+    last_name: string;
+    business_name: string | null;
+  } | null;
+}
+const latestPayments = (usePage().props.latest_payments ?? []) as LatestPayment[];
+
 const statCards = [
   {
     label: t('late_invoices_amount'),
@@ -166,6 +186,25 @@ function daysAgo(dueDate: string) {
     const diff = Math.floor((now.getTime() - due.getTime()) / (1000 * 60 * 60 * 24));
     return diff > 0 ? diff : 0;
 }
+
+function formatPaymentMethod(method: string) {
+    const methods: { [key: string]: string } = {
+        'cash': t('cash'),
+        'credit_card': t('credit_card'),
+        'bank_transfer': t('bank_transfer'),
+        'tabby': 'Tabby',
+        'tamara': 'Tamara',
+        'check': t('check'),
+        'online': t('online_payment'),
+    };
+    return methods[method] || method;
+}
+
+function getCustomerName(customer: any) {
+    if (!customer) return t('unknown_customer');
+    if (customer.business_name) return customer.business_name;
+    return `${customer.first_name} ${customer.last_name}`;
+}
 </script>
 
 <template>
@@ -280,6 +319,62 @@ function daysAgo(dueDate: string) {
                                             </p>
                                             <p class="text-sm text-red-600 font-medium">
                                                 {{ t('overdue') }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+
+                    <!-- Latest Payments List -->
+                    <Card class="border border-gray-100">
+                        <div class="p-6">
+                            <div class="flex items-center justify-between mb-6">
+                                <div>
+                                    <h2 class="text-xl font-semibold text-gray-900">{{ t('latest_payments') }}</h2>
+                                    <p class="text-sm text-gray-500 mt-1">{{ t('recent_payment_activities') }}</p>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    class="text-primary-600 hover:text-primary-700 hover:bg-primary-50 transition-colors duration-200"
+                                >
+                                    {{ t('view_all') }}
+                                </Button>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div v-if="latestPayments.length === 0" class="flex flex-col items-center justify-center py-12 text-gray-500">
+                                    <CreditCard class="w-12 h-12 mb-4 text-gray-400" />
+                                    <p class="text-lg font-medium">{{ t('no_payments_found') }}</p>
+                                    <p class="text-sm">{{ t('no_payment_activities_yet') }}</p>
+                                </div>
+
+                                <div
+                                    v-for="payment in latestPayments"
+                                    :key="payment.id"
+                                    class="group p-4 bg-white rounded-xl border border-gray-100 hover:border-green-100 hover:bg-green-50/30 transition-all duration-200 cursor-pointer"
+                                >
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-4">
+                                            <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center group-hover:bg-green-200 transition-colors duration-200">
+                                                <CreditCard class="w-5 h-5 text-green-600" />
+                                            </div>
+                                            <div>
+                                                <p class="font-medium text-gray-900 group-hover:text-green-600 transition-colors duration-200">
+                                                    {{ getCustomerName(payment.customer) }}
+                                                </p>
+                                                <p class="text-sm text-gray-500">
+                                                    {{ payment.invoice?.invoice_number || t('no_invoice') }} • {{ formatPaymentMethod(payment.payment_method) }}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="font-semibold text-gray-900 group-hover:text-green-600 transition-colors duration-200">
+                                                {{ Number(payment.amount).toLocaleString() }} AED
+                                            </p>
+                                            <p class="text-sm text-green-600 font-medium">
+                                                {{ new Date(payment.created_at).toLocaleDateString() }}
                                             </p>
                                         </div>
                                     </div>

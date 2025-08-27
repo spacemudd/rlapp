@@ -53,6 +53,14 @@ class DashboardController extends Controller
         $bankTransferPaymentsTotal = $bankTransferPayments->sum('amount');
         $bankTransferPaymentsCount = $bankTransferPayments->count();
 
+        // Latest payments
+        $latestPayments = Payment::where('status', 'completed')
+            ->where('transaction_type', 'payment')
+            ->with(['invoice', 'customer'])
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
         return Inertia::render('Dashboard', [
             'stats' => [
                 'late_invoices' => $lateInvoicesCount,
@@ -78,6 +86,25 @@ class DashboardController extends Controller
                     'total_amount' => $invoice->total_amount,
                     'currency' => $invoice->currency,
                     'status' => $invoice->status,
+                ];
+            }),
+            'latest_payments' => $latestPayments->map(function($payment) {
+                return [
+                    'id' => $payment->id,
+                    'amount' => $payment->amount,
+                    'payment_method' => $payment->payment_method,
+                    'status' => $payment->status,
+                    'created_at' => $payment->created_at,
+                    'invoice' => $payment->invoice ? [
+                        'id' => $payment->invoice->id,
+                        'invoice_number' => $payment->invoice->invoice_number,
+                    ] : null,
+                    'customer' => $payment->customer ? [
+                        'id' => $payment->customer->id,
+                        'first_name' => $payment->customer->first_name,
+                        'last_name' => $payment->customer->last_name,
+                        'business_name' => $payment->customer->business_name,
+                    ] : null,
                 ];
             }),
         ]);
