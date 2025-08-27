@@ -365,6 +365,15 @@ const messages = {
         bank_transfer_payments_total: 'Bank Transfer Total',
         bank_transfer_payments_count: 'Bank Transfer Count',
         transactions: 'Transactions',
+        latest_payments: 'Latest Payments',
+        payment_method: 'Payment Method',
+        payment_date: 'Payment Date',
+        customer_name: 'Customer Name',
+        recent_payment_activities: 'Recent payment activities',
+        no_payments_found: 'No payments found',
+        no_payment_activities_yet: 'No payment activities yet',
+        no_invoice: 'No invoice',
+        unknown_customer: 'Unknown customer',
     },
     ar: {
         // Profile & Settings
@@ -729,6 +738,15 @@ const messages = {
         bank_transfer_payments_total: 'إجمالي التحويل البنكي',
         bank_transfer_payments_count: 'عدد التحويل البنكي',
         transactions: 'المعاملات',
+        latest_payments: 'آخر المدفوعات',
+        payment_method: 'طريقة الدفع',
+        payment_date: 'تاريخ الدفع',
+        customer_name: 'اسم العميل',
+        recent_payment_activities: 'أنشطة الدفع الأخيرة',
+        no_payments_found: 'لا توجد مدفوعات',
+        no_payment_activities_yet: 'لا توجد أنشطة دفع بعد',
+        no_invoice: 'لا توجد فاتورة',
+        unknown_customer: 'عميل غير معروف',
     },
 };
 
