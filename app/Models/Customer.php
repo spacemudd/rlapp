@@ -38,7 +38,6 @@ class Customer extends Model
         'passport_expiry',
         'resident_id_number',
         'resident_id_expiry',
-        'address',
         'city',
         'country',
         'nationality',
