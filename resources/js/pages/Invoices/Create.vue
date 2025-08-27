@@ -271,6 +271,21 @@ function addSecurityDeposit() {
     itemsArray.push({ description: 'Security Deposit', amount: 0, discount: 0 });
 }
 
+function addSalik() {
+    const itemsArray = form.items as InvoiceItem[];
+    itemsArray.push({ description: 'Salik', amount: 0, discount: 0 });
+}
+
+function addDelivery() {
+    const itemsArray = form.items as InvoiceItem[];
+    itemsArray.push({ description: 'Delivery', amount: 0, discount: 0 });
+}
+
+function addValueAddedTax() {
+    const itemsArray = form.items as InvoiceItem[];
+    itemsArray.push({ description: 'Value Added Tax', amount: 0, discount: 0 });
+}
+
 const page = usePage();
 
 // عند تحميل الصفحة، إذا كان هناك contract_id في الكويري، يتم تعيينه تلقائياً
@@ -302,7 +317,7 @@ const handleCustomerSubmit = (customerForm: any) => {
     router.post('/customers', customerForm.data(), {
         onSuccess: (page) => {
             console.log('Customer creation success, page:', page);
-            
+
             // Try to get customer from different possible locations
             const customer = (page.props as any).newCustomer ||
                            (page.props as any).flash?.newCustomer ||
@@ -410,7 +425,7 @@ const selectedContractVehicleName = computed(() => {
                                     :required="true"
                                     @option-selected="handleCustomerSelected"
                                 />
-                                
+
                                 <!-- Add Create Customer Section -->
                                 <div class="pt-4 border-t">
                                     <div class="flex items-center justify-between">
@@ -677,7 +692,7 @@ const selectedContractVehicleName = computed(() => {
                       </tbody>
                     </table>
                     <div class="px-4 py-3 bg-gray-50 rounded-b-lg flex justify-between items-center">
-                      <div class="flex gap-4">
+                      <div class="flex gap-4 flex-wrap">
                         <button
                           type="button"
                           class="text-blue-600 hover:underline font-medium"
@@ -691,6 +706,27 @@ const selectedContractVehicleName = computed(() => {
                           @click="addSecurityDeposit"
                         >
                           + Security Deposit
+                        </button>
+                        <button
+                          type="button"
+                          class="text-purple-600 hover:underline font-medium"
+                          @click="addSalik"
+                        >
+                          + Salik
+                        </button>
+                        <button
+                          type="button"
+                          class="text-orange-600 hover:underline font-medium"
+                          @click="addDelivery"
+                        >
+                          + Delivery
+                        </button>
+                        <button
+                          type="button"
+                          class="text-red-600 hover:underline font-medium"
+                          @click="addValueAddedTax"
+                        >
+                          + Value Added Tax
                         </button>
                       </div>
                     </div>
