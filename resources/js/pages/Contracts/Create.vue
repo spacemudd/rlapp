@@ -175,12 +175,14 @@ const calculatePricing = async () => {
         rateType.value = pricing.rate_type;
         pricingBreakdown.value = pricing.breakdown;
 
-        // Update the form daily rate
-        form.daily_rate = pricing.daily_rate;
-
         // Store calculated values for override comparison
         calculatedDailyRate.value = pricing.daily_rate;
         originalTotalAmount.value = pricing.total_amount;
+
+        // Only update the form daily rate if no override is active or if it hasn't been manually set
+        if (!form.override_daily_rate && !form.override_final_price) {
+            form.daily_rate = pricing.daily_rate;
+        }
 
     } catch (error) {
         console.error('Error calculating pricing:', error);
@@ -189,7 +191,10 @@ const calculatePricing = async () => {
         pricingTier.value = '';
         rateType.value = '';
         pricingBreakdown.value = null;
-        form.daily_rate = 0;
+        // Only reset daily rate if no override is active
+        if (!form.override_daily_rate && !form.override_final_price) {
+            form.daily_rate = 0;
+        }
         calculatedDailyRate.value = 0;
         originalTotalAmount.value = 0;
     } finally {
@@ -260,11 +265,22 @@ watch([() => form.vehicle_id, () => form.start_date, () => form.end_date], async
     }
 });
 
-// Watch for daily rate changes when override is active to dynamically update total
+// Watch for daily rate changes to dynamically update total
 watch(() => form.daily_rate, (newRate) => {
-    if (form.override_daily_rate && newRate && totalDays.value > 0) {
-        totalAmount.value = newRate * totalDays.value;
-        effectiveDailyRate.value = newRate;
+    if (newRate && totalDays.value > 0) {
+        // If daily rate override is active, update total based on manual rate
+        if (form.override_daily_rate) {
+            totalAmount.value = newRate * totalDays.value;
+            effectiveDailyRate.value = newRate;
+        } else {
+            // If no override is active, check if the rate differs from calculated rate
+            if (Math.abs(newRate - calculatedDailyRate.value) > 0.01) {
+                // User has manually changed the rate, treat as override
+                form.override_daily_rate = true;
+                totalAmount.value = newRate * totalDays.value;
+                effectiveDailyRate.value = newRate;
+            }
+        }
     }
 });
 
@@ -860,7 +876,7 @@ watch(() => props.newCustomer, (customer) => {
                                             v-model="form.override_daily_rate"
                                             @change="handleRateOverride"
                                         />
-                                        <Label for="override_rate" class="text-sm">Override calculated rate</Label>
+                                        <Label for="override_rate" class="text-sm">Lock rate (prevent auto-updates)</Label>
                                     </div>
                                 </div>
 
@@ -870,16 +886,25 @@ watch(() => props.newCustomer, (customer) => {
                                     step="0.01"
                                     min="0"
                                     v-model="form.daily_rate"
-                                    :disabled="!form.override_daily_rate && !form.override_final_price"
                                     required
                                 />
                                 <div v-if="form.errors.daily_rate" class="text-sm text-red-600">
                                     {{ form.errors.daily_rate }}
                                 </div>
 
+                                <p class="text-xs text-gray-500">
+                                    The daily rate is automatically calculated based on vehicle pricing and rental duration.
+                                    You can manually adjust this value, and it will automatically update the total amount.
+                                </p>
+
                                 <!-- Show original calculated rate when overridden -->
                                 <div v-if="form.override_daily_rate && calculatedDailyRate" class="text-sm text-gray-500">
                                     Original calculated rate: {{ formatCurrency(calculatedDailyRate) }}
+                                </div>
+
+                                <!-- Show when rate has been manually adjusted -->
+                                <div v-if="form.override_daily_rate && !form.override_final_price" class="text-sm text-blue-600">
+                                    ✓ Rate manually adjusted
                                 </div>
                             </div>
 
