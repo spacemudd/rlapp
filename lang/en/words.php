@@ -176,6 +176,8 @@ return [
         'no_payment_activities_yet' => 'No payment activities yet',
         'no_invoice' => 'No invoice',
         'unknown_customer' => 'Unknown customer',
+        'customer_information_from_contract' => 'Customer Information (from Contract)',
+        'customer_information' => 'Customer Information',
 
     // Invoices
     'manage_invoices' => 'Manage and track all your invoices',

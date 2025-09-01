@@ -149,6 +149,8 @@ return [
         'no_payment_activities_yet' => 'لا توجد أنشطة دفع بعد',
         'no_invoice' => 'لا توجد فاتورة',
         'unknown_customer' => 'عميل غير معروف',
+        'customer_information_from_contract' => 'معلومات العميل (من العقد)',
+        'customer_information' => 'معلومات العميل',
 
     // Invoices
     'manage_invoices' => 'إدارة وتتبع جميع فواتيرك',
