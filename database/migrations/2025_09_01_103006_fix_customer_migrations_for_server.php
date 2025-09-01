@@ -12,30 +12,25 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Ensure all required columns exist in customers table
+        // Only add essential missing columns for customer creation
         if (Schema::hasTable('customers')) {
             $table = 'customers';
 
-            // Add missing columns if they don't exist
+            // Add visit_visa_pdf_path column if it doesn't exist
             if (!Schema::hasColumn($table, 'visit_visa_pdf_path')) {
                 Schema::table($table, function (Blueprint $table) {
                     $table->string('visit_visa_pdf_path')->nullable()->after('trade_license_pdf_path');
                 });
             }
 
-            // Ensure city column is nullable
-            if (Schema::hasColumn($table, 'city')) {
-                Schema::table($table, function (Blueprint $table) {
-                    $table->string('city')->nullable()->change();
-                });
-            }
-
-            // Update secondary_identification_type enum to include 'visit_visa'
+            // Update secondary_identification_type enum to include 'visit_visa' if needed
             if (Schema::hasColumn($table, 'secondary_identification_type')) {
-                DB::statement("ALTER TABLE customers MODIFY COLUMN secondary_identification_type ENUM('emirates_id', 'passport', 'visit_visa') NULL");
+                try {
+                    DB::statement("ALTER TABLE customers MODIFY COLUMN secondary_identification_type ENUM('passport', 'resident_id', 'visit_visa') NULL");
+                } catch (\Exception $e) {
+                    // If the enum already has the correct values, ignore the error
+                }
             }
-
-            // Note: address column was never created on server, so no need to remove it
         }
     }
 
@@ -54,19 +49,14 @@ return new class extends Migration
                 });
             }
 
-            // Revert city column to not nullable
-            if (Schema::hasColumn($table, 'city')) {
-                Schema::table($table, function (Blueprint $table) {
-                    $table->string('city')->nullable(false)->change();
-                });
-            }
-
-            // Revert secondary_identification_type enum
+            // Revert secondary_identification_type enum (remove visit_visa)
             if (Schema::hasColumn($table, 'secondary_identification_type')) {
-                DB::statement("ALTER TABLE customers MODIFY COLUMN secondary_identification_type ENUM('emirates_id', 'passport') NULL");
+                try {
+                    DB::statement("ALTER TABLE customers MODIFY COLUMN secondary_identification_type ENUM('passport', 'resident_id') NULL");
+                } catch (\Exception $e) {
+                    // Ignore errors during rollback
+                }
             }
-
-            // Note: address column was never created on server, so no need to re-add it
         }
     }
 };

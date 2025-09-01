@@ -10,11 +10,10 @@ The customer creation is failing on the server due to database schema inconsiste
 php artisan migrate
 ```
 
-This will run the new migration `2025_09_01_100456_ensure_customer_table_compatibility.php` which:
-- Adds missing `visit_visa_pdf_path` column if it doesn't exist
-- Ensures `city` column is nullable
-- Updates `secondary_identification_type` ENUM to include 'visit_visa'
-- Removes `address` column if it exists
+This will run the new migrations which:
+- Add missing `visit_visa_pdf_path` column if it doesn't exist
+- Update `secondary_identification_type` ENUM to include 'visit_visa'
+- Handle any missing columns safely without touching the address column
 
 ### 2. Clear All Caches
 
@@ -43,7 +42,6 @@ Make sure these columns exist:
 - `visit_visa_pdf_path` (VARCHAR, nullable)
 - `city` (VARCHAR, nullable)
 - `secondary_identification_type` (ENUM with 'emirates_id', 'passport', 'visit_visa')
-- `address` column should NOT exist
 
 ### 5. Test Customer Creation
 
@@ -82,8 +80,7 @@ ALTER TABLE customers MODIFY COLUMN city VARCHAR(255) NULL;
 -- Update ENUM
 ALTER TABLE customers MODIFY COLUMN secondary_identification_type ENUM('emirates_id', 'passport', 'visit_visa') NULL;
 
--- Remove address column if it exists
-ALTER TABLE customers DROP COLUMN IF EXISTS address;
+-- Note: address column was never created on server
 ```
 
 ### Key Changes Made
