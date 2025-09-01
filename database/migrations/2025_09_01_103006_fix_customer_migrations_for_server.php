@@ -12,7 +12,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Only add essential missing columns for customer creation
+        // Only add essential missing columns for customer creationn
         if (Schema::hasTable('customers')) {
             $table = 'customers';
 
