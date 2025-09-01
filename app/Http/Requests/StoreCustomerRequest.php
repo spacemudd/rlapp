@@ -37,7 +37,7 @@ class StoreCustomerRequest extends FormRequest
             'drivers_license_number' => 'required|string|max:255',
             'drivers_license_expiry' => 'required|date|after:today',
             // Secondary identification type is required
-            'secondary_identification_type' => 'required|in:passport,resident_id,visit_visa',
+            'secondary_identification_type' => 'required|in:emirates_id,passport,visit_visa',
             'country' => 'required|string|max:255',
             'nationality' => 'required|string|max:255',
             'emergency_contact_name' => 'nullable|string|max:255',
@@ -50,13 +50,13 @@ class StoreCustomerRequest extends FormRequest
         $secondaryIdentificationType = $this->input('secondary_identification_type');
 
         switch ($secondaryIdentificationType) {
+            case 'emirates_id':
+                $rules['resident_id_number'] = 'required|string|max:255';
+                $rules['resident_id_expiry'] = 'required|date|after:today';
+                break;
             case 'passport':
                 $rules['passport_number'] = 'required|string|max:255';
                 $rules['passport_expiry'] = 'required|date|after:today';
-                break;
-            case 'resident_id':
-                $rules['resident_id_number'] = 'required|string|max:255';
-                $rules['resident_id_expiry'] = 'required|date|after:today';
                 break;
             case 'visit_visa':
                 $rules['visit_visa_pdf'] = 'required|file|mimes:pdf|max:10240';
@@ -108,12 +108,12 @@ class StoreCustomerRequest extends FormRequest
 
         // Driver's license is always required, so we don't null it
 
-        if ($secondaryIdentificationType !== 'passport') {
-            $fieldsToNull = array_merge($fieldsToNull, ['passport_number', 'passport_expiry']);
+        if ($secondaryIdentificationType !== 'emirates_id') {
+            $fieldsToNull = array_merge($fieldsToNull, ['resident_id_number', 'resident_id_expiry']);
         }
 
-        if ($secondaryIdentificationType !== 'resident_id') {
-            $fieldsToNull = array_merge($fieldsToNull, ['resident_id_number', 'resident_id_expiry']);
+        if ($secondaryIdentificationType !== 'passport') {
+            $fieldsToNull = array_merge($fieldsToNull, ['passport_number', 'passport_expiry']);
         }
 
         if ($secondaryIdentificationType !== 'visit_visa') {

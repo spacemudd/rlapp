@@ -22,6 +22,16 @@ interface Props {
         vehicle_id: string;
         total_days: number;
         customer_id: string;
+        customer?: {
+            id: string;
+            first_name: string;
+            last_name: string;
+            business_name: string | null;
+            email: string;
+            phone_number: string;
+            nationality: string;
+            city: string;
+        };
         vehicle?: {
             year: number;
             make: string;
@@ -80,6 +90,7 @@ const selectedCustomer = ref<any>(null);
 const selectedVehicle = ref<any>(null);
 const showCreateCustomerDialog = ref(false);
 const customerComboboxRef = ref<any>(null);
+const selectedContractCustomer = ref<any>(null);
 
 const invoiceAmount = computed(() => {
     const itemsTotal = (form.items as InvoiceItem[]).reduce((sum: number, item: InvoiceItem) => sum + (Number(item.amount || 0) - Number(item.discount || 0)), 0);
@@ -188,6 +199,12 @@ watch(
                 // Use contract's total_days directly (includes extensions)
                 if (selectedContract.total_days) form.total_days = selectedContract.total_days;
                 if (selectedContract.customer_id) form.customer_id = selectedContract.customer_id;
+
+                // Set customer data from contract
+                if (selectedContract.customer) {
+                    selectedContractCustomer.value = selectedContract.customer;
+                }
+
                 // Add or update vehicle item in items
                 const carName = selectedContract.vehicle
                     ? `${selectedContract.vehicle.year} ${selectedContract.vehicle.make} ${selectedContract.vehicle.model} - ${selectedContract.vehicle.plate_number}`
@@ -211,6 +228,8 @@ watch(
             if (vehicleIndex !== -1) {
                 itemsArray.splice(vehicleIndex, 1);
             }
+            // Clear customer data
+            selectedContractCustomer.value = null;
         }
     },
     { immediate: true }
@@ -228,6 +247,11 @@ watch(
                 // Use contract's total_days directly (includes extensions)
                 if (selectedContract.total_days) form.total_days = selectedContract.total_days;
                 if (selectedContract.customer_id) form.customer_id = selectedContract.customer_id;
+
+                // Set customer data from contract
+                if (selectedContract.customer) {
+                    selectedContractCustomer.value = selectedContract.customer;
+                }
             }
         }
     },
@@ -265,6 +289,12 @@ const handleSubmit = () => {
 
 const getStatusColor = (status: string) => {
     return statusOptions.find(option => option.value === status)?.color || 'text-gray-500';
+};
+
+const getCustomerDisplayName = (customer: any) => {
+    if (!customer) return '';
+    if (customer.business_name) return customer.business_name;
+    return `${customer.first_name} ${customer.last_name}`;
 };
 
 // Example accounts data
@@ -518,11 +548,41 @@ const selectedContractVehicleName = computed(() => {
                                 </div>
                             </div>
 
-                            <!-- Customer Information -->
-                            <div v-if="selectedCustomer" class="mt-6 space-y-4">
+                            <!-- Customer Information from Contract -->
+                            <div v-if="selectedContractCustomer" class="mt-6 space-y-4">
+                                <div class="flex items-center gap-2">
+                                    <User class="h-5 w-5 text-green-600" />
+                                    <h3 class="text-sm font-medium text-green-600">{{ t('customer_information_from_contract') }}</h3>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="space-y-1">
+                                        <p class="text-sm text-gray-500">Name</p>
+                                        <p class="text-sm font-medium">{{ getCustomerDisplayName(selectedContractCustomer) }}</p>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <p class="text-sm text-gray-500">Email</p>
+                                        <p class="text-sm font-medium">{{ selectedContractCustomer.email }}</p>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <p class="text-sm text-gray-500">Phone</p>
+                                        <p class="text-sm font-medium">{{ selectedContractCustomer.phone_number || 'N/A' }}</p>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <p class="text-sm text-gray-500">Nationality</p>
+                                        <p class="text-sm font-medium">{{ selectedContractCustomer.nationality || 'N/A' }}</p>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <p class="text-sm text-gray-500">City</p>
+                                        <p class="text-sm font-medium">{{ selectedContractCustomer.city || 'N/A' }}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Customer Information from Search -->
+                            <div v-if="selectedCustomer && !selectedContractCustomer" class="mt-6 space-y-4">
                                 <div class="flex items-center gap-2">
                                     <User class="h-5 w-5 text-gray-400" />
-                                    <h3 class="text-sm font-medium">Customer Information</h3>
+                                    <h3 class="text-sm font-medium">{{ t('customer_information') }}</h3>
                                 </div>
                                 <div class="grid grid-cols-2 gap-4">
                                     <div class="space-y-1">

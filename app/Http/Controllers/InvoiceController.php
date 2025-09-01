@@ -139,7 +139,7 @@ class InvoiceController extends Controller
 
         $nextInvoiceNumber = 'INV-' . $nextNumber;
 
-        $contracts = \App\Models\Contract::with('vehicle')->get()->map(function($contract) {
+        $contracts = \App\Models\Contract::with(['vehicle', 'customer'])->get()->map(function($contract) {
             return [
                 'id' => $contract->id,
                 'contract_number' => $contract->contract_number,
@@ -154,6 +154,16 @@ class InvoiceController extends Controller
                 'end_date' => $contract->end_date,
                 'total_days' => $contract->total_days,
                 'customer_id' => $contract->customer_id,
+                'customer' => $contract->customer ? [
+                    'id' => $contract->customer->id,
+                    'first_name' => $contract->customer->first_name,
+                    'last_name' => $contract->customer->last_name,
+                    'business_name' => $contract->customer->business_name,
+                    'email' => $contract->customer->email,
+                    'phone_number' => $contract->customer->phone_number,
+                    'nationality' => $contract->customer->nationality,
+                    'city' => $contract->customer->city,
+                ] : null,
                 'daily_rate' => $contract->daily_rate,
                 'total_amount' => $contract->total_amount,
             ];

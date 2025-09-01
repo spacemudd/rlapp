@@ -374,6 +374,8 @@ const messages = {
         no_payment_activities_yet: 'No payment activities yet',
         no_invoice: 'No invoice',
         unknown_customer: 'Unknown customer',
+        customer_information_from_contract: 'Customer Information (from Contract)',
+        customer_information: 'Customer Information',
     },
     ar: {
         // Profile & Settings
@@ -747,6 +749,8 @@ const messages = {
         no_payment_activities_yet: 'لا توجد أنشطة دفع بعد',
         no_invoice: 'لا توجد فاتورة',
         unknown_customer: 'عميل غير معروف',
+        customer_information_from_contract: 'معلومات العميل (من العقد)',
+        customer_information: 'معلومات العميل',
     },
 };
 
