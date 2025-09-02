@@ -175,7 +175,7 @@ class Contract extends Model
         if ($this->status !== 'active') {
             return false;
         }
-        
+
         $sevenDaysFromNow = Carbon::now()->addDays(7);
         return $this->end_date->lte($sevenDaysFromNow);
     }
@@ -189,7 +189,7 @@ class Contract extends Model
             'status' => 'active',
             'activated_at' => now(),
         ]);
-        
+
         // Update vehicle status to rented
         $this->vehicle->update(['status' => 'rented']);
     }
@@ -203,7 +203,7 @@ class Contract extends Model
             'status' => 'completed',
             'completed_at' => now(),
         ]);
-        
+
         // Update vehicle status to available
         $this->vehicle->update(['status' => 'available']);
     }
@@ -218,7 +218,7 @@ class Contract extends Model
             'voided_at' => now(),
             'void_reason' => $reason,
         ]);
-        
+
         // Update vehicle status to available if it was rented for this contract
         if ($this->vehicle->status === 'rented') {
             $this->vehicle->update(['status' => 'available']);
@@ -232,12 +232,12 @@ class Contract extends Model
     {
         $count = static::count();
         $number = 1001 + $count;
-        
+
         do {
             $contractNumber = 'CON-' . str_pad($number, 6, '0', STR_PAD_LEFT);
             $number++;
         } while (static::where('contract_number', $contractNumber)->exists());
-        
+
         return $contractNumber;
     }
 
@@ -246,7 +246,7 @@ class Contract extends Model
      */
     public function calculateTotalDays(): int
     {
-        return $this->start_date->diffInDays($this->end_date) + 1; // +1 to include both start and end days
+        return $this->start_date->diffInDays($this->end_date); // Exclude end date (day 1 to day 11 = 10 days)
     }
 
     /**
@@ -332,7 +332,7 @@ class Contract extends Model
 
         $actualMileage = $returnMileage - $this->pickup_mileage;
         $excessMileage = max(0, $actualMileage - $this->mileage_limit);
-        
+
         return $excessMileage * $this->excess_mileage_rate;
     }
 
@@ -356,7 +356,7 @@ class Contract extends Model
 
         $pickupLevel = $fuelLevels[$this->pickup_fuel_level] ?? 0;
         $returnLevel = $fuelLevels[$returnFuelLevel] ?? 0;
-        
+
         // If returned with less fuel, charge for the difference
         if ($returnLevel < $pickupLevel) {
             $fuelDifference = $pickupLevel - $returnLevel;
@@ -428,14 +428,14 @@ class Contract extends Model
 
         $latestExtension = $this->extensions()->approved()->latest('extension_number')->first();
         $extensionNumber = $latestExtension ? $latestExtension->extension_number + 1 : 1;
-        
+
         $originalEndDate = $latestExtension ? $latestExtension->new_end_date : $this->end_date;
         $newEndDate = Carbon::parse($originalEndDate)->addDays($days);
-        
+
         // Use PricingService for consistent rate calculation
         $pricingService = new \App\Services\PricingService();
         $pricing = $pricingService->calculatePricingForDays($this->vehicle, $days);
-        
+
         $extension = $this->extensions()->create([
             'extension_number' => $extensionNumber,
             'original_end_date' => $originalEndDate,
@@ -447,22 +447,22 @@ class Contract extends Model
             'approved_by' => auth()->user()?->name ?? 'System',
             'status' => 'approved',
         ]);
-        
+
         // Update main contract
         // First update the end_date
         $this->update(['end_date' => $newEndDate]);
-        
+
         // Then calculate total days based on the new end_date
         $newTotalDays = $this->calculateTotalDays();
         $originalAmount = $this->daily_rate * $newTotalDays;
         $extensionAmount = $this->getExtensionAmount();
-        
+
         // Update total_days and total_amount
         $this->update([
             'total_days' => $newTotalDays,
             'total_amount' => $originalAmount + $extensionAmount,
         ]);
-        
+
         return $extension;
     }
 
@@ -482,7 +482,7 @@ class Contract extends Model
         if (!$this->original_calculated_amount || $this->original_calculated_amount == 0) {
             return 0;
         }
-        
+
         $difference = abs($this->total_amount - $this->original_calculated_amount);
         return ($difference / $this->original_calculated_amount) * 100;
     }
@@ -495,7 +495,7 @@ class Contract extends Model
         if (!$this->original_calculated_amount) {
             return 0;
         }
-        
+
         return $this->total_amount - $this->original_calculated_amount;
     }
 

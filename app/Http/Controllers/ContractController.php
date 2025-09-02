@@ -281,7 +281,7 @@ class ContractController extends Controller
         // Calculate total days
         $startDate = \Carbon\Carbon::parse($validated['start_date']);
         $endDate = \Carbon\Carbon::parse($validated['end_date']);
-        $totalDays = $startDate->diffInDays($endDate) + 1;
+        $totalDays = $startDate->diffInDays($endDate); // Exclude end date (day 1 to day 11 = 10 days)
 
         // Handle pricing overrides
         $dailyRate = $validated['daily_rate'];
@@ -402,7 +402,7 @@ class ContractController extends Controller
         // Calculate total days and amount
         $startDate = \Carbon\Carbon::parse($validated['start_date']);
         $endDate = \Carbon\Carbon::parse($validated['end_date']);
-        $totalDays = $startDate->diffInDays($endDate) + 1;
+        $totalDays = $startDate->diffInDays($endDate); // Exclude end date (day 1 to day 11 = 10 days)
         $totalAmount = $validated['daily_rate'] * $totalDays;
 
         $contract->update([

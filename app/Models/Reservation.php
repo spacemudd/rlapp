@@ -101,7 +101,7 @@ class Reservation extends Model
     public function calculateDuration()
     {
         if ($this->pickup_date && $this->return_date) {
-            return Carbon::parse($this->pickup_date)->diffInDays(Carbon::parse($this->return_date)) + 1;
+            return Carbon::parse($this->pickup_date)->diffInDays(Carbon::parse($this->return_date)); // Exclude end date (day 1 to day 11 = 10 days)
         }
         return 0;
     }
