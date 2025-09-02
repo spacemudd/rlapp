@@ -163,7 +163,7 @@ watch(
             const startDate = parseISO(start);
             const endDate = parseISO(end);
             const days = differenceInDays(endDate, startDate);
-            form.total_days = Math.max(0, days + 1); // Match contract model calculation
+            form.total_days = Math.max(0, days); // Exclude end date (day 1 to day 11 = 10 days)
         }
     }
 );
@@ -342,7 +342,7 @@ function calculateTotalDays() {
         const startDate = parseISO(form.start_datetime);
         const endDate = parseISO(form.end_datetime);
         const days = differenceInDays(endDate, startDate);
-        form.total_days = Math.max(0, days + 1); // Match contract model calculation
+        form.total_days = Math.max(0, days); // Exclude end date (day 1 to day 11 = 10 days)
     }
 }
 

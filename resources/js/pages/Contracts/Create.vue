@@ -74,9 +74,9 @@ const totalDays = computed(() => {
     if (!form.start_date || !form.end_date) return 0;
     const start = new Date(form.start_date);
     const end = new Date(form.end_date);
-    const diffTime = Math.abs(end.getTime() - start.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays; // Direct calculation of rental days
+    const diffTime = end.getTime() - start.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(0, diffDays); // Exclude end date (day 1 to day 11 = 10 days)
 });
 
 // Reactive refs for pricing
@@ -428,7 +428,7 @@ const updateEndDate = () => {
 
     // Calculate end date by adding duration days
     const endDubaiDate = new Date(startDubaiDate);
-    endDubaiDate.setDate(startDubaiDate.getDate() + durationDays.value); // Add full duration days
+    endDubaiDate.setDate(startDubaiDate.getDate() + durationDays.value); // Add duration days (end date is exclusive)
 
     // Set the end date
     form.end_date = formatDateForInput(endDubaiDate);
