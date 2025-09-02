@@ -3,7 +3,7 @@ import AppSidebarLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Plus, Calendar, DollarSign, Car, User } from 'lucide-vue-next';
 import { Link, useForm, usePage, router } from '@inertiajs/vue3';
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, nextTick } from 'vue';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { format, differenceInDays, parseISO } from 'date-fns';
 import AsyncCombobox from '@/components/ui/combobox/AsyncCombobox.vue';
 import CreateCustomerForm from '@/components/CreateCustomerForm.vue';
+import { Textarea } from '@/components/ui/textarea';
+import { useI18n } from 'vue-i18n';
 
 // Define props interface
 interface Props {
@@ -55,6 +57,9 @@ interface InvoiceItem {
 // Define props
 const props = defineProps<Props>();
 
+// Translation
+const { t } = useI18n();
+
 const statusOptions = [
     { value: 'unpaid', label: 'Unpaid', color: 'text-red-500' },
     { value: 'paid', label: 'Paid', color: 'text-green-500' },
@@ -91,6 +96,7 @@ const selectedVehicle = ref<any>(null);
 const showCreateCustomerDialog = ref(false);
 const customerComboboxRef = ref<any>(null);
 const selectedContractCustomer = ref<any>(null);
+const forceUpdate = ref(0); // Force reactivity
 
 const invoiceAmount = computed(() => {
     const itemsTotal = (form.items as InvoiceItem[]).reduce((sum: number, item: InvoiceItem) => sum + (Number(item.amount || 0) - Number(item.discount || 0)), 0);
@@ -188,7 +194,7 @@ function toDatetimeLocal(dateString: string) {
 // Watch for contract selection and update vehicle item in items
 watch(
     () => form.contract_id,
-    (newVal) => {
+    async (newVal) => {
         const itemsArray = form.items as InvoiceItem[];
         if (newVal) {
             const selectedContract = props.contracts.find(c => c.id === newVal);
@@ -200,10 +206,11 @@ watch(
                 if (selectedContract.total_days) form.total_days = selectedContract.total_days;
                 if (selectedContract.customer_id) form.customer_id = selectedContract.customer_id;
 
-                // Set customer data from contract
-                if (selectedContract.customer) {
-                    selectedContractCustomer.value = selectedContract.customer;
-                }
+                // Update customer data
+                await updateContractData(newVal);
+
+                // Force UI update
+                forceUpdate.value++;
 
                 // Add or update vehicle item in items
                 const carName = selectedContract.vehicle
@@ -232,13 +239,13 @@ watch(
             selectedContractCustomer.value = null;
         }
     },
-    { immediate: true }
+    { immediate: true, flush: 'post' }
 );
 
 // ووتشر إضافي لضمان تعبئة البيانات عند توفر العقود بعد تحميل الصفحة
 watch(
     () => props.contracts,
-    (newContracts) => {
+    async (newContracts) => {
         if (form.contract_id) {
             const selectedContract = newContracts.find(c => c.id === form.contract_id);
             if (selectedContract) {
@@ -251,11 +258,25 @@ watch(
                 // Set customer data from contract
                 if (selectedContract.customer) {
                     selectedContractCustomer.value = selectedContract.customer;
+                } else {
+                    // If customer data is not directly available, create a basic customer object
+                    selectedContractCustomer.value = {
+                        id: selectedContract.customer_id,
+                        first_name: 'Customer',
+                        last_name: 'from Contract',
+                        email: 'N/A',
+                        phone_number: 'N/A',
+                        nationality: 'N/A',
+                        city: 'N/A'
+                    };
                 }
+
+                // Wait for DOM update
+                await nextTick();
             }
         }
     },
-    { immediate: true, deep: true }
+    { immediate: true, deep: true, flush: 'post' }
 );
 
 const handleSubmit = () => {
@@ -437,13 +458,45 @@ const handleVehicleSelected = (vehicle: any) => {
 };
 
 const selectedContractVehicleName = computed(() => {
+    forceUpdate.value; // Force reactivity
     if (!form.contract_id) return '';
     const contract = props.contracts.find(c => c.id === form.contract_id);
     if (!contract) return '';
     if (contract.vehicle) {
         return `${contract.vehicle.year} ${contract.vehicle.make} ${contract.vehicle.model} - ${contract.vehicle.plate_number}`;
     }
-    return contract.vehicle_id || '';
+    return contract.vehicle_id || 'Vehicle from Contract';
+});
+
+// Force update when contract is selected
+const updateContractData = async (contractId: string) => {
+    if (!contractId) return;
+
+    await nextTick();
+    const selectedContract = props.contracts.find(c => c.id === contractId);
+    if (selectedContract) {
+        // Set customer data from contract
+        if (selectedContract.customer) {
+            selectedContractCustomer.value = selectedContract.customer;
+        } else {
+            selectedContractCustomer.value = {
+                id: selectedContract.customer_id,
+                first_name: 'Customer',
+                last_name: 'from Contract',
+                email: 'N/A',
+                phone_number: 'N/A',
+                nationality: 'N/A',
+                city: 'N/A'
+            };
+        }
+    }
+};
+
+// Initialize data on mount
+onMounted(async () => {
+    if (form.contract_id) {
+        await updateContractData(form.contract_id);
+    }
 });
 </script>
 
@@ -474,11 +527,13 @@ const selectedContractVehicleName = computed(() => {
                             <CardDescription>Enter the basic details of the invoice</CardDescription>
                         </CardHeader>
                         <CardContent class="space-y-6">
-                            <div class="space-y-2">
+                                                        <!-- Customer Selection - Hidden when contract is selected -->
+                            <div v-if="!form.contract_id" class="space-y-2">
+                                <Label for="customer" class="text-sm font-medium">Customer</Label>
+
                                 <AsyncCombobox
                                     ref="customerComboboxRef"
                                     v-model="form.customer_id"
-                                    label="Customer"
                                     placeholder="Search customers..."
                                     search-url="/api/customers/search"
                                     :required="true"
@@ -650,26 +705,16 @@ const selectedContractVehicleName = computed(() => {
                                             </option>
                                         </select>
                                     </div>
-                                    <!-- Vehicle Dropdown -->
-                                    <div class="space-y-2">
+                                    <!-- Vehicle Dropdown - Hidden when contract is selected -->
+                                    <div v-if="!form.contract_id" class="space-y-2">
                                         <Label for="vehicle_id" class="text-sm font-medium">Vehicle</Label>
-                                        <template v-if="form.contract_id">
-                                            <Input
-                                                id="vehicle_id"
-                                                :value="selectedContractVehicleName"
-                                                readonly
-                                                class="h-10 bg-gray-100 cursor-not-allowed"
-                                            />
-                                        </template>
-                                        <template v-else>
-                                            <AsyncCombobox
-                                                v-model="form.vehicle_id"
-                                                placeholder="Search vehicles..."
-                                                search-url="/api/vehicle-search"
-                                                :required="true"
-                                                @option-selected="handleVehicleSelected"
-                                            />
-                                        </template>
+                                        <AsyncCombobox
+                                            v-model="form.vehicle_id"
+                                            placeholder="Search vehicles..."
+                                            search-url="/api/vehicle-search"
+                                            :required="true"
+                                            @option-selected="handleVehicleSelected"
+                                        />
                                     </div>
 
                                     <!-- Dates Grid -->
