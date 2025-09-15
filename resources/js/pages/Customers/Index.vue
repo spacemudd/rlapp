@@ -240,54 +240,54 @@ watch(searchQuery, (newValue, oldValue) => {
                     </div>
                 </div>
 
-                <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                    <Card>
-                        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2" :class="{ 'flex-row-reverse': isRtl }">
-                            <CardTitle class="text-sm font-medium" :class="{ 'text-right': isRtl }">{{ t('total_customers') }}</CardTitle>
-                            <Users class="h-4 w-4 text-muted-foreground" />
+                <div class="grid gap-1 md:grid-cols-2 lg:grid-cols-4">
+                    <Card class="bg-slate-50 border-slate-200 shadow-sm py-2">
+                        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-0 px-2 py-0" :class="{ 'flex-row-reverse': isRtl }">
+                            <CardTitle class="text-[10px] font-medium leading-none" :class="{ 'text-right': isRtl }">{{ t('total_customers') }}</CardTitle>
+                            <Users class="h-3 w-3 text-slate-600" />
                         </CardHeader>
-                        <CardContent>
-                            <div class="text-2xl font-bold" :class="{ 'text-right': isRtl }">{{ props.stats.total }}</div>
-                            <p class="text-xs text-muted-foreground" :class="{ 'text-right': isRtl }">
+                        <CardContent class="px-2 py-0">
+                            <div class="text-base font-semibold leading-none" :class="{ 'text-right': isRtl }">{{ props.stats.total }}</div>
+                            <p class="text-[10px] text-muted-foreground leading-none" :class="{ 'text-right': isRtl }">
                                 {{ props.stats.total === 0 ? t('no_data') : t('total_customers') }}
                             </p>
                         </CardContent>
                     </Card>
 
-                    <Card>
-                        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2" :class="{ 'flex-row-reverse': isRtl }">
-                            <CardTitle class="text-sm font-medium" :class="{ 'text-right': isRtl }">{{ t('active_customers') }}</CardTitle>
-                            <Users class="h-4 w-4 text-muted-foreground" />
+                    <Card class="bg-emerald-50 border-emerald-200 shadow-sm py-2">
+                        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-0 px-2 py-0" :class="{ 'flex-row-reverse': isRtl }">
+                            <CardTitle class="text-[10px] font-medium leading-none" :class="{ 'text-right': isRtl }">{{ t('active_customers') }}</CardTitle>
+                            <Users class="h-3 w-3 text-emerald-600" />
                         </CardHeader>
-                        <CardContent>
-                            <div class="text-2xl font-bold" :class="{ 'text-right': isRtl }">{{ props.stats.active }}</div>
-                            <p class="text-xs text-muted-foreground" :class="{ 'text-right': isRtl }">
+                        <CardContent class="px-2 py-0">
+                            <div class="text-base font-semibold leading-none" :class="{ 'text-right': isRtl }">{{ props.stats.active }}</div>
+                            <p class="text-[10px] text-emerald-700/80 leading-none" :class="{ 'text-right': isRtl }">
                                 {{ t('active') }}
                             </p>
                         </CardContent>
                     </Card>
 
-                    <Card>
-                        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2" :class="{ 'flex-row-reverse': isRtl }">
-                            <CardTitle class="text-sm font-medium" :class="{ 'text-right': isRtl }">{{ t('blocked_customers') }}</CardTitle>
-                            <Users class="h-4 w-4 text-red-500" />
+                    <Card class="bg-rose-50 border-rose-200 shadow-sm py-2">
+                        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-0 px-2 py-0" :class="{ 'flex-row-reverse': isRtl }">
+                            <CardTitle class="text-[10px] font-medium leading-none" :class="{ 'text-right': isRtl }">{{ t('blocked_customers') }}</CardTitle>
+                            <Users class="h-3 w-3 text-rose-600" />
                         </CardHeader>
-                        <CardContent>
-                            <div class="text-2xl font-bold text-red-600" :class="{ 'text-right': isRtl }">{{ props.stats.blocked }}</div>
-                            <p class="text-xs text-red-500" :class="{ 'text-right': isRtl }">
+                        <CardContent class="px-2 py-0">
+                            <div class="text-base font-semibold text-rose-700 leading-none" :class="{ 'text-right': isRtl }">{{ props.stats.blocked }}</div>
+                            <p class="text-[10px] text-rose-700/80 leading-none" :class="{ 'text-right': isRtl }">
                                 {{ t('blocked') }}
                             </p>
                         </CardContent>
                     </Card>
 
-                    <Card>
-                        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2" :class="{ 'flex-row-reverse': isRtl }">
-                            <CardTitle class="text-sm font-medium" :class="{ 'text-right': isRtl }">{{ t('new_this_month') }}</CardTitle>
-                            <Users class="h-4 w-4 text-muted-foreground" />
+                    <Card class="bg-indigo-50 border-indigo-200 shadow-sm py-2">
+                        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-0 px-2 py-0" :class="{ 'flex-row-reverse': isRtl }">
+                            <CardTitle class="text-[10px] font-medium leading-none" :class="{ 'text-right': isRtl }">{{ t('new_this_month') }}</CardTitle>
+                            <Users class="h-3 w-3 text-indigo-600" />
                         </CardHeader>
-                        <CardContent>
-                            <div class="text-2xl font-bold" :class="{ 'text-right': isRtl }">{{ props.stats.new_this_month }}</div>
-                            <p class="text-xs text-muted-foreground" :class="{ 'text-right': isRtl }">
+                        <CardContent class="px-2 py-0">
+                            <div class="text-base font-semibold leading-none" :class="{ 'text-right': isRtl }">{{ props.stats.new_this_month }}</div>
+                            <p class="text-[10px] text-indigo-700/80 leading-none" :class="{ 'text-right': isRtl }">
                                 {{ t('new_this_month') }}
                             </p>
                         </CardContent>
@@ -295,7 +295,7 @@ watch(searchQuery, (newValue, oldValue) => {
                 </div>
 
                 <!-- Filter Tabs -->
-                <div class="flex items-center justify-center gap-2 p-1 bg-muted rounded-lg w-fit mx-auto" :class="{ 'flex-row-reverse': isRtl }">
+                <div class="flex items-center justify-center gap-4 p-1 bg-muted rounded-lg w-fit mx-auto" :class="{ 'flex-row-reverse': isRtl }">
                     <Button
                         variant="ghost"
                         size="sm"
