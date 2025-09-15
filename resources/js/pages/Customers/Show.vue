@@ -114,23 +114,25 @@ const handleCustomerUnblocked = () => {
             <div class="max-w-4xl mx-auto">
                 <div class="space-y-6">
                     <!-- Header -->
+                    <!-- Back to Customers on its own row -->
+                    <div class="flex" :class="{ 'flex-row-reverse': isRtl }">
+                        <Link href="/customers">
+                            <Button variant="ghost" size="sm">
+                                <ArrowLeft :class="[
+                                    'h-4 w-4',
+                                    isRtl ? 'ml-2' : 'mr-2'
+                                ]" />
+                                {{ t('back_to_customers') }}
+                            </Button>
+                        </Link>
+                    </div>
+
                     <div class="flex items-center justify-between" :class="{ 'flex-row-reverse': isRtl }">
-                        <div class="flex items-center gap-4" :class="{ 'flex-row-reverse': isRtl }">
-                            <Link href="/customers">
-                                <Button variant="ghost" size="sm">
-                                    <ArrowLeft :class="[
-                                        'h-4 w-4',
-                                        isRtl ? 'ml-2' : 'mr-2'
-                                    ]" />
-                                    {{ t('back_to_customers') }}
-                                </Button>
-                            </Link>
-                            <div :class="{ 'text-right': isRtl }">
-                                <h1 class="text-3xl font-bold tracking-tight">{{ getDisplayName() }}</h1>
-                                <p class="text-muted-foreground">
-                                    {{ t('customer_details') }}
-                                </p>
-                            </div>
+                        <div :class="{ 'text-right': isRtl }">
+                            <h1 class="text-3xl font-bold tracking-tight">{{ getDisplayName() }}</h1>
+                            <p class="text-muted-foreground">
+                                {{ t('customer_details') }}
+                            </p>
                         </div>
 
                         <div class="flex items-center gap-2" :class="{ 'flex-row-reverse': isRtl }">
