@@ -135,28 +135,47 @@ const submitForm = () => {
     // Client-side validation for business customers
     if (form.business_type === 'business' && !form.business_name.trim()) {
         alert('Please enter a business/company name for business customers');
+        activeTab.value = 'customer-type';
+        return;
+    }
+
+    // Client-side validation for personal information
+    if (!form.first_name.trim() || !form.last_name.trim() || !form.phone.trim()) {
+        alert('Please fill in all required personal information (First Name, Last Name, Phone)');
+        activeTab.value = 'personal-info';
+        return;
+    }
+
+    // Client-side validation for driver's license
+    if (!form.drivers_license_number.trim() || !form.drivers_license_expiry) {
+        alert('Please fill in all driver\'s license information');
+        activeTab.value = 'identification';
         return;
     }
 
     // Client-side validation for secondary identification
     if (!form.secondary_identification_type) {
         alert('Please select either Passport, Emirates Resident ID, or Visit Visa');
+        activeTab.value = 'identification';
         return;
     }
 
     if (form.secondary_identification_type === 'passport') {
         if (!form.passport_number || !form.passport_expiry) {
             alert('Please fill in all passport information');
+            activeTab.value = 'identification';
             return;
         }
     } else if (form.secondary_identification_type === 'resident_id') {
         if (!form.resident_id_number || !form.resident_id_expiry) {
             alert('Please fill in all Emirates Resident ID information');
+            activeTab.value = 'identification';
             return;
         }
     } else if (form.secondary_identification_type === 'visit_visa') {
         if (!form.visit_visa_pdf) {
             alert('Please upload the visit visa PDF document');
+            activeTab.value = 'identification';
             return;
         }
     }
@@ -478,7 +497,7 @@ const cancelForm = () => {
                             >
                                 <div class="flex flex-col items-center text-center space-y-2">
                                     <IdCard class="h-8 w-8 text-gray-600" />
-                                    <h3 class="font-medium text-gray-900">Emirates ID / Resident ID</h3>
+                                    <h3 class="font-medium text-gray-900">Emirates/Resident ID</h3>
                                     <p class="text-sm text-gray-500">Emirates ID or Resident Card</p>
                                 </div>
                                 <input
