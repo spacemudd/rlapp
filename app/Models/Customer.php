@@ -302,6 +302,11 @@ class Customer extends Model
         return $this->hasMany(Payment::class);
     }
 
+    public function customerNotes(): HasMany
+    {
+        return $this->hasMany(CustomerNote::class)->latest();
+    }
+
     /**
      * Get the user who blocked this customer.
      */
