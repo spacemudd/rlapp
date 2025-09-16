@@ -318,27 +318,35 @@ class CustomerController extends Controller
 
         $validated['team_id'] = auth()->user()->team_id;
 
-        // Handle trade license PDF upload
+        // Create customer without raw files
+        $customer = Customer::create(collect($validated)->except([
+            'trade_license_pdf', 'visit_visa_pdf', 'passport_pdf', 'resident_id_pdf',
+        ])->all());
+
+        // Attach media to S3 collections if provided
         if ($request->hasFile('trade_license_pdf')) {
-            $file = $request->file('trade_license_pdf');
-            $filename = 'trade_license_' . time() . '_' . $file->getClientOriginalName();
-            $path = $file->storeAs('trade_licenses', $filename, 'public');
-            $validated['trade_license_pdf_path'] = $path;
+            $customer->addMediaFromRequest('trade_license_pdf')
+                ->usingFileName('trade_license_' . time() . '.' . $request->file('trade_license_pdf')->getClientOriginalExtension())
+                ->toMediaCollection('trade_license', 's3');
         }
 
-        // Handle visit visa PDF upload
         if ($request->hasFile('visit_visa_pdf')) {
-            $file = $request->file('visit_visa_pdf');
-            $filename = 'visit_visa_' . time() . '_' . $file->getClientOriginalName();
-            $path = $file->storeAs('visit_visas', $filename, 'public');
-            $validated['visit_visa_pdf_path'] = $path;
+            $customer->addMediaFromRequest('visit_visa_pdf')
+                ->usingFileName('visit_visa_' . time() . '.' . $request->file('visit_visa_pdf')->getClientOriginalExtension())
+                ->toMediaCollection('visit_visa', 's3');
         }
 
-        // Remove the file from validated data since it's not a database field
-        unset($validated['trade_license_pdf']);
-        unset($validated['visit_visa_pdf']);
+        if ($request->hasFile('passport_pdf')) {
+            $customer->addMediaFromRequest('passport_pdf')
+                ->usingFileName('passport_' . time() . '.' . $request->file('passport_pdf')->getClientOriginalExtension())
+                ->toMediaCollection('passport', 's3');
+        }
 
-        $customer = Customer::create($validated);
+        if ($request->hasFile('resident_id_pdf')) {
+            $customer->addMediaFromRequest('resident_id_pdf')
+                ->usingFileName('resident_id_' . time() . '.' . $request->file('resident_id_pdf')->getClientOriginalExtension())
+                ->toMediaCollection('resident_id', 's3');
+        }
 
         $customerData = [
             'id' => $customer->id,
@@ -349,7 +357,6 @@ class CustomerController extends Controller
             'phone' => $customer->phone,
         ];
 
-        // If this is an AJAX request (from contract creation), return JSON
         if ($request->wantsJson() || $request->expectsJson()) {
             return response()->json([
                 'success' => true,
@@ -358,17 +365,14 @@ class CustomerController extends Controller
             ]);
         }
 
-        // Check if this request came from contracts/create page
         $referer = $request->headers->get('referer');
         if ($referer && str_contains($referer, '/contracts/create')) {
-            // Return to contracts/create with customer data in props
             return redirect('/contracts/create')->with([
                 'success' => 'Customer created successfully.',
                 'newCustomer' => $customerData
             ]);
         }
 
-        // For JSON requests, return the customer data directly
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
@@ -388,44 +392,45 @@ class CustomerController extends Controller
      */
     public function update(UpdateCustomerRequest $request, Customer $customer)
     {
-        // Ensure customer belongs to user's team
         if ($customer->team_id !== auth()->user()->team_id) {
             abort(403);
         }
 
         $validated = $request->validated();
 
-        // Handle trade license PDF upload
+        // Update non-file fields only
+        $customer->update(collect($validated)->except([
+            'trade_license_pdf', 'visit_visa_pdf', 'passport_pdf', 'resident_id_pdf',
+        ])->all());
+
+        // Replace media if a new file is uploaded
         if ($request->hasFile('trade_license_pdf')) {
-            // Delete old file if it exists
-            if ($customer->trade_license_pdf_path && \Storage::disk('public')->exists($customer->trade_license_pdf_path)) {
-                \Storage::disk('public')->delete($customer->trade_license_pdf_path);
-            }
-
-            $file = $request->file('trade_license_pdf');
-            $filename = 'trade_license_' . time() . '_' . $file->getClientOriginalName();
-            $path = $file->storeAs('trade_licenses', $filename, 'public');
-            $validated['trade_license_pdf_path'] = $path;
+            $customer->clearMediaCollection('trade_license');
+            $customer->addMediaFromRequest('trade_license_pdf')
+                ->usingFileName('trade_license_' . time() . '.' . $request->file('trade_license_pdf')->getClientOriginalExtension())
+                ->toMediaCollection('trade_license', 's3');
         }
 
-        // Handle visit visa PDF upload
         if ($request->hasFile('visit_visa_pdf')) {
-            // Delete old file if it exists
-            if ($customer->visit_visa_pdf_path && \Storage::disk('public')->exists($customer->visit_visa_pdf_path)) {
-                \Storage::disk('public')->delete($customer->visit_visa_pdf_path);
-            }
-
-            $file = $request->file('visit_visa_pdf');
-            $filename = 'visit_visa_' . time() . '_' . $file->getClientOriginalName();
-            $path = $file->storeAs('visit_visas', $filename, 'public');
-            $validated['visit_visa_pdf_path'] = $path;
+            $customer->clearMediaCollection('visit_visa');
+            $customer->addMediaFromRequest('visit_visa_pdf')
+                ->usingFileName('visit_visa_' . time() . '.' . $request->file('visit_visa_pdf')->getClientOriginalExtension())
+                ->toMediaCollection('visit_visa', 's3');
         }
 
-        // Remove the file from validated data since it's not a database field
-        unset($validated['trade_license_pdf']);
-        unset($validated['visit_visa_pdf']);
+        if ($request->hasFile('passport_pdf')) {
+            $customer->clearMediaCollection('passport');
+            $customer->addMediaFromRequest('passport_pdf')
+                ->usingFileName('passport_' . time() . '.' . $request->file('passport_pdf')->getClientOriginalExtension())
+                ->toMediaCollection('passport', 's3');
+        }
 
-        $customer->update($validated);
+        if ($request->hasFile('resident_id_pdf')) {
+            $customer->clearMediaCollection('resident_id');
+            $customer->addMediaFromRequest('resident_id_pdf')
+                ->usingFileName('resident_id_' . time() . '.' . $request->file('resident_id_pdf')->getClientOriginalExtension())
+                ->toMediaCollection('resident_id', 's3');
+        }
 
         return redirect("/customers/{$customer->id}")->with('success', 'Customer updated successfully.');
     }

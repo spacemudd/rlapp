@@ -52,8 +52,10 @@ const form = useForm({
     secondary_identification_type: '', // passport or resident_id
     passport_number: '',
     passport_expiry: '',
+    passport_pdf: null as File | null,
     resident_id_number: '',
     resident_id_expiry: '',
+    resident_id_pdf: null as File | null,
     country: 'United Arab Emirates',
     nationality: '',
     emergency_contact_name: '',
@@ -96,8 +98,10 @@ watch(() => props.editingCustomer, (customer) => {
         form.visit_visa_pdf = null;
         form.passport_number = '';
         form.passport_expiry = '';
+        form.passport_pdf = null;
         form.resident_id_number = '';
         form.resident_id_expiry = '';
+        form.resident_id_pdf = null;
         form.country = 'United Arab Emirates';
         form.status = 'active';
         form.drivers_license_number = '';
@@ -105,8 +109,10 @@ watch(() => props.editingCustomer, (customer) => {
         form.secondary_identification_type = '';
         form.passport_number = '';
         form.passport_expiry = '';
+        form.passport_pdf = null;
         form.resident_id_number = '';
         form.resident_id_expiry = '';
+        form.resident_id_pdf = null;
     }
 }, { immediate: true });
 
@@ -116,20 +122,38 @@ watch(() => form.secondary_identification_type, (newType) => {
         // Clear resident ID and visit visa fields
         form.resident_id_number = '';
         form.resident_id_expiry = '';
+        form.resident_id_pdf = null;
         form.visit_visa_pdf = null;
     } else if (newType === 'resident_id') {
         // Clear passport and visit visa fields
         form.passport_number = '';
         form.passport_expiry = '';
+        form.passport_pdf = null;
         form.visit_visa_pdf = null;
     } else if (newType === 'visit_visa') {
         // Clear passport and resident ID fields
         form.passport_number = '';
         form.passport_expiry = '';
+        form.passport_pdf = null;
         form.resident_id_number = '';
         form.resident_id_expiry = '';
+        form.resident_id_pdf = null;
     }
 });
+
+const nextTab = () => {
+    const currentIndex = tabs.findIndex(tab => tab.value === activeTab.value);
+    if (currentIndex < tabs.length - 1) {
+        activeTab.value = tabs[currentIndex + 1].value;
+    }
+};
+
+const prevTab = () => {
+    const currentIndex = tabs.findIndex(tab => tab.value === activeTab.value);
+    if (currentIndex > 0) {
+        activeTab.value = tabs[currentIndex - 1].value;
+    }
+};
 
 const submitForm = () => {
     // Client-side validation for business customers
@@ -161,14 +185,14 @@ const submitForm = () => {
     }
 
     if (form.secondary_identification_type === 'passport') {
-        if (!form.passport_number || !form.passport_expiry) {
-            alert('Please fill in all passport information');
+        if (!form.passport_number || !form.passport_expiry || !form.passport_pdf) {
+            alert('Please fill in all passport information including the document upload');
             activeTab.value = 'identification';
             return;
         }
     } else if (form.secondary_identification_type === 'resident_id') {
-        if (!form.resident_id_number || !form.resident_id_expiry) {
-            alert('Please fill in all Emirates Resident ID information');
+        if (!form.resident_id_number || !form.resident_id_expiry || !form.resident_id_pdf) {
+            alert('Please fill in all Emirates Resident ID information including the document upload');
             activeTab.value = 'identification';
             return;
         }
@@ -538,51 +562,79 @@ const cancelForm = () => {
                     </div>
 
                     <!-- Secondary Identification Details (shown based on selection) -->
-                    <div v-if="form.secondary_identification_type === 'passport'" class="grid grid-cols-2 gap-4">
-                        <div class="space-y-2">
-                            <Label for="passport_number">Passport Number *</Label>
-                            <Input
-                                id="passport_number"
-                                v-model="form.passport_number"
-                                type="text"
-                                :required="form.secondary_identification_type === 'passport'"
-                                placeholder="Enter passport number"
-                            />
-                            <InputError :message="form.errors.passport_number" />
+                    <div v-if="form.secondary_identification_type === 'passport'" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-2">
+                                <Label for="passport_number">Passport Number *</Label>
+                                <Input
+                                    id="passport_number"
+                                    v-model="form.passport_number"
+                                    type="text"
+                                    :required="form.secondary_identification_type === 'passport'"
+                                    placeholder="Enter passport number"
+                                />
+                                <InputError :message="form.errors.passport_number" />
+                            </div>
+                            <div class="space-y-2">
+                                <Label for="passport_expiry">Passport Expiry Date *</Label>
+                                <Input
+                                    id="passport_expiry"
+                                    v-model="form.passport_expiry"
+                                    type="date"
+                                    :required="form.secondary_identification_type === 'passport'"
+                                />
+                                <InputError :message="form.errors.passport_expiry" />
+                            </div>
                         </div>
                         <div class="space-y-2">
-                            <Label for="passport_expiry">Passport Expiry Date *</Label>
+                            <Label for="passport_pdf">Passport Document *</Label>
                             <Input
-                                id="passport_expiry"
-                                v-model="form.passport_expiry"
-                                type="date"
+                                id="passport_pdf"
+                                type="file"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                @input="form.passport_pdf = $event.target.files[0]"
                                 :required="form.secondary_identification_type === 'passport'"
                             />
-                            <InputError :message="form.errors.passport_expiry" />
+                            <InputError :message="form.errors.passport_pdf" />
+                            <p class="text-sm text-gray-600">Upload passport document (PDF, JPG, PNG - required)</p>
                         </div>
                     </div>
 
-                    <div v-if="form.secondary_identification_type === 'resident_id'" class="grid grid-cols-2 gap-4">
-                        <div class="space-y-2">
-                            <Label for="resident_id_number">Emirates / Resident ID *</Label>
-                            <Input
-                                id="resident_id_number"
-                                v-model="form.resident_id_number"
-                                type="text"
-                                :required="form.secondary_identification_type === 'resident_id'"
-                                placeholder="Enter Emirates ID or Resident Card number"
-                            />
-                            <InputError :message="form.errors.resident_id_number" />
+                    <div v-if="form.secondary_identification_type === 'resident_id'" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-2">
+                                <Label for="resident_id_number">Emirates / Resident ID *</Label>
+                                <Input
+                                    id="resident_id_number"
+                                    v-model="form.resident_id_number"
+                                    type="text"
+                                    :required="form.secondary_identification_type === 'resident_id'"
+                                    placeholder="Enter Emirates ID or Resident Card number"
+                                />
+                                <InputError :message="form.errors.resident_id_number" />
+                            </div>
+                            <div class="space-y-2">
+                                <Label for="resident_id_expiry">ID Expiry Date *</Label>
+                                <Input
+                                    id="resident_id_expiry"
+                                    v-model="form.resident_id_expiry"
+                                    type="date"
+                                    :required="form.secondary_identification_type === 'resident_id'"
+                                />
+                                <InputError :message="form.errors.resident_id_expiry" />
+                            </div>
                         </div>
                         <div class="space-y-2">
-                            <Label for="resident_id_expiry">ID Expiry Date *</Label>
+                            <Label for="resident_id_pdf">Emirates / Resident ID Document *</Label>
                             <Input
-                                id="resident_id_expiry"
-                                v-model="form.resident_id_expiry"
-                                type="date"
+                                id="resident_id_pdf"
+                                type="file"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                @input="form.resident_id_pdf = $event.target.files[0]"
                                 :required="form.secondary_identification_type === 'resident_id'"
                             />
-                            <InputError :message="form.errors.resident_id_expiry" />
+                            <InputError :message="form.errors.resident_id_pdf" />
+                            <p class="text-sm text-gray-600">Upload Emirates ID or Resident Card document (PDF, JPG, PNG - required)</p>
                         </div>
                     </div>
 
@@ -648,13 +700,36 @@ const cancelForm = () => {
         </div>
 
         <DialogFooter>
-            <div class="flex justify-end gap-2">
-                <Button type="button" variant="outline" @click="cancelForm">
-                    Cancel
-                </Button>
-                <Button type="submit" :disabled="processing">
-                    {{ processing ? 'Saving...' : (editingCustomer ? 'Update Customer' : 'Add Customer') }}
-                </Button>
+            <div class="flex justify-between gap-3">
+                <div class="flex gap-3">
+                    <Button type="button" variant="outline" @click="cancelForm">
+                        Cancel
+                    </Button>
+                    <Button 
+                        v-if="activeTab !== 'customer-type'" 
+                        type="button" 
+                        variant="outline" 
+                        @click="prevTab"
+                    >
+                        Previous
+                    </Button>
+                </div>
+                <div class="flex gap-3">
+                    <Button 
+                        v-if="activeTab !== 'additional'" 
+                        type="button" 
+                        @click="nextTab"
+                    >
+                        Next
+                    </Button>
+                    <Button 
+                        v-else 
+                        type="submit" 
+                        :disabled="processing"
+                    >
+                        {{ processing ? 'Saving...' : (editingCustomer ? 'Update Customer' : 'Add Customer') }}
+                    </Button>
+                </div>
             </div>
         </DialogFooter>
     </form>

@@ -8,10 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use IFRS\Models\Account as IFRSAccount;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
-class Customer extends Model
+class Customer extends Model implements HasMedia
 {
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, InteractsWithMedia;
 
     /**
      * The attributes that are mass assignable.
@@ -390,5 +392,13 @@ class Customer extends Model
             'performed_at' => now(),
             'notes' => $notes,
         ]);
+    }
+
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('trade_license')->useDisk('s3')->singleFile();
+        $this->addMediaCollection('visit_visa')->useDisk('s3')->singleFile();
+        $this->addMediaCollection('passport')->useDisk('s3')->singleFile();
+        $this->addMediaCollection('resident_id')->useDisk('s3')->singleFile();
     }
 }
