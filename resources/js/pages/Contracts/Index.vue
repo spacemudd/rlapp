@@ -2,13 +2,10 @@
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { ref, computed, watch } from 'vue';
-import { Plus, Search, MoreVertical, FileText, Eye, Edit, Trash2, Play, CheckCircle, XCircle, Receipt } from 'lucide-vue-next';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
+import { Plus, MoreVertical, FileText, Eye } from 'lucide-vue-next';
 import { useI18n } from 'vue-i18n';
 
 interface Contract {
@@ -41,21 +38,6 @@ interface Contract {
 interface Props {
     contracts: {
         data: Contract[];
-        links?: Array<{
-            url: string | null;
-            label: string;
-            active: boolean;
-        }>;
-        meta?: {
-            current_page: number;
-            last_page: number;
-            per_page: number;
-            total: number;
-        };
-    };
-    filters: {
-        search: string;
-        status: string;
     };
 }
 
@@ -63,8 +45,9 @@ const props = defineProps<Props>();
 
 const { t } = useI18n();
 
-const search = ref(props.filters.search || '');
-const status = ref(props.filters.status || 'all');
+// Timeframe filter for Contracts widget
+type Timeframe = '24h' | '7d' | '14d' | 'all';
+const timeframe = ref<Timeframe>('all');
 
 const getStatusColor = (contractStatus: string) => {
     switch (contractStatus) {
@@ -110,65 +93,42 @@ const formatDate = (date: string) => {
     });
 };
 
-// Watch for changes and update URL with debounce
-let debounceTimer: number;
-watch([search, status], () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-        const params = new URLSearchParams();
-        if (search.value) params.set('search', search.value);
-        if (status.value !== 'all') params.set('status', status.value);
+// Helpers for date comparisons
+const now = () => new Date();
+const isWithinTimeframe = (dateIso: string, tf: Timeframe) => {
+    if (tf === 'all') return true;
+    const createdAt = new Date(dateIso);
+    const current = now();
+    const diffMs = current.getTime() - createdAt.getTime();
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    if (tf === '24h') return diffMs <= oneDayMs;
+    if (tf === '7d') return diffMs <= 7 * oneDayMs;
+    if (tf === '14d') return diffMs <= 14 * oneDayMs;
+    return true;
+};
 
-        router.get(route('contracts.index'), Object.fromEntries(params), {
-            preserveState: true,
-            preserveScroll: true,
-        });
-    }, 300);
+// Computed datasets for widgets
+const filteredContracts = computed(() => {
+    return props.contracts.data.filter((c) => isWithinTimeframe(c.created_at, timeframe.value));
 });
 
-const deleteContract = (contract: Contract) => {
-    if (confirm(`Are you sure you want to delete contract ${contract.contract_number}?`)) {
-        router.delete(route('contracts.destroy', contract.id), {
-            preserveScroll: true,
-        });
-    }
-};
+const upcomingContracts = computed(() => {
+    const current = now();
+    return props.contracts.data.filter((c) => new Date(c.start_date) > current);
+});
 
-const activateContract = (contract: Contract) => {
-    if (confirm(`Are you sure you want to activate contract ${contract.contract_number}?`)) {
-        router.patch(route('contracts.activate', contract.id), {}, {
-            preserveScroll: true,
-        });
-    }
-};
+const endingSoonContracts = computed(() => {
+    const current = now();
+    const threeDaysFromNow = new Date(current.getTime() + 3 * 24 * 60 * 60 * 1000);
+    return props.contracts.data.filter((c) => {
+        const end = new Date(c.end_date);
+        return end >= current && end <= threeDaysFromNow;
+    });
+});
 
-const completeContract = (contract: Contract) => {
-    if (confirm(`Are you sure you want to complete contract ${contract.contract_number}?`)) {
-        router.patch(route('contracts.complete', contract.id), {}, {
-            preserveScroll: true,
-        });
-    }
-};
-
-const voidContract = (contract: Contract) => {
-    const reason = prompt('Please provide a reason for voiding this contract:');
-    if (reason) {
-        router.patch(route('contracts.void', contract.id), { void_reason: reason }, {
-            preserveScroll: true,
-        });
-    }
-};
-
-const createInvoice = (contract: Contract) => {
-    if (confirm(`Create an invoice for contract ${contract.contract_number}?`)) {
-        router.post(route('contracts.create-invoice', contract.id), {}, {
-            preserveScroll: true,
-        });
-    }
-};
-
-function goToCreateInvoice(contract: Contract) {
-    window.location.href = route('invoices.create', { contract_id: contract.id });
+// Keep minimal actions for navigation
+function viewContract(contract: Contract) {
+    router.get(route('contracts.show', contract.id));
 }
 </script>
 
@@ -192,137 +152,93 @@ function goToCreateInvoice(contract: Contract) {
                     </Link>
                 </div>
 
-                <!-- Filters -->
-                <Card>
-                    <CardContent class="pt-6">
-                        <div class="flex flex-col sm:flex-row gap-4">
-                            <div class="flex-1">
-                                <div class="relative">
-                                    <Search class="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                                    <Input
-                                        v-model="search"
-                                        placeholder="Search contracts, customers, or vehicles..."
-                                        class="pl-10"
-                                    />
+                <!-- Widgets Grid -->
+                <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    <!-- Contracts Widget -->
+                    <Card class="col-span-1 lg:col-span-1">
+                        <CardHeader class="pb-2">
+                            <div class="flex items-center justify-between">
+                                <CardTitle>Contracts</CardTitle>
+                                <div>
+                                    <select v-model="timeframe" class="flex h-9 items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
+                                        <option value="24h">Last 24hrs</option>
+                                        <option value="7d">Last 7-Days</option>
+                                        <option value="14d">Last 14-Days</option>
+                                        <option value="all">View All</option>
+                                    </select>
                                 </div>
                             </div>
-                            <div class="w-full sm:w-48">
-                                <select
-                                    v-model="status"
-                                    class="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                    <option value="all">All Status</option>
-                                    <option value="draft">Draft</option>
-                                    <option value="active">Active</option>
-                                    <option value="completed">Completed</option>
-                                    <option value="void">Void</option>
-                                </select>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <!-- Contracts Grid -->
-                <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3 relative">
-                    <Card v-for="contract in contracts.data" :key="contract.id" class="hover:shadow-md transition-shadow">
-                        <CardHeader class="pb-3">
-                            <div class="flex items-start justify-between">
-                                <div class="space-y-1">
-                                    <Link :href="route('contracts.show', contract.id)" class="hover:underline">
-                                        <CardTitle class="text-lg">{{ contract.contract_number }}</CardTitle>
-                                    </Link>
-                                    <Badge :class="getStatusColor(contract.status)" class="text-xs">
-                                        {{ contract.status.charAt(0).toUpperCase() + contract.status.slice(1) }}
-                                    </Badge>
-                                </div>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger as-child>
-                                        <Button variant="ghost" size="sm">
-                                            <MoreVertical class="w-4 h-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" class="z-50">
-                                        <DropdownMenuItem as-child>
-                                            <Link :href="route('contracts.show', contract.id)">
-                                                <Eye class="w-4 h-4 mr-2" />
-                                                View Details
-                                            </Link>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem v-if="contract.status === 'draft'" as-child>
-                                            <Link :href="route('contracts.edit', contract.id)">
-                                                <Edit class="w-4 h-4 mr-2" />
-                                                Edit
-                                            </Link>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem v-if="contract.status === 'draft'" @click="activateContract(contract)">
-                                            <Play class="w-4 h-4 mr-2" />
-                                            Activate
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem v-if="contract.status === 'active'" @click="completeContract(contract)">
-                                            <CheckCircle class="w-4 h-4 mr-2" />
-                                            Complete
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem v-if="['draft', 'active'].includes(contract.status)" @click="voidContract(contract)">
-                                            <XCircle class="w-4 h-4 mr-2" />
-                                            Void
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem v-if="!contract.invoice_id && contract.status !== 'void'" @click="() => goToCreateInvoice(contract)">
-                                            <Receipt class="w-4 h-4 mr-2" />
-                                            Create Invoice
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem v-if="contract.status === 'draft'" @click="deleteContract(contract)" class="text-red-600">
-                                            <Trash2 class="w-4 h-4 mr-2" />
-                                            Delete
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
+                            <CardDescription class="mt-1">Quick view of recent contracts</CardDescription>
                         </CardHeader>
-                        <CardContent class="space-y-4">
-                            <!-- Customer Info -->
-                            <div>
-                                <p class="text-sm font-medium text-gray-900">
-                                    {{ contract.customer.first_name }} {{ contract.customer.last_name }}
-                                </p>
-                                <p class="text-sm text-gray-500">{{ contract.customer.email }}</p>
+                        <CardContent>
+                            <div v-if="filteredContracts.length === 0" class="text-center py-8 text-sm text-gray-500">
+                                No contracts in this range
                             </div>
+                            <ul v-else class="divide-y">
+                                <li v-for="c in filteredContracts" :key="c.id" class="py-3 flex items-center justify-between">
+                                    <div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-medium">{{ c.contract_number }}</span>
+                                            <Badge :class="getStatusColor(c.status)" class="text-xs">{{ c.status }}</Badge>
+                                        </div>
+                                        <div class="text-xs text-gray-500 mt-1">
+                                            {{ c.customer.first_name }} {{ c.customer.last_name }} · {{ formatDate(c.start_date) }} - {{ formatDate(c.end_date) }}
+                                        </div>
+                                    </div>
+                                    <Button variant="ghost" size="sm" @click="viewContract(c)">
+                                        <Eye class="w-4 h-4" />
+                                    </Button>
+                                </li>
+                            </ul>
+                        </CardContent>
+                    </Card>
 
-                            <!-- Vehicle Info -->
-                            <div>
-                                <p class="text-sm font-medium text-gray-900">
-                                    {{ contract.vehicle.year }} {{ contract.vehicle.make }} {{ contract.vehicle.model }}
-                                </p>
-                                <p class="text-sm text-gray-500">{{ contract.vehicle.plate_number }}</p>
+                    <!-- Upcoming Contracts Widget -->
+                    <Card class="col-span-1">
+                        <CardHeader class="pb-2">
+                            <CardTitle>Upcoming Contracts</CardTitle>
+                            <CardDescription class="mt-1">Contracts starting in the future</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div v-if="upcomingContracts.length === 0" class="text-center py-8 text-sm text-gray-500">
+                                No upcoming contracts
                             </div>
+                            <ul v-else class="divide-y">
+                                <li v-for="c in upcomingContracts" :key="c.id" class="py-3 flex items-center justify-between">
+                                    <div>
+                                        <div class="font-medium">{{ c.contract_number }}</div>
+                                        <div class="text-xs text-gray-500 mt-1">Starts {{ formatDate(c.start_date) }}</div>
+                                    </div>
+                                    <Badge :class="getStatusColor(c.status)" class="text-xs">{{ c.status }}</Badge>
+                                </li>
+                            </ul>
+                        </CardContent>
+                    </Card>
 
-                            <!-- Contract Details -->
-                            <div class="grid grid-cols-2 gap-4 text-sm">
-                                <div>
-                                    <p class="text-gray-500">Start Date</p>
-                                    <p class="font-medium">{{ formatDate(contract.start_date) }}</p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-500">End Date</p>
-                                    <p class="font-medium">{{ formatDate(contract.end_date) }}</p>
-                                </div>
+                    <!-- Ending Soon Widget -->
+                    <Card class="col-span-1">
+                        <CardHeader class="pb-2">
+                            <CardTitle>Ending Soon</CardTitle>
+                            <CardDescription class="mt-1">Contracts ending in the next 3 days</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div v-if="endingSoonContracts.length === 0" class="text-center py-8 text-sm text-gray-500">
+                                No contracts ending soon
                             </div>
-
-                            <!-- Financial Info -->
-                            <div class="pt-3 border-t">
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm text-gray-500">Total Amount</span>
-                                    <span class="font-semibold text-lg">{{ formatCurrency(contract.total_amount, contract.currency) }}</span>
-                                </div>
-                                <div class="flex justify-between items-center mt-1">
-                                    <span class="text-xs text-gray-400">{{ contract.total_days }} days × {{ formatCurrency(contract.daily_rate, contract.currency) }}</span>
-                                    <span v-if="contract.invoice_id" class="text-xs text-green-600">Invoice Created</span>
-                                </div>
-                            </div>
+                            <ul v-else class="divide-y">
+                                <li v-for="c in endingSoonContracts" :key="c.id" class="py-3 flex items-center justify-between">
+                                    <div>
+                                        <div class="font-medium">{{ c.contract_number }}</div>
+                                        <div class="text-xs text-gray-500 mt-1">Ends {{ formatDate(c.end_date) }}</div>
+                                    </div>
+                                    <Badge :class="getStatusColor(c.status)" class="text-xs">{{ c.status }}</Badge>
+                                </li>
+                            </ul>
                         </CardContent>
                     </Card>
                 </div>
 
-                <!-- Empty State -->
+                <!-- Empty State for entire dataset -->
                 <div v-if="contracts.data.length === 0" class="text-center py-12">
                     <FileText class="w-12 h-12 text-gray-400 mx-auto mb-4" />
                     <h3 class="text-lg font-medium text-gray-900 mb-2">No contracts found</h3>
@@ -333,30 +249,6 @@ function goToCreateInvoice(contract: Contract) {
                             Create Contract
                         </Button>
                     </Link>
-                </div>
-
-                <!-- Pagination -->
-                <div v-if="contracts.links && contracts.data.length > 0" class="flex justify-center">
-                    <nav class="flex items-center space-x-2">
-                        <template v-for="link in contracts.links" :key="link.label">
-                            <Link v-if="link.url"
-                                  :href="link.url"
-                                  :class="[
-                                      'px-3 py-2 text-sm rounded-md',
-                                      link.active
-                                          ? 'bg-blue-600 text-white'
-                                          : 'text-gray-700 hover:bg-gray-100'
-                                  ]"
-                                  v-html="link.label">
-                            </Link>
-                            <span v-else
-                                  :class="[
-                                      'px-3 py-2 text-sm rounded-md text-gray-400 cursor-not-allowed'
-                                  ]"
-                                  v-html="link.label">
-                            </span>
-                        </template>
-                    </nav>
                 </div>
             </div>
         </div>

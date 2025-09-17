@@ -8,7 +8,6 @@ import { Plus, Users, Edit, Trash2, Phone, Mail, Calendar, CreditCard, Search, F
 import { ref, computed, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
-import { useDirection } from '@/composables/useDirection';
 
 interface Customer {
     id: string;
@@ -66,7 +65,6 @@ interface Props {
 const props = defineProps<Props>();
 
 const { t } = useI18n();
-const { isRtl } = useDirection();
 
 const breadcrumbs = [
     { title: t('dashboard'), href: '/dashboard' },
@@ -191,37 +189,28 @@ watch(searchQuery, (newValue, oldValue) => {
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="p-6">
             <div class="space-y-6">
-                <div class="flex items-center justify-between" :class="{ 'flex-row-reverse': isRtl }">
-                    <div :class="{ 'text-right': isRtl }">
+                <div class="flex justify-between">
+                    <div>
                         <h1 class="text-3xl font-bold tracking-tight">{{ t('customers') }}</h1>
                         <p class="text-muted-foreground">
                             {{ t('manage_customers') }}
                         </p>
                     </div>
 
-                    <div class="flex items-center gap-4" :class="{ 'flex-row-reverse': isRtl }">
+                    <div class="flex items-center gap-4">
                         <!-- Search Input -->
                         <div class="relative">
-                            <Search :class="[
-                                'absolute top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground',
-                                isRtl ? 'right-3' : 'left-3'
-                            ]" />
+                            <Search class="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 v-model="searchQuery"
                                 :placeholder="t('search_customers')"
-                                :class="[
-                                    'w-64',
-                                    isRtl ? 'pr-10' : 'pl-10'
-                                ]"
+                                class="w-64 pl-10"
                             />
                             <Button
                                 v-if="searchQuery"
                                 variant="ghost"
                                 size="sm"
-                                :class="[
-                                    'absolute top-1/2 h-6 w-6 -translate-y-1/2 p-0',
-                                    isRtl ? 'left-1' : 'right-1'
-                                ]"
+                                class="absolute top-1/2 right-1 h-6 w-6 -translate-y-1/2 p-0"
                                 @click="clearSearch"
                             >
                                 ×
@@ -230,10 +219,7 @@ watch(searchQuery, (newValue, oldValue) => {
 
                         <Link href="/customers/create">
                             <Button>
-                                <Plus :class="[
-                                    'h-4 w-4',
-                                    isRtl ? 'ml-2' : 'mr-2'
-                                ]" />
+                                <Plus class="h-4 w-4 mr-2" />
                                 {{ t('add_customer') }}
                             </Button>
                         </Link>
@@ -242,52 +228,52 @@ watch(searchQuery, (newValue, oldValue) => {
 
                 <div class="grid gap-1 md:grid-cols-2 lg:grid-cols-4">
                     <Card class="bg-slate-50 border-slate-200 shadow-sm py-2">
-                        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-0 px-2 py-0" :class="{ 'flex-row-reverse': isRtl }">
-                            <CardTitle class="text-[10px] font-medium leading-none" :class="{ 'text-right': isRtl }">{{ t('total_customers') }}</CardTitle>
+                        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-0 px-2 py-0">
+                            <CardTitle class="text-[10px] font-medium leading-none">{{ t('total_customers') }}</CardTitle>
                             <Users class="h-3 w-3 text-slate-600" />
                         </CardHeader>
                         <CardContent class="px-2 py-0">
-                            <div class="text-base font-semibold leading-none" :class="{ 'text-right': isRtl }">{{ props.stats.total }}</div>
-                            <p class="text-[10px] text-muted-foreground leading-none" :class="{ 'text-right': isRtl }">
+                            <div class="text-base font-semibold leading-none">{{ props.stats.total }}</div>
+                            <p class="text-[10px] text-muted-foreground leading-none">
                                 {{ props.stats.total === 0 ? t('no_data') : t('total_customers') }}
                             </p>
                         </CardContent>
                     </Card>
 
                     <Card class="bg-emerald-50 border-emerald-200 shadow-sm py-2">
-                        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-0 px-2 py-0" :class="{ 'flex-row-reverse': isRtl }">
-                            <CardTitle class="text-[10px] font-medium leading-none" :class="{ 'text-right': isRtl }">{{ t('active_customers') }}</CardTitle>
+                        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-0 px-2 py-0">
+                            <CardTitle class="text-[10px] font-medium leading-none">{{ t('active_customers') }}</CardTitle>
                             <Users class="h-3 w-3 text-emerald-600" />
                         </CardHeader>
                         <CardContent class="px-2 py-0">
-                            <div class="text-base font-semibold leading-none" :class="{ 'text-right': isRtl }">{{ props.stats.active }}</div>
-                            <p class="text-[10px] text-emerald-700/80 leading-none" :class="{ 'text-right': isRtl }">
+                            <div class="text-base font-semibold leading-none">{{ props.stats.active }}</div>
+                            <p class="text-[10px] text-emerald-700/80 leading-none">
                                 {{ t('active') }}
                             </p>
                         </CardContent>
                     </Card>
 
                     <Card class="bg-rose-50 border-rose-200 shadow-sm py-2">
-                        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-0 px-2 py-0" :class="{ 'flex-row-reverse': isRtl }">
-                            <CardTitle class="text-[10px] font-medium leading-none" :class="{ 'text-right': isRtl }">{{ t('blocked_customers') }}</CardTitle>
+                        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-0 px-2 py-0">
+                            <CardTitle class="text-[10px] font-medium leading-none">{{ t('blocked_customers') }}</CardTitle>
                             <Users class="h-3 w-3 text-rose-600" />
                         </CardHeader>
                         <CardContent class="px-2 py-0">
-                            <div class="text-base font-semibold text-rose-700 leading-none" :class="{ 'text-right': isRtl }">{{ props.stats.blocked }}</div>
-                            <p class="text-[10px] text-rose-700/80 leading-none" :class="{ 'text-right': isRtl }">
+                            <div class="text-base font-semibold text-rose-700 leading-none">{{ props.stats.blocked }}</div>
+                            <p class="text-[10px] text-rose-700/80 leading-none">
                                 {{ t('blocked') }}
                             </p>
                         </CardContent>
                     </Card>
 
                     <Card class="bg-indigo-50 border-indigo-200 shadow-sm py-2">
-                        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-0 px-2 py-0" :class="{ 'flex-row-reverse': isRtl }">
-                            <CardTitle class="text-[10px] font-medium leading-none" :class="{ 'text-right': isRtl }">{{ t('new_this_month') }}</CardTitle>
+                        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-0 px-2 py-0">
+                            <CardTitle class="text-[10px] font-medium leading-none">{{ t('new_this_month') }}</CardTitle>
                             <Users class="h-3 w-3 text-indigo-600" />
                         </CardHeader>
                         <CardContent class="px-2 py-0">
-                            <div class="text-base font-semibold leading-none" :class="{ 'text-right': isRtl }">{{ props.stats.new_this_month }}</div>
-                            <p class="text-[10px] text-indigo-700/80 leading-none" :class="{ 'text-right': isRtl }">
+                            <div class="text-base font-semibold leading-none">{{ props.stats.new_this_month }}</div>
+                            <p class="text-[10px] text-indigo-700/80 leading-none">
                                 {{ t('new_this_month') }}
                             </p>
                         </CardContent>
@@ -295,7 +281,7 @@ watch(searchQuery, (newValue, oldValue) => {
                 </div>
 
                 <!-- Filter Tabs -->
-                <div class="flex items-center justify-center gap-4 p-1 bg-muted rounded-lg w-fit mx-auto" :class="{ 'flex-row-reverse': isRtl }">
+                <div class="flex justify-center gap-4 p-1 bg-muted rounded-lg w-fit mx-auto">
                     <Button
                         variant="ghost"
                         size="sm"
@@ -333,8 +319,8 @@ watch(searchQuery, (newValue, oldValue) => {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle :class="{ 'text-right': isRtl }">{{ t('customers') }}</CardTitle>
-                        <CardDescription :class="{ 'text-right': isRtl }">
+                        <CardTitle>{{ t('customers') }}</CardTitle>
+                        <CardDescription>
                             {{ t('manage_customers') }}
                         </CardDescription>
                     </CardHeader>
@@ -351,16 +337,13 @@ watch(searchQuery, (newValue, oldValue) => {
                                         : t('manage_customers')
                                     }}
                                 </p>
-                                <div class="mt-4 flex gap-2 justify-center" :class="{ 'flex-row-reverse': isRtl }">
+                                <div class="mt-4 flex gap-2 justify-center">
                                     <Button v-if="searchQuery" variant="outline" @click="clearSearch">
                                         {{ t('clear_search') }}
                                     </Button>
                                     <Link href="/customers/create">
                                         <Button>
-                                            <Plus :class="[
-                                                'h-4 w-4',
-                                                isRtl ? 'ml-2' : 'mr-2'
-                                            ]" />
+                                            <Plus class="h-4 w-4 mr-2" />
                                             {{ t('add_customer') }}
                                         </Button>
                                     </Link>
@@ -370,8 +353,8 @@ watch(searchQuery, (newValue, oldValue) => {
 
                         <div v-else class="space-y-4">
                             <!-- Search Results Indicator -->
-                            <div v-if="searchQuery" class="flex items-center justify-between p-3 bg-muted/50 rounded-md" :class="{ 'flex-row-reverse': isRtl }">
-                                <div class="flex items-center gap-2" :class="{ 'flex-row-reverse': isRtl }">
+                            <div v-if="searchQuery" class="flex items-center justify-between p-3 bg-muted/50 rounded-md">
+                                <div class="flex items-center gap-2">
                                     <Search class="h-4 w-4 text-muted-foreground" />
                                     <span class="text-sm text-muted-foreground">
                                         {{ t('showing') }} {{ props.customers.total }} {{ t('results') }} "{{ searchQuery }}"
@@ -387,12 +370,12 @@ watch(searchQuery, (newValue, oldValue) => {
                                 <table class="w-full">
                                     <thead>
                                         <tr class="border-b bg-muted/50">
-                                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground rtl:text-right">{{ t('name') }}</th>
-                                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground rtl:text-right">{{ t('phone') }}</th>
-                                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground rtl:text-right">{{ t('drivers_license') }}</th>
-                                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground rtl:text-right">{{ t('status') }}</th>
-                                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground rtl:text-right">Documents</th>
-                                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground rtl:text-right">{{ t('actions') }}</th>
+                                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{{ t('name') }}</th>
+                                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{{ t('phone') }}</th>
+                                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{{ t('drivers_license') }}</th>
+                                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{{ t('status') }}</th>
+                                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Documents</th>
+                                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{{ t('actions') }}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -413,7 +396,7 @@ watch(searchQuery, (newValue, oldValue) => {
                                                 <div v-if="customer.business_type === 'business' && customer.driver_name" class="text-sm text-blue-600">
                                                     Driver: {{ customer.driver_name }}
                                                 </div>
-                                                <div v-if="customer.business_type === 'business' && customer.trade_license_number" class="text-sm text-green-600 flex items-center gap-1" :class="{ 'flex-row-reverse': isRtl }">
+                                                <div v-if="customer.business_type === 'business' && customer.trade_license_number" class="text-sm text-green-600 flex items-center gap-1">
                                                     <FileText class="h-3 w-3" />
                                                     Trade License: {{ customer.trade_license_number }}
                                                 </div>
@@ -425,21 +408,21 @@ watch(searchQuery, (newValue, oldValue) => {
                                                 </div>
                                             </td>
                                             <td class="p-4 align-middle">
-                                                <div class="flex items-center gap-2 text-sm" :class="{ 'flex-row-reverse': isRtl }">
+                                                <div class="flex items-center gap-2 text-sm">
                                                     <Mail class="h-4 w-4" />
                                                     {{ customer.email }}
                                                 </div>
-                                                <div class="flex items-center gap-2 text-sm text-muted-foreground" :class="{ 'flex-row-reverse': isRtl }">
+                                                <div class="flex items-center gap-2 text-sm text-muted-foreground">
                                                     <Phone class="h-4 w-4" />
                                                     {{ customer.phone }}
                                                 </div>
                                             </td>
                                             <td class="p-4 align-middle">
-                                                <div class="flex items-center gap-2 text-sm" :class="{ 'flex-row-reverse': isRtl }">
+                                                <div class="flex items-center gap-2 text-sm">
                                                     <CreditCard class="h-4 w-4" />
                                                     {{ customer.drivers_license_number }}
                                                 </div>
-                                                <div class="flex items-center gap-2 text-sm text-muted-foreground" :class="{ 'flex-row-reverse': isRtl }">
+                                                <div class="flex items-center gap-2 text-sm text-muted-foreground">
                                                     <Calendar class="h-4 w-4" />
                                                     {{ t('license_expiry') }}: {{ formatDate(customer.drivers_license_expiry) }}
                                                 </div>
@@ -467,7 +450,6 @@ watch(searchQuery, (newValue, oldValue) => {
                                                         :href="`/storage/${customer.trade_license_pdf_path}`"
                                                         target="_blank"
                                                         class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-green-50 text-green-700 rounded-md hover:bg-green-100 transition-colors"
-                                                        :class="{ 'flex-row-reverse': isRtl }"
                                                     >
                                                         <Download class="h-3 w-3" />
                                                         Trade License
@@ -500,12 +482,12 @@ watch(searchQuery, (newValue, oldValue) => {
                             </div>
 
                             <!-- Pagination -->
-                            <div v-if="props.customers.last_page > 1" class="flex items-center justify-between mt-6" :class="{ 'flex-row-reverse': isRtl }">
-                                <p class="text-sm text-muted-foreground" :class="{ 'text-right': isRtl }">
+                            <div v-if="props.customers.last_page > 1" class="flex items-center justify-between mt-6">
+                                <p class="text-sm text-muted-foreground">
                                     Showing {{ props.customers.from ?? 0 }} to {{ props.customers.to ?? 0 }} of {{ props.customers.total }} results
                                 </p>
 
-                                <div class="flex items-center gap-2" :class="{ 'flex-row-reverse': isRtl }">
+                                <div class="flex items-center gap-2">
                                     <!-- Previous Button -->
                                     <template v-if="props.customers.current_page > 1">
                                         <Link

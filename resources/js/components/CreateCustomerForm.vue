@@ -8,9 +8,10 @@ import { DialogFooter } from '@/components/ui/dialog';
 import SearchableSelect from './ui/SearchableSelect.vue';
 import InputError from './InputError.vue';
 import { useForm } from '@inertiajs/vue3';
-import { watch, ref } from 'vue';
+import { watch, ref, computed } from 'vue';
 import { CreditCard, BookOpen, IdCard, User, Building, FileText, UserCheck, Shield } from 'lucide-vue-next';
 import { countryOptions, nationalityOptions } from '../lib/countries';
+import { useI18n } from 'vue-i18n';
 
 interface Props {
     editingCustomer?: any;
@@ -25,14 +26,17 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
+const { t, locale } = useI18n();
+const isRtl = computed(() => locale.value === 'ar');
+
 // Tab management
 const activeTab = ref('customer-type');
 
 const tabs = [
-    { value: 'customer-type', icon: Building, label: 'Customer Type' },
-    { value: 'personal-info', icon: User, label: 'Personal Info' },
-    { value: 'identification', icon: Shield, label: 'ID & License' },
-    { value: 'additional', icon: UserCheck, label: 'Additional' }
+    { value: 'customer-type', icon: Building, label: t('customer_type_tab') },
+    { value: 'personal-info', icon: User, label: t('personal_info_tab') },
+    { value: 'identification', icon: Shield, label: t('id_and_license_tab') },
+    { value: 'additional', icon: UserCheck, label: t('additional_tab') }
 ];
 
 const form = useForm({
@@ -254,7 +258,10 @@ const cancelForm = () => {
     <div class="space-y-6">
         <!-- Custom Tab Navigation -->
         <div class="border-b border-gray-200">
-            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+            <nav
+                class="-mb-px flex space-x-8"
+                aria-label="Tabs"
+            >
                 <button
                     v-for="tab in tabs"
                     :key="tab.value"
@@ -272,16 +279,16 @@ const cancelForm = () => {
             </nav>
         </div>
 
-    <form @submit.prevent="submitForm" class="space-y-6">
+    <form @submit.prevent="submitForm" class="space-y-6" :dir="isRtl ? 'rtl' : 'ltr'">
 
         <!-- Customer Type & Business Information Tab -->
         <div v-if="activeTab === 'customer-type'" class="space-y-6 mt-6">
                 <div class="space-y-4">
-                    <h3 class="text-lg font-medium text-gray-900">Customer Type & Business Information</h3>
+                    <h3 class="text-lg font-medium text-gray-900">{{ t('customer_type_business_information') }}</h3>
                     
                     <!-- Customer Type Selection -->
                     <div class="space-y-4">
-                        <Label>Customer Type *</Label>
+                        <Label :class="[isRtl ? 'w-full justify-end text-right' : '']">{{ t('customer_type') }} *</Label>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <!-- Individual Customer -->
                             <div
@@ -294,8 +301,8 @@ const cancelForm = () => {
                             >
                                 <div class="flex flex-col items-center text-center space-y-2">
                                     <User class="h-8 w-8 text-gray-600" />
-                                    <h3 class="font-medium text-gray-900">Individual Customer</h3>
-                                    <p class="text-sm text-gray-500">Personal customer or individual</p>
+                                    <h3 class="font-medium text-gray-900">{{ t('individual_customer') }}</h3>
+                                    <p class="text-sm text-gray-500">{{ t('individual_customer_description') }}</p>
                                 </div>
                                 <input
                                     type="radio"
@@ -317,8 +324,8 @@ const cancelForm = () => {
                             >
                                 <div class="flex flex-col items-center text-center space-y-2">
                                     <Building class="h-8 w-8 text-gray-600" />
-                                    <h3 class="font-medium text-gray-900">Business Customer</h3>
-                                    <p class="text-sm text-gray-500">Company or business entity</p>
+                                    <h3 class="font-medium text-gray-900">{{ t('business_customer') }}</h3>
+                                    <p class="text-sm text-gray-500">{{ t('business_customer_description') }}</p>
                                 </div>
                                 <input
                                     type="radio"
@@ -334,43 +341,43 @@ const cancelForm = () => {
 
                     <!-- Business Information (shown only for business customers) -->
                     <div v-if="form.business_type === 'business'" class="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                        <h4 class="font-medium text-gray-900">Business Information</h4>
+                        <h4 class="font-medium text-gray-900">{{ t('business_information') }}</h4>
                         <div class="space-y-2">
-                            <Label for="business_name">Business/Company Name *</Label>
+                            <Label for="business_name" :class="[isRtl ? 'w-full justify-end text-right' : '']">{{ t('business_company_name') }} *</Label>
                             <Input
                                 id="business_name"
                                 v-model="form.business_name"
                                 type="text"
                                 :required="form.business_type === 'business'"
-                                placeholder="Enter company or business name"
+                                :placeholder="t('business_name_placeholder')"
                             />
                             <InputError :message="form.errors.business_name" />
                         </div>
                         <div class="space-y-2">
-                            <Label for="driver_name">Driver Name (if different from owner)</Label>
+                            <Label for="driver_name" :class="[isRtl ? 'w-full justify-end text-right' : '']">{{ t('driver_name_if_different') }}</Label>
                             <Input
                                 id="driver_name"
                                 v-model="form.driver_name"
                                 type="text"
-                                placeholder="Enter driver name (optional)"
+                                :placeholder="t('driver_name_placeholder')"
                             />
                             <InputError :message="form.errors.driver_name" />
-                            <p class="text-sm text-gray-600">Leave empty if the owner is the driver</p>
+                            <p class="text-sm text-gray-600">{{ t('owner_is_driver_hint') }}</p>
                         </div>
 
                         <div class="space-y-2">
-                            <Label for="trade_license_number">Trade License Number</Label>
+                            <Label for="trade_license_number" :class="[isRtl ? 'w-full justify-end text-right' : '']">{{ t('trade_license_number') || 'Trade License Number' }}</Label>
                             <Input
                                 id="trade_license_number"
                                 v-model="form.trade_license_number"
                                 type="text"
-                                placeholder="Enter trade license number (optional)"
+                                :placeholder="t('trade_license_number_placeholder')"
                             />
                             <InputError :message="form.errors.trade_license_number" />
                         </div>
 
                         <div class="space-y-2">
-                            <Label for="trade_license_pdf">Trade License PDF</Label>
+                            <Label for="trade_license_pdf" :class="[isRtl ? 'w-full justify-end text-right' : '']">{{ t('trade_license_pdf') }}</Label>
                             <Input
                                 id="trade_license_pdf"
                                 type="file"
@@ -378,7 +385,7 @@ const cancelForm = () => {
                                 @input="form.trade_license_pdf = $event.target.files[0]"
                             />
                             <InputError :message="form.errors.trade_license_pdf" />
-                            <p class="text-sm text-gray-600">Upload trade license document (PDF only, optional)</p>
+                            <p class="text-sm text-gray-600">{{ t('trade_license_upload_hint') }}</p>
                         </div>
                     </div>
                 </div>
@@ -388,12 +395,12 @@ const cancelForm = () => {
         <div v-if="activeTab === 'personal-info'" class="space-y-6 mt-6">
                 <div class="space-y-4">
                     <h3 class="text-lg font-medium text-gray-900">
-                        {{ form.business_type === 'business' ? 'Owner Information' : 'Personal Information' }}
+                        {{ form.business_type === 'business' ? t('owner_information') : t('personal_information') }}
                     </h3>
                     
                     <div class="grid grid-cols-2 gap-4">
                         <div class="space-y-2">
-                            <Label for="first_name">First Name *</Label>
+                            <Label for="first_name" :class="[isRtl ? 'w-full justify-end text-right' : '']">{{ t('first_name') }} *</Label>
                             <Input
                                 id="first_name"
                                 v-model="form.first_name"
@@ -403,7 +410,7 @@ const cancelForm = () => {
                             <InputError :message="form.errors.first_name" />
                         </div>
                         <div class="space-y-2">
-                            <Label for="last_name">Last Name *</Label>
+                            <Label for="last_name" :class="[isRtl ? 'w-full justify-end text-right' : '']">{{ t('last_name') }} *</Label>
                             <Input
                                 id="last_name"
                                 v-model="form.last_name"
@@ -415,7 +422,7 @@ const cancelForm = () => {
                     </div>
 
                     <div class="space-y-2">
-                        <Label for="phone">Phone *</Label>
+                        <Label for="phone" :class="[isRtl ? 'w-full justify-end text-right' : '']">{{ t('phone') }} *</Label>
                         <Input
                             id="phone"
                             v-model="form.phone"
@@ -426,7 +433,7 @@ const cancelForm = () => {
                     </div>
 
                     <div class="space-y-2">
-                        <Label for="email">Email</Label>
+                        <Label for="email" :class="[isRtl ? 'w-full justify-end text-right' : '']">{{ t('email') }}</Label>
                         <Input
                             id="email"
                             v-model="form.email"
@@ -436,7 +443,7 @@ const cancelForm = () => {
                     </div>
 
                     <div class="space-y-2">
-                        <Label for="date_of_birth">Date of Birth</Label>
+                        <Label for="date_of_birth" :class="[isRtl ? 'w-full justify-end text-right' : '']">{{ t('date_of_birth') }}</Label>
                         <Input
                             id="date_of_birth"
                             v-model="form.date_of_birth"
@@ -448,35 +455,35 @@ const cancelForm = () => {
                     <!-- Country and Nationality Information -->
                     <div class="grid grid-cols-2 gap-4">
                         <div class="space-y-2">
-                            <Label for="country">Country *</Label>
+                            <Label for="country" :class="[isRtl ? 'w-full justify-end text-right' : '']">{{ t('country') }} *</Label>
                             <SearchableSelect
                                 v-model="form.country"
                                 :options="countryOptions"
-                                placeholder="Search and select country..."
+                                :placeholder="t('search_select_country')"
                                 :error="form.errors.country"
                             />
                         </div>
                         <div class="space-y-2">
-                            <Label for="nationality">Nationality *</Label>
+                            <Label for="nationality" :class="[isRtl ? 'w-full justify-end text-right' : '']">{{ t('nationality') }} *</Label>
                             <SearchableSelect
                                 v-model="form.nationality"
                                 :options="nationalityOptions"
-                                placeholder="Search and select nationality..."
+                                :placeholder="t('search_select_nationality')"
                                 :error="form.errors.nationality"
                             />
                         </div>
                     </div>
 
                     <div class="space-y-2">
-                        <Label for="status">Status *</Label>
+                        <Label for="status" :class="[isRtl ? 'w-full justify-end text-right' : '']">{{ t('status') }} *</Label>
                         <select
                             id="status"
                             v-model="form.status"
                             class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                             required
                         >
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
+                            <option value="active">{{ t('active') }}</option>
+                            <option value="inactive">{{ t('inactive') }}</option>
                         </select>
                         <InputError :message="form.errors.status" />
                     </div>
@@ -486,26 +493,26 @@ const cancelForm = () => {
         <!-- Identification Tab -->
         <div v-if="activeTab === 'identification'" class="space-y-6 mt-6">
                 <div class="space-y-6">
-                    <h3 class="text-lg font-medium text-gray-900">Identification & Documentation</h3>
+                    <h3 class="text-lg font-medium text-gray-900">{{ t('identification_and_documentation') }}</h3>
                     
                     <!-- Driver's License Section -->
                     <div class="space-y-4">
-                        <h4 class="text-md font-semibold text-blue-700 bg-blue-50 border-l-4 border-blue-500 px-4 py-2 rounded-r-md">Driver's License (Required)</h4>
+                        <h4 class="text-md font-semibold text-blue-700 bg-blue-50 border-l-4 border-blue-500 px-4 py-2 rounded-r-md">{{ t('drivers_license_required') }}</h4>
                         <div class="space-y-4">
                         <div class="grid grid-cols-2 gap-4">
                             <div class="space-y-2">
-                                <Label for="drivers_license_number">Driver's License Number *</Label>
+                                <Label for="drivers_license_number" :class="[isRtl ? 'w-full justify-end text-right' : '']">{{ t('drivers_license_number') }} *</Label>
                                 <Input
                                     id="drivers_license_number"
                                     v-model="form.drivers_license_number"
                                     type="text"
                                     required
-                                    placeholder="Enter license number"
+                                    :placeholder="t('license_number_placeholder')"
                                 />
                                 <InputError :message="form.errors.drivers_license_number" />
                             </div>
                             <div class="space-y-2">
-                                <Label for="drivers_license_expiry">License Expiry Date *</Label>
+                                <Label for="drivers_license_expiry" :class="[isRtl ? 'w-full justify-end text-right' : '']">{{ t('license_expiry_date') }} *</Label>
                                 <Input
                                     id="drivers_license_expiry"
                                     v-model="form.drivers_license_expiry"
@@ -516,7 +523,7 @@ const cancelForm = () => {
                             </div>
                         </div>
                         <div class="space-y-2">
-                            <Label for="drivers_license_pdf">Driver's License Document</Label>
+                            <Label for="drivers_license_pdf" :class="[isRtl ? 'w-full justify-end text-right' : '']">{{ t('drivers_license_document') }}</Label>
                             <Input
                                 id="drivers_license_pdf"
                                 type="file"
@@ -524,15 +531,15 @@ const cancelForm = () => {
                                 @input="form.drivers_license_pdf = $event.target.files[0]"
                             />
                             <InputError :message="form.errors.drivers_license_pdf" />
-                            <p class="text-sm text-gray-600">Upload driver's license document (PDF, JPG, PNG - optional)</p>
+                            <p class="text-sm text-gray-600">{{ t('drivers_license_upload_hint') }}</p>
                         </div>
                         </div>
                     </div>
 
                     <!-- Secondary Identification Section -->
                     <div class="space-y-4">
-                        <h4 class="text-md font-semibold text-green-700 bg-green-50 border-l-4 border-green-500 px-4 py-2 rounded-r-md">Secondary Identification (Choose One)</h4>
-                        <p class="text-sm text-gray-600">You must provide either a Passport, Emirates ID/Resident ID, or Visit Visa</p>
+                        <h4 class="text-md font-semibold text-green-700 bg-green-50 border-l-4 border-green-500 px-4 py-2 rounded-r-md">{{ t('secondary_identification_choose_one') }}</h4>
+                        <p class="text-sm text-gray-600">{{ t('secondary_identification_help') }}</p>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <!-- Passport Option -->
                             <div
@@ -545,8 +552,8 @@ const cancelForm = () => {
                             >
                                 <div class="flex flex-col items-center text-center space-y-2">
                                     <BookOpen class="h-8 w-8 text-gray-600" />
-                                    <h3 class="font-medium text-gray-900">Passport</h3>
-                                    <p class="text-sm text-gray-500">International Passport</p>
+                                    <h3 class="font-medium text-gray-900" :class="{ 'text-right': isRtl }">{{ t('passport_title') }}</h3>
+                                    <p class="text-sm text-gray-500">{{ t('passport_desc') }}</p>
                                 </div>
                                 <input
                                     type="radio"
@@ -569,8 +576,8 @@ const cancelForm = () => {
                             >
                                 <div class="flex flex-col items-center text-center space-y-2">
                                     <IdCard class="h-8 w-8 text-gray-600" />
-                                    <h3 class="font-medium text-gray-900">Emirates/Resident ID</h3>
-                                    <p class="text-sm text-gray-500">Emirates ID or Resident Card</p>
+                                    <h3 class="font-medium text-gray-900" :class="{ 'text-right': isRtl }">{{ t('emirates_resident_id_title') }}</h3>
+                                    <p class="text-sm text-gray-500">{{ t('emirates_resident_id_desc') }}</p>
                                 </div>
                                 <input
                                     type="radio"
@@ -593,8 +600,8 @@ const cancelForm = () => {
                             >
                                 <div class="flex flex-col items-center text-center space-y-2">
                                     <FileText class="h-8 w-8 text-gray-600" />
-                                    <h3 class="font-medium text-gray-900">Visit Visa</h3>
-                                    <p class="text-sm text-gray-500">Visit Visa Document</p>
+                                    <h3 class="font-medium text-gray-900" :class="{ 'text-right': isRtl }">{{ t('visit_visa_title') }}</h3>
+                                    <p class="text-sm text-gray-500">{{ t('visit_visa_desc') }}</p>
                                 </div>
                                 <input
                                     type="radio"
@@ -613,18 +620,18 @@ const cancelForm = () => {
                     <div v-if="form.secondary_identification_type === 'passport'" class="space-y-4">
                         <div class="grid grid-cols-2 gap-4">
                             <div class="space-y-2">
-                                <Label for="passport_number">Passport Number *</Label>
+                                <Label for="passport_number" :class="[isRtl ? 'w-full justify-end text-right' : '']">{{ t('passport_number') }} *</Label>
                                 <Input
                                     id="passport_number"
                                     v-model="form.passport_number"
                                     type="text"
                                     :required="form.secondary_identification_type === 'passport'"
-                                    placeholder="Enter passport number"
+                                    :placeholder="t('passport_number_placeholder')"
                                 />
                                 <InputError :message="form.errors.passport_number" />
                             </div>
                             <div class="space-y-2">
-                                <Label for="passport_expiry">Passport Expiry Date *</Label>
+                                <Label for="passport_expiry" :class="[isRtl ? 'w-full justify-end text-right' : '']">{{ t('passport_expiry_date') }} *</Label>
                                 <Input
                                     id="passport_expiry"
                                     v-model="form.passport_expiry"
@@ -635,7 +642,7 @@ const cancelForm = () => {
                             </div>
                         </div>
                         <div class="space-y-2">
-                            <Label for="passport_pdf">Passport Document *</Label>
+                            <Label for="passport_pdf" :class="[isRtl ? 'w-full justify-end text-right' : '']">{{ t('passport_document') }} *</Label>
                             <Input
                                 id="passport_pdf"
                                 type="file"
@@ -644,14 +651,14 @@ const cancelForm = () => {
                                 :required="form.secondary_identification_type === 'passport'"
                             />
                             <InputError :message="form.errors.passport_pdf" />
-                            <p class="text-sm text-gray-600">Upload passport document (PDF, JPG, PNG - required)</p>
+                            <p class="text-sm text-gray-600">{{ t('passport_upload_hint') }}</p>
                         </div>
                     </div>
 
                     <div v-if="form.secondary_identification_type === 'resident_id'" class="space-y-4">
                         <div class="grid grid-cols-2 gap-4">
                             <div class="space-y-2">
-                                <Label for="resident_id_number">Emirates / Resident ID *</Label>
+                                <Label for="resident_id_number" :class="[isRtl ? 'w-full justify-end text-right' : '']">{{ t('emirates_resident_id') }} *</Label>
                                 <Input
                                     id="resident_id_number"
                                     v-model="form.resident_id_number"
@@ -662,7 +669,7 @@ const cancelForm = () => {
                                 <InputError :message="form.errors.resident_id_number" />
                             </div>
                             <div class="space-y-2">
-                                <Label for="resident_id_expiry">ID Expiry Date *</Label>
+                                <Label for="resident_id_expiry" :class="[isRtl ? 'w-full justify-end text-right' : '']">{{ t('id_expiry_date') }} *</Label>
                                 <Input
                                     id="resident_id_expiry"
                                     v-model="form.resident_id_expiry"
@@ -673,7 +680,7 @@ const cancelForm = () => {
                             </div>
                         </div>
                         <div class="space-y-2">
-                            <Label for="resident_id_pdf">Emirates / Resident ID Document *</Label>
+                            <Label for="resident_id_pdf" :class="[isRtl ? 'w-full justify-end text-right' : '']">{{ t('emirates_resident_id_document') }} *</Label>
                             <Input
                                 id="resident_id_pdf"
                                 type="file"
@@ -682,13 +689,13 @@ const cancelForm = () => {
                                 :required="form.secondary_identification_type === 'resident_id'"
                             />
                             <InputError :message="form.errors.resident_id_pdf" />
-                            <p class="text-sm text-gray-600">Upload Emirates ID or Resident Card document (PDF, JPG, PNG - required)</p>
+                            <p class="text-sm text-gray-600">{{ t('resident_id_upload_hint') }}</p>
                         </div>
                     </div>
 
                     <div v-if="form.secondary_identification_type === 'visit_visa'" class="space-y-4">
                         <div class="space-y-2">
-                            <Label for="visit_visa_pdf">Visit Visa PDF *</Label>
+                            <Label for="visit_visa_pdf" :class="[isRtl ? 'w-full justify-end text-right' : '']">{{ t('visit_visa_pdf') }} *</Label>
                             <Input
                                 id="visit_visa_pdf"
                                 type="file"
@@ -697,7 +704,7 @@ const cancelForm = () => {
                                 :required="form.secondary_identification_type === 'visit_visa'"
                             />
                             <InputError :message="form.errors.visit_visa_pdf" />
-                            <p class="text-sm text-gray-600">Attach copy of client's visit visa (PDF only, required)</p>
+                            <p class="text-sm text-gray-600">{{ t('visit_visa_upload_hint') }}</p>
                         </div>
                     </div>
                 </div>
@@ -706,14 +713,14 @@ const cancelForm = () => {
         <!-- Additional Information Tab -->
         <div v-if="activeTab === 'additional'" class="space-y-6 mt-6">
                 <div class="space-y-4">
-                    <h3 class="text-lg font-medium text-gray-900">Additional Information</h3>
+                    <h3 class="text-lg font-medium text-gray-900">{{ t('additional_information') }}</h3>
                     
                     <!-- Emergency Contact -->
                     <div class="space-y-4">
-                        <h4 class="font-medium text-gray-900">Emergency Contact</h4>
+                        <h4 class="font-medium text-gray-900">{{ t('emergency_contact') }}</h4>
                         <div class="grid grid-cols-2 gap-4">
                             <div class="space-y-2">
-                                <Label for="emergency_contact_name">Emergency Contact Name</Label>
+                                <Label for="emergency_contact_name">{{ t('emergency_contact_name') }}</Label>
                                 <Input
                                     id="emergency_contact_name"
                                     v-model="form.emergency_contact_name"
@@ -722,7 +729,7 @@ const cancelForm = () => {
                                 <InputError :message="form.errors.emergency_contact_name" />
                             </div>
                             <div class="space-y-2">
-                                <Label for="emergency_contact_phone">Emergency Contact Phone</Label>
+                                <Label for="emergency_contact_phone">{{ t('emergency_contact_phone') }}</Label>
                                 <Input
                                     id="emergency_contact_phone"
                                     v-model="form.emergency_contact_phone"
@@ -735,11 +742,11 @@ const cancelForm = () => {
 
                     <!-- Notes -->
                     <div class="space-y-2">
-                        <Label for="notes">Notes</Label>
+                        <Label for="notes">{{ t('notes') }}</Label>
                         <Textarea
                             id="notes"
                             v-model="form.notes"
-                            placeholder="Additional notes about the customer..."
+                            :placeholder="t('notes_placeholder')"
                             rows="4"
                         />
                         <InputError :message="form.errors.notes" />
@@ -751,7 +758,7 @@ const cancelForm = () => {
             <div class="flex justify-between gap-3">
                 <div class="flex gap-3">
                     <Button type="button" variant="outline" @click="cancelForm">
-                        Cancel
+                        {{ t('cancel') }}
                     </Button>
                     <Button 
                         v-if="activeTab !== 'customer-type'" 
@@ -759,7 +766,7 @@ const cancelForm = () => {
                         variant="outline" 
                         @click="prevTab"
                     >
-                        Previous
+                        {{ t('previous') }}
                     </Button>
                 </div>
                 <div class="flex gap-3">
@@ -768,14 +775,14 @@ const cancelForm = () => {
                         type="button" 
                         @click="nextTab"
                     >
-                        Next
+                        {{ t('next') }}
                     </Button>
                     <Button 
                         v-else 
                         type="submit" 
                         :disabled="processing"
                     >
-                        {{ processing ? 'Saving...' : (editingCustomer ? 'Update Customer' : 'Add Customer') }}
+                        {{ processing ? t('saving') : (editingCustomer ? t('update_customer') : t('add_customer')) }}
                     </Button>
                 </div>
             </div>
