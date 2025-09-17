@@ -243,16 +243,16 @@ class ContractController extends Controller
             'deposit_amount' => 'nullable|numeric|min:0',
             'mileage_limit' => 'nullable|integer|min:0',
             'excess_mileage_rate' => 'nullable|numeric|min:0',
-            'terms_and_conditions' => 'nullable|string',
+            // 'terms_and_conditions' removed from create flow
             'notes' => 'nullable|string',
             // Override validation
             'override_daily_rate' => 'nullable|boolean',
             'override_final_price' => 'nullable|boolean',
             'final_price_override' => 'nullable|numeric|min:0',
             'override_reason' => 'nullable|string|max:500',
-            // Vehicle condition validation
-            'current_mileage' => 'required|integer|min:0',
-            'fuel_level' => 'required|in:full,3/4,1/2,1/4,low,empty',
+            // Vehicle condition validation (optional during creation)
+            'current_mileage' => 'nullable|integer|min:0',
+            'fuel_level' => 'nullable|in:full,3/4,1/2,1/4,low,empty',
             'condition_photos.*' => 'nullable|image|mimes:jpeg,png,jpg|max:10240', // 10MB max per image
         ]);
 
@@ -323,10 +323,10 @@ class ContractController extends Controller
             'total_days' => $totalDays,
             'total_amount' => $totalAmount,
             'deposit_amount' => $validated['deposit_amount'] ?? 0,
-            'mileage_limit' => $validated['mileage_limit'],
-            'excess_mileage_rate' => $validated['excess_mileage_rate'],
-            'terms_and_conditions' => $validated['terms_and_conditions'],
-            'notes' => $validated['notes'],
+            'mileage_limit' => $validated['mileage_limit'] ?? null,
+            'excess_mileage_rate' => $validated['excess_mileage_rate'] ?? null,
+            // 'terms_and_conditions' removed from create flow
+            'notes' => $validated['notes'] ?? null,
             'created_by' => Auth::user()->name,
             'status' => 'draft',
             // Override fields
@@ -335,8 +335,8 @@ class ContractController extends Controller
             'original_calculated_amount' => $originalCalculatedAmount,
             'override_reason' => $validated['override_reason'] ?? null,
             // Vehicle pickup condition
-            'pickup_mileage' => $validated['current_mileage'],
-            'pickup_fuel_level' => $validated['fuel_level'],
+            'pickup_mileage' => $validated['current_mileage'] ?? null,
+            'pickup_fuel_level' => $validated['fuel_level'] ?? null,
             'pickup_condition_photos' => $photosPaths,
         ]);
 
@@ -395,7 +395,7 @@ class ContractController extends Controller
             'deposit_amount' => 'nullable|numeric|min:0',
             'mileage_limit' => 'nullable|integer|min:0',
             'excess_mileage_rate' => 'nullable|numeric|min:0',
-            'terms_and_conditions' => 'nullable|string',
+            // 'terms_and_conditions' removed from update flow
             'notes' => 'nullable|string',
         ]);
 
@@ -416,7 +416,7 @@ class ContractController extends Controller
             'deposit_amount' => $validated['deposit_amount'] ?? 0,
             'mileage_limit' => $validated['mileage_limit'],
             'excess_mileage_rate' => $validated['excess_mileage_rate'],
-            'terms_and_conditions' => $validated['terms_and_conditions'],
+            // 'terms_and_conditions' removed from update flow
             'notes' => $validated['notes'],
         ]);
 

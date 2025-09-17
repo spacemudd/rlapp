@@ -51,7 +51,6 @@ const form = useForm({
     deposit_amount: 0,
     mileage_limit: '' as string | number,
     excess_mileage_rate: '' as string | number,
-    terms_and_conditions: '',
     notes: '',
     // Override fields
     override_daily_rate: false as boolean,
@@ -1133,19 +1132,6 @@ watch(() => props.newCustomer, (customer) => {
                         <CardDescription>{{ t('additional_contract_terms_internal_notes') }}</CardDescription>
                     </CardHeader>
                     <CardContent class="space-y-4">
-                        <div class="space-y-2">
-                            <Label for="terms_and_conditions">{{ t('terms_and_conditions') }}</Label>
-                            <Textarea
-                                id="terms_and_conditions"
-                                v-model="form.terms_and_conditions"
-                                :placeholder="t('enter_specific_terms_conditions')"
-                                rows="4"
-                            />
-                            <div v-if="form.errors.terms_and_conditions" class="text-sm text-red-600">
-                                {{ form.errors.terms_and_conditions }}
-                            </div>
-                        </div>
-
                         <div class="space-y-2">
                             <Label for="notes">{{ t('internal_notes') }}</Label>
                             <Textarea

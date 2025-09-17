@@ -12,7 +12,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Update the enum column to include 'expired' status
+        // For SQLite tests, use check constraint instead of ENUM alterations
+        if (config('database.default') === 'sqlite') {
+            // Skip altering enum for SQLite in tests; ensure column exists
+            if (!Schema::hasColumn('reservations', 'status')) {
+                Schema::table('reservations', function (Blueprint $table) {
+                    $table->string('status')->default('pending');
+                });
+            }
+            return;
+        }
+        // Update the enum column to include 'expired' status for MySQL
         DB::statement("ALTER TABLE reservations MODIFY COLUMN status ENUM('pending', 'confirmed', 'completed', 'canceled', 'expired') NOT NULL DEFAULT 'pending'");
     }
 
@@ -21,7 +31,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Remove 'expired' from the enum column
+        if (config('database.default') === 'sqlite') {
+            return;
+        }
+        // Remove 'expired' from the enum column for MySQL
         DB::statement("ALTER TABLE reservations MODIFY COLUMN status ENUM('pending', 'confirmed', 'completed', 'canceled') NOT NULL DEFAULT 'pending'");
     }
 };

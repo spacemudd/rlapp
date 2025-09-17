@@ -14,6 +14,10 @@ return new class extends Migration
     {
         // Only run this for SQLite databases
         if (config('database.default') === 'sqlite') {
+            // If the IFRS table doesn't exist, skip this fix (e.g., during tests where vendor migrations are not loaded)
+            if (!Schema::hasTable('ifrs_line_items')) {
+                return;
+            }
             // For SQLite, we need to recreate the table without the vat_id column
             // This is the proper way to "drop" a column with foreign key constraints in SQLite
             
