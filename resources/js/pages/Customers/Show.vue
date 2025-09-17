@@ -17,6 +17,7 @@ interface Customer {
     driver_name?: string;
     trade_license_number?: string;
     trade_license_pdf_path?: string;
+    trade_license_url?: string;
     first_name: string;
     last_name: string;
     email: string;
@@ -24,6 +25,7 @@ interface Customer {
     date_of_birth: string;
     drivers_license_number: string;
     drivers_license_expiry: string;
+    drivers_license_url?: string;
     country: string;
     nationality: string;
     emergency_contact_name?: string;
@@ -42,9 +44,12 @@ interface Customer {
     secondary_identification_type?: 'passport' | 'resident_id' | 'visit_visa';
     passport_number?: string;
     passport_expiry?: string;
+    passport_url?: string;
     resident_id_number?: string;
     resident_id_expiry?: string;
+    resident_id_url?: string;
     visit_visa_pdf_path?: string;
+    visit_visa_url?: string;
 }
 
 type SimpleContract = {
@@ -129,6 +134,23 @@ const blockForm = useForm({
 const unblockForm = useForm({
     notes: '' as string | null,
 });
+
+// Customer Notes form
+const newNote = ref('');
+const noteForm = useForm({
+    content: '' as string,
+});
+
+const submitNewNote = () => {
+    noteForm.content = newNote.value;
+    noteForm.post(`/customers/${props.customer.id}/notes`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            newNote.value = '';
+            noteForm.reset();
+        },
+    });
+};
 
 const blockReasons = [
     'payment_default',
@@ -363,9 +385,9 @@ const handleCustomerUnblocked = () => {
                             <Card>
                                 <CardContent class="p-2">
                                     <div class="flex flex-col">
+                                        <Button variant="ghost" :class="{ 'bg-muted': activeTab === 'contracts' }" class="justify-start" @click="setTab('contracts')">{{ t('contracts') }}</Button>
                                         <Button variant="ghost" :class="{ 'bg-muted': activeTab === 'timeline' }" class="justify-start" @click="setTab('timeline')">{{ t('timeline') }}</Button>
                                         <Button variant="ghost" :class="{ 'bg-muted': activeTab === 'overview' }" class="justify-start" @click="setTab('overview')">{{ t('overview') }}</Button>
-                                        <Button variant="ghost" :class="{ 'bg-muted': activeTab === 'contracts' }" class="justify-start" @click="setTab('contracts')">{{ t('contracts') }}</Button>
                                         <Button variant="ghost" :class="{ 'bg-muted': activeTab === 'invoices' }" class="justify-start" @click="setTab('invoices')">{{ t('invoices') }}</Button>
                                         <Button variant="ghost" :class="{ 'bg-muted': activeTab === 'notes' }" class="justify-start" @click="setTab('notes')">{{ t('notes') }}</Button>
                                         <Button variant="ghost" :class="{ 'bg-muted': activeTab === 'block' }" class="justify-start text-red-600" @click="setTab('block')">{{ customer.is_blocked ? t('unblock_customer') : t('block_customer') }}</Button>
@@ -571,6 +593,21 @@ const handleCustomerUnblocked = () => {
                                         {{ formatDate(customer.drivers_license_expiry) }}
                                     </div>
                                 </div>
+
+                                <div v-if="customer.drivers_license_url" class="grid gap-2">
+                                    <label class="text-sm font-medium text-muted-foreground" :class="{ 'text-right': isRtl }">
+                                        {{ t('drivers_license_document') }}
+                                    </label>
+                                    <a
+                                        :href="customer.drivers_license_url"
+                                        target="_blank"
+                                        class="inline-flex items-center gap-2 px-3 py-2 text-sm bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors w-fit"
+                                        :class="{ 'flex-row-reverse': isRtl }"
+                                    >
+                                        <Download class="h-4 w-4" />
+                                        {{ t('download_drivers_license') }}
+                                    </a>
+                                </div>
                             </CardContent>
                         </Card>
 
@@ -593,12 +630,12 @@ const handleCustomerUnblocked = () => {
                                     </div>
                                 </div>
 
-                                <div v-if="customer.trade_license_pdf_path" class="grid gap-2">
+                                <div v-if="customer.trade_license_url" class="grid gap-2">
                                     <label class="text-sm font-medium text-muted-foreground" :class="{ 'text-right': isRtl }">
                                         {{ t('trade_license_document') }}
                                     </label>
                                     <a
-                                        :href="`/storage/${customer.trade_license_pdf_path}`"
+                                        :href="customer.trade_license_url"
                                         target="_blank"
                                         class="inline-flex items-center gap-2 px-3 py-2 text-sm bg-green-50 text-green-700 rounded-md hover:bg-green-100 transition-colors w-fit"
                                         :class="{ 'flex-row-reverse': isRtl }"
@@ -643,6 +680,20 @@ const handleCustomerUnblocked = () => {
                                             {{ formatDate(customer.passport_expiry) }}
                                         </div>
                                     </div>
+                                    <div v-if="customer.passport_url" class="grid gap-2 mt-3">
+                                        <label class="text-sm font-medium text-muted-foreground" :class="{ 'text-right': isRtl }">
+                                            {{ t('passport_document') }}
+                                        </label>
+                                        <a
+                                            :href="customer.passport_url"
+                                            target="_blank"
+                                            class="inline-flex items-center gap-2 px-3 py-2 text-sm bg-purple-50 text-purple-700 rounded-md hover:bg-purple-100 transition-colors w-fit"
+                                            :class="{ 'flex-row-reverse': isRtl }"
+                                        >
+                                            <Download class="h-4 w-4" />
+                                            {{ t('download_passport') }}
+                                        </a>
+                                    </div>
                                 </div>
 
                                 <!-- Resident ID Information -->
@@ -665,15 +716,29 @@ const handleCustomerUnblocked = () => {
                                             {{ formatDate(customer.resident_id_expiry) }}
                                         </div>
                                     </div>
+                                    <div v-if="customer.resident_id_url" class="grid gap-2 mt-3">
+                                        <label class="text-sm font-medium text-muted-foreground" :class="{ 'text-right': isRtl }">
+                                            {{ t('resident_id_document') }}
+                                        </label>
+                                        <a
+                                            :href="customer.resident_id_url"
+                                            target="_blank"
+                                            class="inline-flex items-center gap-2 px-3 py-2 text-sm bg-orange-50 text-orange-700 rounded-md hover:bg-orange-100 transition-colors w-fit"
+                                            :class="{ 'flex-row-reverse': isRtl }"
+                                        >
+                                            <Download class="h-4 w-4" />
+                                            {{ t('download_resident_id') }}
+                                        </a>
+                                    </div>
                                 </div>
 
                                 <!-- Visit Visa Document -->
-                                <div v-if="customer.secondary_identification_type === 'visit_visa' && customer.visit_visa_pdf_path" class="grid gap-2">
+                                <div v-if="customer.secondary_identification_type === 'visit_visa' && customer.visit_visa_url" class="grid gap-2">
                                     <label class="text-sm font-medium text-muted-foreground" :class="{ 'text-right': isRtl }">
                                         {{ t('visit_visa_document') }}
                                     </label>
                                     <a
-                                        :href="`/storage/${customer.visit_visa_pdf_path}`"
+                                        :href="customer.visit_visa_url"
                                         target="_blank"
                                         class="inline-flex items-center gap-2 px-3 py-2 text-sm bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors w-fit"
                                         :class="{ 'flex-row-reverse': isRtl }"
@@ -765,6 +830,18 @@ const handleCustomerUnblocked = () => {
                                                     <Link :href="`/contracts/${pc.id}`"><Button size="sm" variant="ghost">{{ t('view') }}</Button></Link>
                                                 </div>
                                             </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                <Card v-if="!openContract && (!previousContracts || previousContracts.length === 0)" class="md:col-span-2">
+                                    <CardContent>
+                                        <div class="flex flex-col items-center justify-center text-center py-12 gap-3" :class="{ 'flex-row-reverse': isRtl }">
+                                            <div class="text-lg font-medium">{{ t('no_data') }}</div>
+                                            <div class="text-sm text-muted-foreground">{{ t('contracts') }}: {{ t('no_data') }}</div>
+                                            <Link :href="`/contracts/create?customer_id=${customer.id}`">
+                                                <Button class="mt-2">+ {{ t('open_new_contract') }}</Button>
+                                            </Link>
                                         </div>
                                     </CardContent>
                                 </Card>

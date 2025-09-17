@@ -224,7 +224,13 @@ class CustomerController extends Controller
         });
 
         return Inertia::render('Customers/Show', [
-            'customer' => $customer,
+            'customer' => array_merge($customer->toArray(), [
+                'drivers_license_url' => $customer->getFirstMedia('drivers_license') ? route('media.stream', $customer->getFirstMedia('drivers_license')->uuid) : null,
+                'passport_url' => $customer->getFirstMedia('passport') ? route('media.stream', $customer->getFirstMedia('passport')->uuid) : null,
+                'resident_id_url' => $customer->getFirstMedia('resident_id') ? route('media.stream', $customer->getFirstMedia('resident_id')->uuid) : null,
+                'trade_license_url' => $customer->getFirstMedia('trade_license') ? route('media.stream', $customer->getFirstMedia('trade_license')->uuid) : null,
+                'visit_visa_url' => $customer->getFirstMedia('visit_visa') ? route('media.stream', $customer->getFirstMedia('visit_visa')->uuid) : null,
+            ]),
             'openContract' => $openContract ? [
                 'id' => (string) $openContract->id,
                 'contract_number' => $openContract->contract_number,
@@ -286,7 +292,7 @@ class CustomerController extends Controller
             'content' => 'required|string|max:2000',
         ]);
 
-        $note = $customer->notes()->create([
+        $note = $customer->customerNotes()->create([
             'user_id' => auth()->id(),
             'content' => $validated['content'],
         ]);
@@ -324,6 +330,12 @@ class CustomerController extends Controller
         ])->all());
 
         // Attach media to S3 collections if provided
+        if ($request->hasFile('drivers_license_pdf')) {
+            $customer->addMediaFromRequest('drivers_license_pdf')
+                ->usingFileName('drivers_license_' . time() . '.' . $request->file('drivers_license_pdf')->getClientOriginalExtension())
+                ->toMediaCollection('drivers_license', 's3');
+        }
+
         if ($request->hasFile('trade_license_pdf')) {
             $customer->addMediaFromRequest('trade_license_pdf')
                 ->usingFileName('trade_license_' . time() . '.' . $request->file('trade_license_pdf')->getClientOriginalExtension())
@@ -381,7 +393,7 @@ class CustomerController extends Controller
             ]);
         }
 
-        return redirect('/customers')->with([
+        return redirect(route('customers.show', $customer))->with([
             'success' => 'Customer created successfully.',
             'customer' => $customerData
         ]);
@@ -400,10 +412,17 @@ class CustomerController extends Controller
 
         // Update non-file fields only
         $customer->update(collect($validated)->except([
-            'trade_license_pdf', 'visit_visa_pdf', 'passport_pdf', 'resident_id_pdf',
+            'drivers_license_pdf', 'trade_license_pdf', 'visit_visa_pdf', 'passport_pdf', 'resident_id_pdf',
         ])->all());
 
         // Replace media if a new file is uploaded
+        if ($request->hasFile('drivers_license_pdf')) {
+            $customer->clearMediaCollection('drivers_license');
+            $customer->addMediaFromRequest('drivers_license_pdf')
+                ->usingFileName('drivers_license_' . time() . '.' . $request->file('drivers_license_pdf')->getClientOriginalExtension())
+                ->toMediaCollection('drivers_license', 's3');
+        }
+
         if ($request->hasFile('trade_license_pdf')) {
             $customer->clearMediaCollection('trade_license');
             $customer->addMediaFromRequest('trade_license_pdf')

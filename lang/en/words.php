@@ -169,6 +169,8 @@ return [
     'passport_expiry' => 'Passport Expiry',
     'resident_id_number' => 'Resident ID Number',
     'resident_id_expiry' => 'Resident ID Expiry',
+    'passport_document' => 'Passport Document',
+    'download_passport' => 'Download Passport',
     'visit_visa_document' => 'Visit Visa Document',
     'download_visit_visa' => 'Download Visit Visa',
     'cash_payments_total' => 'Cash Total',

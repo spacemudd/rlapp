@@ -142,6 +142,8 @@ return [
     'passport_expiry' => 'تاريخ انتهاء جواز السفر',
     'resident_id_number' => 'رقم الهوية الإقامة',
     'resident_id_expiry' => 'تاريخ انتهاء الهوية الإقامة',
+    'passport_document' => 'وثيقة جواز السفر',
+    'download_passport' => 'تحميل جواز السفر',
     'visit_visa_document' => 'وثيقة تأشيرة الزيارة',
     'download_visit_visa' => 'تحميل تأشيرة الزيارة',
     'cash_payments_total' => 'إجمالي النقد',

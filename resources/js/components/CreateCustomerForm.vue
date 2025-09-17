@@ -49,6 +49,7 @@ const form = useForm({
     date_of_birth: '',
     drivers_license_number: '',
     drivers_license_expiry: '',
+    drivers_license_pdf: null as File | null,
     secondary_identification_type: '', // passport or resident_id
     passport_number: '',
     passport_expiry: '',
@@ -154,6 +155,42 @@ const prevTab = () => {
         activeTab.value = tabs[currentIndex - 1].value;
     }
 };
+
+// Map fields to their corresponding tabs
+const fieldToTab = (field: string): string => {
+    const identificationFields = new Set([
+        'drivers_license_number', 'drivers_license_expiry', 'drivers_license_pdf',
+        'secondary_identification_type',
+        'passport_number', 'passport_expiry', 'passport_pdf',
+        'resident_id_number', 'resident_id_expiry', 'resident_id_pdf',
+        'visit_visa_pdf'
+    ]);
+    const personalFields = new Set([
+        'first_name','last_name','phone','email','date_of_birth','country','nationality','status'
+    ]);
+    const businessFields = new Set([
+        'business_type','business_name','driver_name','trade_license_number','trade_license_pdf'
+    ]);
+    const additionalFields = new Set([
+        'emergency_contact_name','emergency_contact_phone','notes'
+    ]);
+
+    if (identificationFields.has(field)) return 'identification';
+    if (personalFields.has(field)) return 'personal-info';
+    if (businessFields.has(field)) return 'customer-type';
+    if (additionalFields.has(field)) return 'additional';
+    return activeTab.value;
+};
+
+// When server-side validation errors arrive, jump to the relevant tab
+watch(() => form.errors, (errors) => {
+    const fields = Object.keys(errors || {});
+    if (fields.length === 0) return;
+    const tab = fieldToTab(fields[0]);
+    if (tab && tab !== activeTab.value) {
+        activeTab.value = tab;
+    }
+}, { deep: true });
 
 const submitForm = () => {
     // Client-side validation for business customers
@@ -477,6 +514,17 @@ const cancelForm = () => {
                                 />
                                 <InputError :message="form.errors.drivers_license_expiry" />
                             </div>
+                        </div>
+                        <div class="space-y-2">
+                            <Label for="drivers_license_pdf">Driver's License Document</Label>
+                            <Input
+                                id="drivers_license_pdf"
+                                type="file"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                @input="form.drivers_license_pdf = $event.target.files[0]"
+                            />
+                            <InputError :message="form.errors.drivers_license_pdf" />
+                            <p class="text-sm text-gray-600">Upload driver's license document (PDF, JPG, PNG - optional)</p>
                         </div>
                         </div>
                     </div>

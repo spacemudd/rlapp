@@ -17,6 +17,12 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+// Media routes for secure file access
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/media/{uuid}', [App\Http\Controllers\MediaController::class, 'stream'])->name('media.stream');
+    Route::get('/media/{uuid}/download', [App\Http\Controllers\MediaController::class, 'download'])->name('media.download');
+});
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 

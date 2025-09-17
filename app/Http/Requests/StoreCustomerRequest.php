@@ -38,6 +38,7 @@ class StoreCustomerRequest extends FormRequest
             // Driver's license is always required
             'drivers_license_number' => 'required|string|max:255',
             'drivers_license_expiry' => 'required|date|after:today',
+            'drivers_license_pdf' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
             // Secondary identification type is required
             'secondary_identification_type' => 'required|in:passport,resident_id,visit_visa',
             'country' => 'required|string|max:255',

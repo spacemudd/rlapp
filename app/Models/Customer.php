@@ -396,6 +396,7 @@ class Customer extends Model implements HasMedia
 
     public function registerMediaCollections(): void
     {
+        $this->addMediaCollection('drivers_license')->useDisk('s3')->singleFile();
         $this->addMediaCollection('trade_license')->useDisk('s3')->singleFile();
         $this->addMediaCollection('visit_visa')->useDisk('s3')->singleFile();
         $this->addMediaCollection('passport')->useDisk('s3')->singleFile();
