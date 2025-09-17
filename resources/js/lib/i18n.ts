@@ -58,6 +58,7 @@ const messages = {
         filter: 'Filter',
         export: 'Export',
         import: 'Import',
+        step: 'Step',
 
         // Customer Blocking
         block_customer: 'Block Customer',
@@ -364,6 +365,9 @@ const messages = {
         no_contracts_found: 'No contracts found',
         get_started_creating_first_contract: 'Get started by creating your first rental contract.',
         create_contract: 'Create Contract',
+        basics: 'Basics',
+        pricing: 'Pricing',
+        terms: 'Terms',
         
         // Contract Status
         draft: 'Draft',
@@ -651,6 +655,7 @@ const messages = {
         filter: 'تصفية',
         export: 'تصدير',
         import: 'استيراد',
+        step: 'الخطوة',
 
         // Customer Blocking
         block_customer: 'حظر العميل',
@@ -957,6 +962,9 @@ const messages = {
         no_contracts_found: 'لا توجد عقود',
         get_started_creating_first_contract: 'ابدأ بإنشاء أول عقد إيجار لديك.',
         create_contract: 'إنشاء عقد',
+        basics: 'الأساسيات',
+        pricing: 'التسعير',
+        terms: 'الشروط',
         
         // Contract Status
         draft: 'مسودة',

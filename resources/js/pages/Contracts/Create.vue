@@ -72,6 +72,27 @@ const durationDays = ref<number>(1);
 const selectedBlockedCustomer = ref<any>(null);
 const blockedCustomerError = ref<string>('');
 
+// Simple multi-step flow (1: Basics, 2: Pricing, 3: Terms)
+const activeStep = ref<number>(1);
+const totalSteps = 3;
+
+const goToStep = (step: number) => {
+    if (step < 1 || step > totalSteps) return;
+    activeStep.value = step;
+};
+
+const nextStep = () => {
+    if (activeStep.value < totalSteps) {
+        activeStep.value += 1;
+    }
+};
+
+const prevStep = () => {
+    if (activeStep.value > 1) {
+        activeStep.value -= 1;
+    }
+};
+
 const totalDays = computed(() => {
     if (!form.start_date || !form.end_date) return 0;
     const start = new Date(form.start_date);
@@ -599,7 +620,36 @@ watch(() => props.newCustomer, (customer) => {
             </div>
 
             <form @submit.prevent="submit" class="space-y-6 mt-5">
-                <div class="grid gap-6 lg:grid-cols-2">
+                <!-- Stepper Header -->
+                <div class="flex items-center justify-between bg-muted/30 rounded-md p-3">
+                    <div class="flex items-center gap-2">
+                        <button type="button" class="px-3 py-1 rounded-md text-sm"
+                                :class="activeStep === 1 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'"
+                                @click="goToStep(1)">
+                            1. {{ t('basics') }}
+                        </button>
+                        <span class="text-muted-foreground">→</span>
+                        <button type="button" class="px-3 py-1 rounded-md text-sm"
+                                :class="activeStep === 2 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'"
+                                @click="goToStep(2)"
+                                :disabled="!form.customer_id || !form.vehicle_id">
+                            2. {{ t('pricing') }}
+                        </button>
+                        <span class="text-muted-foreground">→</span>
+                        <button type="button" class="px-3 py-1 rounded-md text-sm"
+                                :class="activeStep === 3 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'"
+                                @click="goToStep(3)"
+                                :disabled="!form.customer_id || !form.vehicle_id">
+                            3. {{ t('terms') }}
+                        </button>
+                    </div>
+                    <div class="text-sm text-muted-foreground">
+                        {{ t('step') }} {{ activeStep }} / {{ totalSteps }}
+                    </div>
+                </div>
+
+                <!-- Step 1: Basics -->
+                <div v-show="activeStep === 1" class="grid gap-6 lg:grid-cols-2">
                     <!-- Customer Selection -->
                     <Card>
                         <CardHeader>
@@ -607,13 +657,11 @@ watch(() => props.newCustomer, (customer) => {
                                 <User class="w-5 h-5" />
                                 {{ t('customer_information') }}
                             </CardTitle>
-                            <CardDescription>{{ t('select_or_create_customer') }}</CardDescription>
                         </CardHeader>
                         <CardContent class="space-y-4">
                             <AsyncCombobox
                                 ref="customerComboboxRef"
                                 v-model="form.customer_id"
-                                :label="t('customer')"
                                 :placeholder="t('search_customer_placeholder')"
                                 search-url="/api/customers/search"
                                 :required="true"
@@ -700,7 +748,7 @@ watch(() => props.newCustomer, (customer) => {
                                                 {{ t('create_customer') }}
                                             </Button>
                                         </DialogTrigger>
-                                        <DialogContent class="max-w-2xl max-h-[90vh] overflow-y-auto">
+                                        <DialogContent class="w-full max-h-[92vh] overflow-y-auto sm:max-w-3xl md:max-w-5xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[90rem]">
                                             <DialogHeader>
                                                 <DialogTitle>{{ t('create_new_customer') }}</DialogTitle>
                                                 <DialogDescription>
@@ -726,13 +774,11 @@ watch(() => props.newCustomer, (customer) => {
                                 <Car class="w-5 h-5" />
                                 {{ t('vehicle_information') }}
                             </CardTitle>
-                            <CardDescription>{{ t('select_vehicle_for_rental') }}</CardDescription>
                         </CardHeader>
                         <CardContent class="space-y-4">
                             <AsyncCombobox
                                 ref="vehicleComboboxRef"
                                 v-model="form.vehicle_id"
-                                :label="t('vehicle')"
                                 :placeholder="t('search_vehicles_placeholder')"
                                 search-url="/api/vehicle-search"
                                 :required="true"
@@ -761,8 +807,8 @@ watch(() => props.newCustomer, (customer) => {
                     </Card>
                 </div>
 
-                <!-- Contract Details -->
-                <Card>
+                <!-- Contract Details (Basics) -->
+                <Card v-show="activeStep === 1">
                     <CardHeader>
                         <CardTitle class="flex gap-2">
                             <Calendar class="w-5 h-5" />
@@ -858,8 +904,8 @@ watch(() => props.newCustomer, (customer) => {
                     </CardContent>
                 </Card>
 
-                <!-- Pricing Details -->
-                <Card>
+                <!-- Step 2: Pricing Details -->
+                <Card v-show="activeStep === 2">
                     <CardHeader>
                         <CardTitle class="flex gap-2">
                             <DollarSign class="w-5 h-5" />
@@ -1075,165 +1121,10 @@ watch(() => props.newCustomer, (customer) => {
                     </CardContent>
                 </Card>
 
-                <!-- Vehicle Condition at Pickup -->
-                <Card v-if="selectedVehicle">
-                    <CardHeader>
-                        <CardTitle class="flex gap-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                            </svg>
-                            {{ t('vehicle_condition_at_pickup') }}
-                        </CardTitle>
-                        <CardDescription>{{ t('record_current_condition', { make: selectedVehicle.make, model: selectedVehicle.model }) }}</CardDescription>
-                    </CardHeader>
-                    <CardContent class="space-y-6">
-                        <div class="grid gap-4 md:grid-cols-2">
-                            <!-- Current Mileage -->
-                            <div class="space-y-2">
-                                <Label for="current_mileage">{{ t('current_odometer_reading_km') }} *</Label>
-                                <Input
-                                    id="current_mileage"
-                                    type="number"
-                                    min="0"
-                                    step="1"
-                                    v-model="form.current_mileage"
-                                    :placeholder="t('enter_current_mileage')"
-                                    required
-                                />
-                                <div v-if="form.errors.current_mileage" class="text-sm text-red-600">
-                                    {{ form.errors.current_mileage }}
-                                </div>
-                                <p class="text-xs text-gray-500">
-                                    {{ t('record_exact_odometer_reading') }}
-                                </p>
-                            </div>
+                <!-- Vehicle Condition at Pickup section removed to allow creating contracts without immediate mileage/condition inputs -->
 
-                            <!-- Fuel Level -->
-                            <div class="space-y-2">
-                                <Label for="fuel_level">{{ t('current_fuel_level') }} *</Label>
-                                <select
-                                    id="fuel_level"
-                                    v-model="form.fuel_level"
-                                    required
-                                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                    <option value="">{{ t('select_fuel_level') }}</option>
-                                    <option value="full">{{ t('full_tank_100') }}</option>
-                                    <option value="3/4">{{ t('three_quarter_tank_75') }}</option>
-                                    <option value="1/2">{{ t('half_tank_50') }}</option>
-                                    <option value="1/4">{{ t('quarter_tank_25') }}</option>
-                                    <option value="low">{{ t('low_fuel_less_25') }}</option>
-                                    <option value="empty">{{ t('empty') }}</option>
-                                </select>
-                                <div v-if="form.errors.fuel_level" class="text-sm text-red-600">
-                                    {{ form.errors.fuel_level }}
-                                </div>
-                                <p class="text-xs text-gray-500">
-                                    {{ t('customer_return_vehicle_level_pay_refueling') }}
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- Photo Upload Section -->
-                        <div class="space-y-3">
-                            <div class="flex justify-between">
-                                <div>
-                                    <Label for="condition_photos">{{ t('vehicle_condition_photos') }}</Label>
-                                    <p class="text-sm text-gray-500 mt-1">
-                                        {{ t('upload_photos_document_current_condition') }}
-                                    </p>
-                                </div>
-                                <div class="text-xs text-gray-400">
-                                    {{ t('optional') }}
-                                </div>
-                            </div>
-
-                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-gray-400 transition-colors">
-                                <div class="text-center">
-                                    <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                                    </svg>
-                                    <div class="mt-4">
-                                        <label for="condition_photos" class="cursor-pointer">
-                                            <span class="mt-2 block text-sm font-medium text-gray-900">
-                                                {{ t('upload_vehicle_photos') }}
-                                            </span>
-                                            <span class="mt-1 block text-sm text-gray-500">
-                                                {{ t('png_jpg_up_to_10mb_each') }}
-                                            </span>
-                                        </label>
-                                        <input
-                                            id="condition_photos"
-                                            name="condition_photos"
-                                            type="file"
-                                            class="sr-only"
-                                            multiple
-                                            accept="image/*"
-                                            @change="handlePhotoUpload"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Selected Photos Preview -->
-                            <div v-if="form.condition_photos && form.condition_photos.length > 0" class="mt-4">
-                                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                                    <div
-                                        v-for="(file, index) in form.condition_photos"
-                                        :key="index"
-                                        class="relative group"
-                                    >
-                                        <img
-                                            :src="getFilePreview(file)"
-                                            :alt="`Vehicle condition ${index + 1}`"
-                                            class="h-20 w-full object-cover rounded-md border border-gray-200"
-                                        />
-                                        <button
-                                            type="button"
-                                            @click="removePhoto(index)"
-                                            class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex justify-center text-xs hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                            ×
-                                        </button>
-                                    </div>
-                                </div>
-                                <p class="text-xs text-gray-500 mt-2">
-                                    {{ t('photos_selected', { count: form.condition_photos.length }) }}
-                                </p>
-                            </div>
-
-                            <div v-if="form.errors.condition_photos" class="text-sm text-red-600">
-                                {{ form.errors.condition_photos }}
-                            </div>
-                        </div>
-
-                        <!-- Quick Condition Summary -->
-                        <div v-if="form.current_mileage || form.fuel_level || (form.condition_photos && form.condition_photos.length > 0)" class="p-4 bg-blue-50 border border-blue-200 rounded-md">
-                            <div class="flex items-start gap-3">
-                                <svg class="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                <div>
-                                    <h4 class="font-medium text-blue-900 mb-1">{{ t('pickup_condition_summary') }}</h4>
-                                    <div class="text-sm text-blue-800 space-y-1">
-                                        <p v-if="form.current_mileage">
-                                            <strong>{{ t('mileage') }}:</strong> {{ Number(form.current_mileage).toLocaleString() }} KM
-                                        </p>
-                                        <p v-if="form.fuel_level">
-                                            <strong>{{ t('fuel') }}:</strong> {{ getFuelLevelDisplay(form.fuel_level) }}
-                                        </p>
-                                        <p v-if="form.condition_photos && form.condition_photos.length > 0">
-                                            <strong>{{ t('photos') }}:</strong> {{ t('condition_photos_attached', { count: form.condition_photos.length }) }}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <!-- Terms and Notes -->
-                <Card>
+                <!-- Step 3: Terms and Notes -->
+                <Card v-show="activeStep === 3">
                     <CardHeader>
                         <CardTitle class="flex gap-2">
                             <FileText class="w-5 h-5" />
@@ -1270,14 +1161,20 @@ watch(() => props.newCustomer, (customer) => {
                     </CardContent>
                 </Card>
 
-                <!-- Actions -->
-                <div class="flex justify-end gap-3">
+                <!-- Step Actions -->
+                <div class="flex justify-between items-center">
                     <Link :href="route('contracts.index')">
                         <Button type="button" variant="outline">{{ t('cancel') }}</Button>
                     </Link>
-                    <Button type="submit" :disabled="form.processing">
-                        {{ form.processing ? t('creating') : t('create_contract') }}
-                    </Button>
+                    <div class="flex gap-2">
+                        <Button type="button" variant="outline" @click="prevStep" :disabled="activeStep === 1">{{ t('back') }}</Button>
+                        <Button v-if="activeStep < 3" type="button" @click="nextStep" :disabled="(activeStep === 1 && (!form.customer_id || !form.vehicle_id))">
+                            {{ t('next') }}
+                        </Button>
+                        <Button v-else type="submit" :disabled="form.processing">
+                            {{ form.processing ? t('creating') : t('create_contract') }}
+                        </Button>
+                    </div>
                 </div>
             </form>
         </div>
