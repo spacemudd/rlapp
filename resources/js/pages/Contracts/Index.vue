@@ -139,7 +139,7 @@ function viewContract(contract: Contract) {
         <div class="p-6">
             <div class="space-y-6">
                 <!-- Header -->
-                <div class="flex items-center justify-between">
+                <div class="flex justify-between">
                     <div>
                         <h1 class="text-2xl font-semibold text-gray-900">{{ t('contracts') }}</h1>
                         <p class="text-gray-600 mt-1">{{ t('manage_contracts') }}</p>
@@ -157,29 +157,29 @@ function viewContract(contract: Contract) {
                     <!-- Contracts Widget -->
                     <Card class="col-span-1 lg:col-span-1">
                         <CardHeader class="pb-2">
-                            <div class="flex items-center justify-between">
-                                <CardTitle>Contracts</CardTitle>
+                            <div class="flex justify-between">
+                                <CardTitle>{{ t('contracts') }}</CardTitle>
                                 <div>
                                     <select v-model="timeframe" class="flex h-9 items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
-                                        <option value="24h">Last 24hrs</option>
-                                        <option value="7d">Last 7-Days</option>
-                                        <option value="14d">Last 14-Days</option>
-                                        <option value="all">View All</option>
+                                        <option value="24h">{{ t('last_24hrs') }}</option>
+                                        <option value="7d">{{ t('last_7_days') }}</option>
+                                        <option value="14d">{{ t('last_14_days') }}</option>
+                                        <option value="all">{{ t('view_all') }}</option>
                                     </select>
                                 </div>
                             </div>
-                            <CardDescription class="mt-1">Quick view of recent contracts</CardDescription>
+                            <CardDescription class="mt-1">{{ t('quick_view_recent_contracts') }}</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div v-if="filteredContracts.length === 0" class="text-center py-8 text-sm text-gray-500">
-                                No contracts in this range
+                                {{ t('no_contracts_in_range') }}
                             </div>
                             <ul v-else class="divide-y">
-                                <li v-for="c in filteredContracts" :key="c.id" class="py-3 flex items-center justify-between">
+                                <li v-for="c in filteredContracts" :key="c.id" class="py-3 flex justify-between">
                                     <div>
-                                        <div class="flex items-center gap-2">
+                                        <div class="flex gap-2">
                                             <span class="font-medium">{{ c.contract_number }}</span>
-                                            <Badge :class="getStatusColor(c.status)" class="text-xs">{{ c.status }}</Badge>
+                                            <Badge :class="getStatusColor(c.status)" class="text-xs">{{ t(c.status) }}</Badge>
                                         </div>
                                         <div class="text-xs text-gray-500 mt-1">
                                             {{ c.customer.first_name }} {{ c.customer.last_name }} · {{ formatDate(c.start_date) }} - {{ formatDate(c.end_date) }}
@@ -196,20 +196,20 @@ function viewContract(contract: Contract) {
                     <!-- Upcoming Contracts Widget -->
                     <Card class="col-span-1">
                         <CardHeader class="pb-2">
-                            <CardTitle>Upcoming Contracts</CardTitle>
-                            <CardDescription class="mt-1">Contracts starting in the future</CardDescription>
+                            <CardTitle>{{ t('upcoming_contracts') }}</CardTitle>
+                            <CardDescription class="mt-1">{{ t('contracts_starting_future') }}</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div v-if="upcomingContracts.length === 0" class="text-center py-8 text-sm text-gray-500">
-                                No upcoming contracts
+                                {{ t('no_upcoming_contracts') }}
                             </div>
                             <ul v-else class="divide-y">
-                                <li v-for="c in upcomingContracts" :key="c.id" class="py-3 flex items-center justify-between">
+                                <li v-for="c in upcomingContracts" :key="c.id" class="py-3 flex justify-between">
                                     <div>
                                         <div class="font-medium">{{ c.contract_number }}</div>
-                                        <div class="text-xs text-gray-500 mt-1">Starts {{ formatDate(c.start_date) }}</div>
+                                        <div class="text-xs text-gray-500 mt-1">{{ t('starts') }} {{ formatDate(c.start_date) }}</div>
                                     </div>
-                                    <Badge :class="getStatusColor(c.status)" class="text-xs">{{ c.status }}</Badge>
+                                    <Badge :class="getStatusColor(c.status)" class="text-xs">{{ t(c.status) }}</Badge>
                                 </li>
                             </ul>
                         </CardContent>
@@ -218,20 +218,20 @@ function viewContract(contract: Contract) {
                     <!-- Ending Soon Widget -->
                     <Card class="col-span-1">
                         <CardHeader class="pb-2">
-                            <CardTitle>Ending Soon</CardTitle>
-                            <CardDescription class="mt-1">Contracts ending in the next 3 days</CardDescription>
+                            <CardTitle>{{ t('ending_soon') }}</CardTitle>
+                            <CardDescription class="mt-1">{{ t('contracts_ending_next_3_days') }}</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div v-if="endingSoonContracts.length === 0" class="text-center py-8 text-sm text-gray-500">
-                                No contracts ending soon
+                                {{ t('no_contracts_ending_soon') }}
                             </div>
                             <ul v-else class="divide-y">
-                                <li v-for="c in endingSoonContracts" :key="c.id" class="py-3 flex items-center justify-between">
+                                <li v-for="c in endingSoonContracts" :key="c.id" class="py-3 flex justify-between">
                                     <div>
                                         <div class="font-medium">{{ c.contract_number }}</div>
-                                        <div class="text-xs text-gray-500 mt-1">Ends {{ formatDate(c.end_date) }}</div>
+                                        <div class="text-xs text-gray-500 mt-1">{{ t('ends') }} {{ formatDate(c.end_date) }}</div>
                                     </div>
-                                    <Badge :class="getStatusColor(c.status)" class="text-xs">{{ c.status }}</Badge>
+                                    <Badge :class="getStatusColor(c.status)" class="text-xs">{{ t(c.status) }}</Badge>
                                 </li>
                             </ul>
                         </CardContent>
@@ -241,12 +241,12 @@ function viewContract(contract: Contract) {
                 <!-- Empty State for entire dataset -->
                 <div v-if="contracts.data.length === 0" class="text-center py-12">
                     <FileText class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <h3 class="text-lg font-medium text-gray-900 mb-2">No contracts found</h3>
-                    <p class="text-gray-500 mb-6">Get started by creating your first rental contract.</p>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">{{ t('no_contracts_found') }}</h3>
+                    <p class="text-gray-500 mb-6">{{ t('get_started_creating_first_contract') }}</p>
                     <Link :href="route('contracts.create')">
                         <Button>
                             <Plus class="w-4 h-4 mr-2" />
-                            Create Contract
+                            {{ t('create_contract') }}
                         </Button>
                     </Link>
                 </div>
