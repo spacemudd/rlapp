@@ -48,7 +48,6 @@ const form = useForm({
     start_date: '',
     end_date: '',
     daily_rate: 0,
-    deposit_amount: 0,
     mileage_limit: '' as string | number,
     excess_mileage_rate: '' as string | number,
     notes: '',
@@ -951,20 +950,6 @@ watch(() => props.newCustomer, (customer) => {
                                 <!-- Show when rate has been manually adjusted -->
                                 <div v-if="form.override_daily_rate && !form.override_final_price" class="text-sm text-blue-600">
                                     {{ t('rate_manually_adjusted') }}
-                                </div>
-                            </div>
-
-                            <div class="space-y-2">
-                                <Label for="deposit_amount">{{ t('security_deposit_aed') }}</Label>
-                                <Input
-                                    id="deposit_amount"
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    v-model="form.deposit_amount"
-                                />
-                                <div v-if="form.errors.deposit_amount" class="text-sm text-red-600">
-                                    {{ form.errors.deposit_amount }}
                                 </div>
                             </div>
                         </div>

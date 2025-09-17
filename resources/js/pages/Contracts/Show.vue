@@ -43,7 +43,7 @@ interface Contract {
     total_amount: number;
     daily_rate: number;
     total_days: number;
-    deposit_amount: number;
+    // deposit removed from contract view
     mileage_limit?: number;
     excess_mileage_rate?: number;
     currency: string;
@@ -519,10 +519,7 @@ function goToCreateInvoice() {
                                 <span class="text-sm text-gray-500">{{ t('daily_rate') }}</span>
                                 <p class="font-medium">{{ formatCurrency(contract.daily_rate, contract.currency) }}</p>
                             </div>
-                            <div>
-                                <span class="text-sm text-gray-500">{{ t('deposit_amount') }}</span>
-                                <p class="font-medium">{{ formatCurrency(contract.deposit_amount, contract.currency) }}</p>
-                            </div>
+                            
                             <div v-if="contract.mileage_limit">
                                 <span class="text-sm text-gray-500">{{ t('mileage_limit') }}</span>
                                 <p class="font-medium">{{ contract.mileage_limit.toLocaleString() }} KM</p>

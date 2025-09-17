@@ -240,7 +240,6 @@ class ContractController extends Controller
             'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
             'daily_rate' => 'required|numeric|min:0',
-            'deposit_amount' => 'nullable|numeric|min:0',
             'mileage_limit' => 'nullable|integer|min:0',
             'excess_mileage_rate' => 'nullable|numeric|min:0',
             // 'terms_and_conditions' removed from create flow
@@ -322,7 +321,6 @@ class ContractController extends Controller
             'daily_rate' => $dailyRate,
             'total_days' => $totalDays,
             'total_amount' => $totalAmount,
-            'deposit_amount' => $validated['deposit_amount'] ?? 0,
             'mileage_limit' => $validated['mileage_limit'] ?? null,
             'excess_mileage_rate' => $validated['excess_mileage_rate'] ?? null,
             // 'terms_and_conditions' removed from create flow
@@ -392,7 +390,6 @@ class ContractController extends Controller
             'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
             'daily_rate' => 'required|numeric|min:0',
-            'deposit_amount' => 'nullable|numeric|min:0',
             'mileage_limit' => 'nullable|integer|min:0',
             'excess_mileage_rate' => 'nullable|numeric|min:0',
             // 'terms_and_conditions' removed from update flow
@@ -413,7 +410,6 @@ class ContractController extends Controller
             'daily_rate' => $validated['daily_rate'],
             'total_days' => $totalDays,
             'total_amount' => $totalAmount,
-            'deposit_amount' => $validated['deposit_amount'] ?? 0,
             'mileage_limit' => $validated['mileage_limit'],
             'excess_mileage_rate' => $validated['excess_mileage_rate'],
             // 'terms_and_conditions' removed from update flow
@@ -641,20 +637,7 @@ class ContractController extends Controller
             'discount' => 0,
         ]);
 
-        // Add deposit as separate item if exists
-        if ($contract->deposit_amount > 0) {
-            $invoice->items()->create([
-                'description' => 'Security Deposit',
-                'amount' => $contract->deposit_amount,
-                'discount' => 0,
-            ]);
-
-            // Update invoice totals
-            $invoice->update([
-                'sub_total' => $contract->total_amount + $contract->deposit_amount,
-                'total_amount' => $contract->total_amount + $contract->deposit_amount,
-            ]);
-        }
+        // Note: Deposit is now handled exclusively in the invoicing flow; no auto-adding here.
 
         return redirect()->route('invoices.show', $invoice)
             ->with('success', 'Invoice created successfully for the contract.');
