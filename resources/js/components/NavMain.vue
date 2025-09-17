@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
+import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
 import { useDirection } from '@/composables/useDirection';
@@ -29,6 +29,15 @@ const { isRtl } = useDirection();
                         </template>
                     </Link>
                 </SidebarMenuButton>
+                <SidebarMenuSub v-if="item.children && item.children.length">
+                    <SidebarMenuSubItem v-for="child in item.children" :key="child.title">
+                        <SidebarMenuSubButton as-child :is-active="child.href === page.url">
+                            <Link :href="child.href" :class="{ 'flex-row-reverse': isRtl }">
+                                <span>{{ child.title }}</span>
+                            </Link>
+                        </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                </SidebarMenuSub>
             </SidebarMenuItem>
         </SidebarMenu>
     </SidebarGroup>

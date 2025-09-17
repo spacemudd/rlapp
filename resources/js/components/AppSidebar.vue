@@ -44,6 +44,11 @@ const mainNavItems = computed<NavItem[]>(() => {
             icon: Users,
         },
         {
+            title: t('contracts'),
+            href: '/contracts',
+            icon: FileText,
+        },
+        {
             title: t('invoices'),
             href: '/invoices',
             icon: Receipt,
@@ -57,11 +62,6 @@ const mainNavItems = computed<NavItem[]>(() => {
             title: t('reservations'),
             href: '/reservations',
             icon: Calendar,
-        },
-        {
-            title: t('contracts'),
-            href: '/contracts',
-            icon: FileText,
         },
         {
             title: t('locations'),
