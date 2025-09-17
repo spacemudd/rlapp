@@ -84,8 +84,7 @@ class DashboardController extends Controller
                     'invoice_number' => $invoice->invoice_number,
                     'due_date' => $invoice->due_date,
                     'total_amount' => $invoice->total_amount,
-                    'currency' => $invoice->currency,
-                    'status' => $invoice->status,
+                    'status' => $invoice->payment_status,
                 ];
             }),
             'latest_payments' => $latestPayments->map(function($payment) {

@@ -212,7 +212,7 @@ class AccountingDashboardController extends Controller
                     'amount' => $invoice->total_amount,
                     'description' => "Invoice {$invoice->invoice_number} - {$invoice->customer->full_name}",
                     'reference' => $invoice->invoice_number,
-                    'status' => $invoice->status,
+                    'status' => $invoice->payment_status,
                     'account' => 'Accounts Receivable',
                 ];
             });

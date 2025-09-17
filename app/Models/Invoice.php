@@ -23,8 +23,6 @@ class Invoice extends Model
         'invoice_date',
         'issue_date',
         'due_date',
-        'status',
-        'currency',
         'total_days',
         'start_datetime',
         'end_datetime',
@@ -127,20 +125,6 @@ class Invoice extends Model
             'paid_amount' => $paidAmount,
             'remaining_amount' => $remainingAmount,
         ]);
-        
-        // Update status based on payment
-        $newStatus = $this->status;
-        if ($remainingAmount <= 0) {
-            $newStatus = 'paid';
-        } elseif ($paidAmount > 0 && $remainingAmount > 0) {
-            $newStatus = 'partial_paid';
-        } elseif ($paidAmount == 0) {
-            $newStatus = 'unpaid';
-        }
-        
-        if ($newStatus !== $this->status) {
-            $this->update(['status' => $newStatus]);
-        }
     }
 
     /**
@@ -186,11 +170,25 @@ class Invoice extends Model
     }
 
     /**
+     * Get the payment status based on payment amounts.
+     */
+    public function getPaymentStatusAttribute()
+    {
+        if ($this->remaining_amount <= 0) {
+            return 'paid';
+        } elseif ($this->paid_amount > 0 && $this->remaining_amount > 0) {
+            return 'partial_paid';
+        } else {
+            return 'unpaid';
+        }
+    }
+
+    /**
      * Check if the invoice is overdue.
      */
     public function isOverdue()
     {
-        return $this->due_date < now() && in_array($this->status, ['unpaid', 'partial_paid']);
+        return $this->due_date < now() && in_array($this->payment_status, ['unpaid', 'partial_paid']);
     }
 
     /**
@@ -235,7 +233,7 @@ class Invoice extends Model
     public function scopeOverdue($query)
     {
         return $query->where('due_date', '<', now())
-                    ->whereIn('status', ['unpaid', 'partial_paid']);
+                    ->where('remaining_amount', '>', 0);
     }
 
     /**
@@ -243,7 +241,7 @@ class Invoice extends Model
      */
     public function scopeUnpaid($query)
     {
-        return $query->whereIn('status', ['unpaid', 'partial_paid']);
+        return $query->where('remaining_amount', '>', 0);
     }
 
     /**
@@ -251,7 +249,7 @@ class Invoice extends Model
      */
     public function scopePaid($query)
     {
-        return $query->where('status', 'paid');
+        return $query->where('remaining_amount', '<=', 0);
     }
 
     public function team()

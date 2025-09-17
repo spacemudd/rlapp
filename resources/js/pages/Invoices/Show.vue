@@ -82,23 +82,14 @@ const getStatusColor = (status: string) => {
 };
 
 const formatCurrency = (amount: number) => {
-    // List of valid currency codes
-    const validCurrencies = ['USD', 'EUR', 'AED', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'SEK', 'NZD'];
-
-    // Use the invoice currency if it's valid, otherwise default to AED
-    let currency = props.invoice.currency;
-    if (!validCurrencies.includes(currency.toUpperCase())) {
-        currency = 'AED'; // Default fallback currency
-    }
-
     try {
-        return new Intl.NumberFormat('en-US', {
+        return new Intl.NumberFormat('en-AE', {
             style: 'currency',
-            currency: currency
+            currency: 'AED'
         }).format(amount);
     } catch (error) {
         // If there's still an error, use a simple format
-        return `${currency} ${amount.toFixed(2)}`;
+        return `AED ${amount.toFixed(2)}`;
     }
 };
 

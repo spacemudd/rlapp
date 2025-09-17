@@ -198,7 +198,7 @@ class CustomerController extends Controller
                 'type' => 'invoice_created',
                 'title' => 'Invoice ' . $invoice->invoice_number,
                 'date' => optional($invoice->invoice_date ?? $invoice->created_at)->toISOString(),
-                'status' => $invoice->status,
+                'status' => $invoice->payment_status,
                 'link' => "/invoices/{$invoice->id}",
             ];
         }
