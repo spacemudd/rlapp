@@ -16,8 +16,8 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $lateInvoices = Invoice::whereIn('status', ['unpaid', 'partial_paid'])
-            ->where('due_date', '<', now());
+        $lateInvoices = Invoice::where('due_date', '<', now())
+            ->where('remaining_amount', '>', 0);
         $lateInvoicesList = $lateInvoices->get();
         Log::info('Late invoices:', $lateInvoicesList->toArray());
         $lateInvoicesCount = $lateInvoicesList->count();

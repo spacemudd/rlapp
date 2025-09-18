@@ -85,6 +85,13 @@ const mainNavItems = computed<NavItem[]>(() => {
         icon: FileText,
     });
 
+    // Add Settings link
+    items.push({
+        title: t('system_settings'),
+        href: '/system-settings',
+        icon: Settings,
+    });
+
     // Add Team link only for users with manage team settings permission
     if (canManageTeam.value) {
         items.push({

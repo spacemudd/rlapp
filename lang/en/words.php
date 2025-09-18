@@ -26,6 +26,7 @@ return [
     'accounting' => 'Accounting',
     'team_management' => 'Team Management',
     'settings' => 'Settings',
+    'system_settings' => 'System Settings',
     'profile_settings' => 'Profile Settings',
     'password' => 'Password',
     'appearance' => 'Appearance',

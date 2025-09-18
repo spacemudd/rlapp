@@ -182,6 +182,13 @@ Route::get('/traffic-violations', function () {
     return inertia('TrafficViolations');
 });
 
+// System Settings standalone page
+Route::middleware('auth')->group(function () {
+    Route::get('/system-settings', function () {
+        return Inertia::render('settings/SystemSettings');
+    })->name('system-settings');
+});
+
 Route::get('/traffic-violations/salik', function () {
     return inertia('TrafficViolations/Salik');
 });

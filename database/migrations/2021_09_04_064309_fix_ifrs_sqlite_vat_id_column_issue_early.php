@@ -18,6 +18,12 @@ return new class extends Migration
             if (!Schema::hasTable('ifrs_line_items')) {
                 return;
             }
+            
+            // Check if vat_id column exists before trying to drop it
+            if (!Schema::hasColumn('ifrs_line_items', 'vat_id')) {
+                return;
+            }
+            
             // For SQLite, we need to recreate the table without the vat_id column
             // This is the proper way to "drop" a column with foreign key constraints in SQLite
             

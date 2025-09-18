@@ -823,6 +823,7 @@ watch(() => props.newCustomer, (customer) => {
                                         type="datetime-local"
                                         v-model="form.start_date"
                                         required
+                                        dir="ltr"
                                     />
                                     <div v-if="form.errors.start_date" class="text-sm text-red-600">
                                         {{ form.errors.start_date }}
@@ -840,6 +841,7 @@ watch(() => props.newCustomer, (customer) => {
                                     v-model="form.end_date"
                                     :min="form.start_date"
                                     required
+                                    dir="ltr"
                                 />
                                 <div v-if="form.errors.end_date" class="text-sm text-red-600">
                                     {{ form.errors.end_date }}

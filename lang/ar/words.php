@@ -26,6 +26,7 @@ return [
     'accounting' => 'المحاسبة',
     'team_management' => 'إدارة الفريق',
     'settings' => 'الإعدادات',
+    'system_settings' => 'إعدادات النظام',
     'profile_settings' => 'إعدادات الملف الشخصي',
     'password' => 'كلمة المرور',
     'appearance' => 'المظهر',
