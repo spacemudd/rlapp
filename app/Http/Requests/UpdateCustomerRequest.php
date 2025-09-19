@@ -30,6 +30,8 @@ class UpdateCustomerRequest extends FormRequest
             'trade_license_number' => 'nullable|string|max:255',
             'trade_license_pdf' => 'nullable|file|mimes:pdf|max:10240', // 10MB max
             'visit_visa_pdf' => 'nullable|file|mimes:pdf|max:10240', // 10MB max
+            'passport_pdf' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'resident_id_pdf' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'nullable|string|email|max:255|unique:customers,email,' . $customer->id,
@@ -38,6 +40,7 @@ class UpdateCustomerRequest extends FormRequest
             // Driver's license is always required
             'drivers_license_number' => 'required|string|max:255',
             'drivers_license_expiry' => 'required|date|after:today',
+            'drivers_license_pdf' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
             // Secondary identification type is required
             'secondary_identification_type' => 'required|in:passport,resident_id,visit_visa',
             'country' => 'required|string|max:255',
@@ -55,10 +58,12 @@ class UpdateCustomerRequest extends FormRequest
             case 'resident_id':
                 $rules['resident_id_number'] = 'required|string|max:255';
                 $rules['resident_id_expiry'] = 'required|date|after:today';
+                $rules['resident_id_pdf'] = 'required|file|mimes:pdf,jpg,jpeg,png|max:10240';
                 break;
             case 'passport':
                 $rules['passport_number'] = 'required|string|max:255';
                 $rules['passport_expiry'] = 'required|date|after:today';
+                $rules['passport_pdf'] = 'required|file|mimes:pdf,jpg,jpeg,png|max:10240';
                 break;
             case 'visit_visa':
                 $rules['visit_visa_pdf'] = 'required|file|mimes:pdf|max:10240';
@@ -95,6 +100,12 @@ class UpdateCustomerRequest extends FormRequest
             'resident_id_expiry.required' => 'Resident ID expiry date is required when using resident ID identification.',
             'resident_id_expiry.after' => 'Resident ID must not be expired.',
             'nationality.required' => 'Nationality is required.',
+            'passport_pdf.required' => 'Passport document is required when using passport identification.',
+            'passport_pdf.mimes' => 'Passport document must be a PDF, JPG, or PNG.',
+            'passport_pdf.max' => 'Passport document must not exceed 10MB.',
+            'resident_id_pdf.required' => 'Resident ID document is required when using resident ID identification.',
+            'resident_id_pdf.mimes' => 'Resident ID document must be a PDF, JPG, or PNG.',
+            'resident_id_pdf.max' => 'Resident ID document must not exceed 10MB.',
         ];
     }
 
@@ -111,11 +122,11 @@ class UpdateCustomerRequest extends FormRequest
         // Driver's license is always required, so we don't null it
 
         if ($secondaryIdentificationType !== 'resident_id') {
-            $fieldsToNull = array_merge($fieldsToNull, ['resident_id_number', 'resident_id_expiry']);
+            $fieldsToNull = array_merge($fieldsToNull, ['resident_id_number', 'resident_id_expiry', 'resident_id_pdf']);
         }
 
         if ($secondaryIdentificationType !== 'passport') {
-            $fieldsToNull = array_merge($fieldsToNull, ['passport_number', 'passport_expiry']);
+            $fieldsToNull = array_merge($fieldsToNull, ['passport_number', 'passport_expiry', 'passport_pdf']);
         }
 
         if ($secondaryIdentificationType !== 'visit_visa') {

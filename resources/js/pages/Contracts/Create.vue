@@ -13,6 +13,9 @@ import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import { ref, computed, watch, onMounted } from 'vue';
 import { ArrowLeft, Calendar, DollarSign, FileText, User, Car, Plus } from 'lucide-vue-next';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useI18n } from 'vue-i18n';
+
+interface BranchOption { id: string; name: string; city?: string; country: string }
 
 interface Props {
     contractNumber: string;
@@ -26,6 +29,7 @@ interface Props {
         end_date?: string;
         daily_rate?: number;
     };
+    branches?: BranchOption[];
 }
 
 interface PricingBreakdown {
@@ -39,21 +43,21 @@ interface PricingBreakdown {
 }
 
 const props = defineProps<Props>();
+const { t } = useI18n();
 
 const form = useForm({
     customer_id: '',
     vehicle_id: '',
+    branch_id: '',
     start_date: '',
     end_date: '',
     daily_rate: 0,
-    deposit_amount: 0,
     mileage_limit: '' as string | number,
     excess_mileage_rate: '' as string | number,
-    terms_and_conditions: '',
     notes: '',
     // Override fields
-    override_daily_rate: false,
-    override_final_price: false,
+    override_daily_rate: false as boolean,
+    override_final_price: false as boolean,
     final_price_override: 0,
     override_reason: '',
     // New vehicle condition fields
@@ -69,6 +73,27 @@ const customerComboboxRef = ref<any>(null);
 const durationDays = ref<number>(1);
 const selectedBlockedCustomer = ref<any>(null);
 const blockedCustomerError = ref<string>('');
+
+// Simple multi-step flow (1: Basics, 2: Pricing, 3: Terms)
+const activeStep = ref<number>(1);
+const totalSteps = 3;
+
+const goToStep = (step: number) => {
+    if (step < 1 || step > totalSteps) return;
+    activeStep.value = step;
+};
+
+const nextStep = () => {
+    if (activeStep.value < totalSteps) {
+        activeStep.value += 1;
+    }
+};
+
+const prevStep = () => {
+    if (activeStep.value > 1) {
+        activeStep.value -= 1;
+    }
+};
 
 const totalDays = computed(() => {
     if (!form.start_date || !form.end_date) return 0;
@@ -583,36 +608,63 @@ watch(() => props.newCustomer, (customer) => {
     <AppLayout>
         <div class="p-6">
             <!-- Header -->
-            <div class="flex items-center justify-between">
+            <div class="flex justify-between">
+                <div class="text-right">
+                    <h1 class="text-2xl font-semibold text-gray-900">{{ t('create_new_contract') }}</h1>
+                    <p class="text-gray-600 mt-1">{{ t('contract_number') }}: {{ contractNumber }}</p>
+                </div>
                 <Link :href="route('contracts.index')">
                     <Button variant="ghost" size="sm">
                         <ArrowLeft class="w-4 h-4 mr-2" />
-                        Back to Contracts
+                        {{ t('back_to_contracts') }}
                     </Button>
                 </Link>
-                <div class="text-right">
-                    <h1 class="text-2xl font-semibold text-gray-900">Create New Contract</h1>
-                    <p class="text-gray-600 mt-1">Contract Number: {{ contractNumber }}</p>
-                </div>
             </div>
 
-            <form @submit.prevent="submit" class="space-y-6">
-                <div class="grid gap-6 lg:grid-cols-2">
+            <form @submit.prevent="submit" class="space-y-6 mt-5">
+                <!-- Stepper Header -->
+                <div class="flex items-center justify-between bg-muted/30 rounded-md p-3">
+                    <div class="flex items-center gap-2">
+                        <button type="button" class="px-3 py-1 rounded-md text-sm"
+                                :class="activeStep === 1 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'"
+                                @click="goToStep(1)">
+                            1. {{ t('basics') }}
+                        </button>
+                        <span class="text-muted-foreground">→</span>
+                        <button type="button" class="px-3 py-1 rounded-md text-sm"
+                                :class="activeStep === 2 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'"
+                                @click="goToStep(2)"
+                                :disabled="!form.customer_id || !form.vehicle_id">
+                            2. {{ t('pricing') }}
+                        </button>
+                        <span class="text-muted-foreground">→</span>
+                        <button type="button" class="px-3 py-1 rounded-md text-sm"
+                                :class="activeStep === 3 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'"
+                                @click="goToStep(3)"
+                                :disabled="!form.customer_id || !form.vehicle_id">
+                            3. {{ t('terms') }}
+                        </button>
+                    </div>
+                    <div class="text-sm text-muted-foreground">
+                        {{ t('step') }} {{ activeStep }} / {{ totalSteps }}
+                    </div>
+                </div>
+
+                <!-- Step 1: Basics -->
+                <div v-show="activeStep === 1" class="grid gap-6 lg:grid-cols-2">
                     <!-- Customer Selection -->
                     <Card>
                         <CardHeader>
-                            <CardTitle class="flex items-center gap-2">
+                            <CardTitle class="flex gap-2">
                                 <User class="w-5 h-5" />
-                                Customer Information
+                                {{ t('customer_information') }}
                             </CardTitle>
-                            <CardDescription>Select or create a customer for this contract</CardDescription>
                         </CardHeader>
                         <CardContent class="space-y-4">
                             <AsyncCombobox
                                 ref="customerComboboxRef"
                                 v-model="form.customer_id"
-                                label="Customer"
-                                placeholder="Search by name, email, or phone..."
+                                :placeholder="t('search_customer_placeholder')"
                                 search-url="/api/customers/search"
                                 :required="true"
                                 :error="form.errors.customer_id || blockedCustomerError"
@@ -627,42 +679,42 @@ watch(() => props.newCustomer, (customer) => {
                                     <div class="text-red-500 text-2xl">🚫</div>
                                     <div class="flex-1">
                                         <h3 class="text-lg font-medium text-red-800 mb-2">
-                                            Cannot Create Contract - Customer Blocked
+                                            {{ t('cannot_create_contract_customer_blocked') }}
                                         </h3>
 
                                         <div class="space-y-2 text-sm">
                                             <div class="grid grid-cols-2 gap-4">
                                                 <div>
-                                                    <span class="font-medium text-red-700">Customer:</span>
+                                                    <span class="font-medium text-red-700">{{ t('customer') }}:</span>
                                                     <p class="text-red-600">{{ selectedBlockedCustomer.name }}</p>
                                                 </div>
                                                 <div>
-                                                    <span class="font-medium text-red-700">Phone:</span>
+                                                    <span class="font-medium text-red-700">{{ t('phone') }}:</span>
                                                     <p class="text-red-600">{{ selectedBlockedCustomer.phone }}</p>
                                                 </div>
                                             </div>
 
                                             <div>
-                                                <span class="font-medium text-red-700">Block Reason:</span>
+                                                <span class="font-medium text-red-700">{{ t('block_reason') }}:</span>
                                                 <p class="text-red-600">{{ translateBlockReason(selectedBlockedCustomer.block_reason) }}</p>
                                             </div>
 
                                             <div class="grid grid-cols-2 gap-4">
                                                 <div>
-                                                    <span class="font-medium text-red-700">Blocked Date:</span>
+                                                    <span class="font-medium text-red-700">{{ t('blocked_date') }}:</span>
                                                     <p class="text-red-600">{{ formatDate(selectedBlockedCustomer.blocked_at) }}</p>
                                                 </div>
                                                 <div>
-                                                    <span class="font-medium text-red-700">Blocked By:</span>
+                                                    <span class="font-medium text-red-700">{{ t('blocked_by') }}:</span>
                                                     <p class="text-red-600">{{ selectedBlockedCustomer.blocked_by?.name }}</p>
                                                 </div>
                                             </div>
                                         </div>
 
                                         <div class="mt-4 pt-3 border-t border-red-200">
-                                            <div class="flex items-center justify-between">
+                                            <div class="flex justify-between">
                                                 <div class="text-sm text-red-600">
-                                                    To create a contract, this customer must first be unblocked.
+                                                    {{ t('to_create_contract_customer_must_be_unblocked') }}
                                                 </div>
                                                 <div class="flex gap-2">
                                                     <Button
@@ -670,14 +722,14 @@ watch(() => props.newCustomer, (customer) => {
                                                         size="sm"
                                                         @click="viewCustomerDetails"
                                                     >
-                                                        View Customer Details
+                                                        {{ t('view_customer_details') }}
                                                     </Button>
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
                                                         @click="clearCustomerSelection"
                                                     >
-                                                        Select Different Customer
+                                                        {{ t('select_different_customer') }}
                                                     </Button>
                                                 </div>
                                             </div>
@@ -687,22 +739,22 @@ watch(() => props.newCustomer, (customer) => {
                             </div>
 
                             <div class="pt-4 border-t">
-                                <div class="flex items-center justify-between">
+                                <div class="flex justify-between">
                                     <p class="text-sm text-gray-500">
-                                        Need to add a new customer?
+                                        {{ t('need_to_add_new_customer') }}
                                     </p>
                                     <Dialog v-model:open="showCreateCustomerDialog">
                                         <DialogTrigger as-child>
                                             <Button type="button" variant="outline" size="sm">
                                                 <Plus class="w-4 h-4 mr-2" />
-                                                Create Customer
+                                                {{ t('create_customer') }}
                                             </Button>
                                         </DialogTrigger>
-                                        <DialogContent class="max-w-2xl max-h-[90vh] overflow-y-auto">
+                                        <DialogContent class="w-full max-h-[92vh] overflow-y-auto sm:max-w-3xl md:max-w-5xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[90rem]">
                                             <DialogHeader>
-                                                <DialogTitle>Create New Customer</DialogTitle>
+                                                <DialogTitle>{{ t('create_new_customer') }}</DialogTitle>
                                                 <DialogDescription>
-                                                    Add a new customer to your database. All fields marked with * are required.
+                                                    {{ t('add_new_customer_description') }}
                                                 </DialogDescription>
                                             </DialogHeader>
 
@@ -720,18 +772,16 @@ watch(() => props.newCustomer, (customer) => {
                     <!-- Vehicle Selection -->
                     <Card>
                         <CardHeader>
-                            <CardTitle class="flex items-center gap-2">
+                            <CardTitle class="flex gap-2">
                                 <Car class="w-5 h-5" />
-                                Vehicle Information
+                                {{ t('vehicle_information') }}
                             </CardTitle>
-                            <CardDescription>Select the vehicle for this rental</CardDescription>
                         </CardHeader>
                         <CardContent class="space-y-4">
                             <AsyncCombobox
                                 ref="vehicleComboboxRef"
                                 v-model="form.vehicle_id"
-                                label="Vehicle"
-                                placeholder="Search vehicles..."
+                                :placeholder="t('search_vehicles_placeholder')"
                                 search-url="/api/vehicle-search"
                                 :required="true"
                                 :error="form.errors.vehicle_id"
@@ -739,18 +789,18 @@ watch(() => props.newCustomer, (customer) => {
                             />
 
                             <div v-if="selectedVehicle" class="p-3 bg-gray-50 rounded-md">
-                                <h4 class="font-medium text-gray-900 mb-2">Pricing Options</h4>
+                                <h4 class="font-medium text-gray-900 mb-2">{{ t('pricing_options') }}</h4>
                                 <div class="grid grid-cols-3 gap-2 text-sm">
                                     <div>
-                                        <span class="text-gray-500">Daily:</span>
+                                        <span class="text-gray-500">{{ t('daily') }}:</span>
                                         <p class="font-medium">{{ formatCurrency(selectedVehicle.price_daily) }}</p>
                                     </div>
                                     <div>
-                                        <span class="text-gray-500">Weekly:</span>
+                                        <span class="text-gray-500">{{ t('weekly') }}:</span>
                                         <p class="font-medium">{{ formatCurrency(selectedVehicle.price_weekly) }}</p>
                                     </div>
                                     <div>
-                                        <span class="text-gray-500">Monthly:</span>
+                                        <span class="text-gray-500">{{ t('monthly') }}:</span>
                                         <p class="font-medium">{{ formatCurrency(selectedVehicle.price_monthly) }}</p>
                                     </div>
                                 </div>
@@ -759,47 +809,64 @@ watch(() => props.newCustomer, (customer) => {
                     </Card>
                 </div>
 
-                <!-- Contract Details -->
-                <Card>
+                <!-- Contract Details (Basics) -->
+                <Card v-show="activeStep === 1">
                     <CardHeader>
-                        <CardTitle class="flex items-center gap-2">
+                        <CardTitle class="flex gap-2">
                             <Calendar class="w-5 h-5" />
-                            Contract Details
+                            {{ t('contract_details') }}
                         </CardTitle>
-                        <CardDescription>Set the rental period and terms</CardDescription>
+                        <CardDescription>{{ t('set_rental_period_terms') }}</CardDescription>
                     </CardHeader>
                     <CardContent class="space-y-6">
                         <div class="grid gap-4 md:grid-cols-2">
+                            <div class="space-y-2">
+                                <Label for="branch_id">{{ t('branch') }}</Label>
+                                <select
+                                    id="branch_id"
+                                    v-model="form.branch_id"
+                                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                >
+                                    <option value="">{{ t('select') || 'Select' }}</option>
+                                    <option v-for="b in (props.branches || [])" :key="b.id" :value="b.id">
+                                        {{ b.name }}{{ b.city ? ', ' + b.city : '' }}
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="grid gap-4 md:grid-cols-2">
                                                             <div class="space-y-2">
-                                    <Label for="start_date">Start Date & Time * <span class="text-xs text-gray-500">(Dubai Time GMT+4)</span></Label>
+                                    <Label for="start_date">{{ t('start_date_time') }} * <span class="text-xs text-gray-500">{{ t('dubai_time_gmt4') }}</span></Label>
                                     <Input
                                         id="start_date"
                                         type="datetime-local"
                                         v-model="form.start_date"
                                         required
+                                        dir="ltr"
                                     />
                                     <div v-if="form.errors.start_date" class="text-sm text-red-600">
                                         {{ form.errors.start_date }}
                                     </div>
                                     <p class="text-xs text-gray-500">
-                                        Times are displayed in Dubai timezone (GMT+4)
+                                        {{ t('times_displayed_dubai_timezone') }}
                                     </p>
                                 </div>
 
                             <div class="space-y-2">
-                                <Label for="end_date">End Date & Time * <span class="text-xs text-gray-500">(Dubai Time GMT+4)</span></Label>
+                                <Label for="end_date">{{ t('end_date_time') }} * <span class="text-xs text-gray-500">{{ t('dubai_time_gmt4') }}</span></Label>
                                 <Input
                                     id="end_date"
                                     type="datetime-local"
                                     v-model="form.end_date"
                                     :min="form.start_date"
                                     required
+                                    dir="ltr"
                                 />
                                 <div v-if="form.errors.end_date" class="text-sm text-red-600">
                                     {{ form.errors.end_date }}
                                 </div>
                                 <p class="text-xs text-gray-500">
-                                    Automatically calculated based on duration
+                                    {{ t('automatically_calculated_duration') }}
                                 </p>
                             </div>
                         </div>
@@ -808,7 +875,7 @@ watch(() => props.newCustomer, (customer) => {
                         <div class="space-y-3">
                             <div class="grid gap-4 md:grid-cols-3">
                                 <div class="space-y-2">
-                                    <Label for="duration_days">Duration (Days) *</Label>
+                                    <Label for="duration_days">{{ t('duration_days') }} *</Label>
                                     <Input
                                         id="duration_days"
                                         type="number"
@@ -816,17 +883,17 @@ watch(() => props.newCustomer, (customer) => {
                                         max="365"
                                         v-model.number="durationDays"
                                         @focus="initializeStartDate"
-                                        placeholder="Enter number of days"
+                                        :placeholder="t('enter_number_of_days')"
                                         required
                                     />
                                     <p class="text-xs text-gray-500">
-                                        Enter the number of rental days (minimum 1 day)
+                                        {{ t('enter_rental_days_minimum') }}
                                     </p>
                                 </div>
-                                <div class="md:col-span-2 flex items-end">
+                                <div class="md:col-span-2 flex">
                                     <div class="p-3 bg-blue-50 rounded-md w-full">
                                         <p class="text-sm text-blue-800">
-                                            <strong>Rental Period:</strong> {{ totalDays }} day{{ totalDays !== 1 ? 's' : '' }}
+                                            <strong>{{ t('rental_period') }}:</strong> {{ totalDays }} {{ t('day') }}{{ totalDays !== 1 ? 's' : '' }}
                                             <span v-if="form.start_date && form.end_date" class="block text-xs mt-1">
                                                 {{ new Date(form.start_date).toLocaleDateString('en-AE', {
                                                     weekday: 'short',
@@ -856,27 +923,27 @@ watch(() => props.newCustomer, (customer) => {
                     </CardContent>
                 </Card>
 
-                <!-- Pricing Details -->
-                <Card>
+                <!-- Step 2: Pricing Details -->
+                <Card v-show="activeStep === 2">
                     <CardHeader>
-                        <CardTitle class="flex items-center gap-2">
+                        <CardTitle class="flex gap-2">
                             <DollarSign class="w-5 h-5" />
-                            Pricing & Financial Details
+                            {{ t('pricing_financial_details') }}
                         </CardTitle>
-                        <CardDescription>Set rates and deposit requirements</CardDescription>
+                        <CardDescription>{{ t('set_rates_deposit_requirements') }}</CardDescription>
                     </CardHeader>
                     <CardContent class="space-y-6">
                         <div class="grid gap-4 md:grid-cols-2">
                             <div class="space-y-2">
-                                <div class="flex items-center justify-between">
-                                    <Label for="daily_rate">Daily Rate (AED) *</Label>
-                                    <div class="flex items-center gap-2">
+                                <div class="flex justify-between">
+                                    <Label for="daily_rate">{{ t('daily_rate_aed') }} *</Label>
+                                    <div class="flex gap-2">
                                         <Checkbox
                                             id="override_rate"
                                             v-model="form.override_daily_rate"
                                             @change="handleRateOverride"
                                         />
-                                        <Label for="override_rate" class="text-sm">Lock rate (prevent auto-updates)</Label>
+                                        <Label for="override_rate" class="text-sm">{{ t('lock_rate_prevent_auto_updates') }}</Label>
                                     </div>
                                 </div>
 
@@ -893,47 +960,32 @@ watch(() => props.newCustomer, (customer) => {
                                 </div>
 
                                 <p class="text-xs text-gray-500">
-                                    The daily rate is automatically calculated based on vehicle pricing and rental duration.
-                                    You can manually adjust this value, and it will automatically update the total amount.
+                                    {{ t('daily_rate_automatically_calculated') }}
                                 </p>
 
                                 <!-- Show original calculated rate when overridden -->
                                 <div v-if="form.override_daily_rate && calculatedDailyRate" class="text-sm text-gray-500">
-                                    Original calculated rate: {{ formatCurrency(calculatedDailyRate) }}
+                                    {{ t('original_calculated_rate') }}: {{ formatCurrency(calculatedDailyRate) }}
                                 </div>
 
                                 <!-- Show when rate has been manually adjusted -->
                                 <div v-if="form.override_daily_rate && !form.override_final_price" class="text-sm text-blue-600">
-                                    ✓ Rate manually adjusted
-                                </div>
-                            </div>
-
-                            <div class="space-y-2">
-                                <Label for="deposit_amount">Security Deposit (AED)</Label>
-                                <Input
-                                    id="deposit_amount"
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    v-model="form.deposit_amount"
-                                />
-                                <div v-if="form.errors.deposit_amount" class="text-sm text-red-600">
-                                    {{ form.errors.deposit_amount }}
+                                    {{ t('rate_manually_adjusted') }}
                                 </div>
                             </div>
                         </div>
 
                         <!-- Final Price Override -->
                         <div class="space-y-2">
-                            <div class="flex items-center justify-between">
-                                <Label for="final_price_override">Final Price Override</Label>
-                                <div class="flex items-center gap-2">
+                            <div class="flex justify-between">
+                                <Label for="final_price_override">{{ t('final_price_override') }}</Label>
+                                <div class="flex gap-2">
                                     <Checkbox
                                         id="override_final_price"
                                         v-model="form.override_final_price"
                                         @change="handleFinalPriceOverride"
                                     />
-                                    <Label for="override_final_price" class="text-sm">Override total amount</Label>
+                                    <Label for="override_final_price" class="text-sm">{{ t('override_total_amount') }}</Label>
                                 </div>
                             </div>
 
@@ -944,23 +996,23 @@ watch(() => props.newCustomer, (customer) => {
                                 min="0"
                                 v-model="form.final_price_override"
                                 :disabled="!form.override_final_price"
-                                placeholder="Enter final amount"
+                                :placeholder="t('enter_final_amount')"
                             />
 
                             <!-- Show breakdown when final price is overridden -->
                             <div v-if="form.override_final_price && form.final_price_override" class="text-sm text-gray-500">
-                                <div>Original calculated amount: {{ formatCurrency(originalTotalAmount) }}</div>
-                                <div>Override difference: {{ formatCurrency(form.final_price_override - originalTotalAmount) }}</div>
+                                <div>{{ t('original_calculated_amount') }}: {{ formatCurrency(originalTotalAmount) }}</div>
+                                <div>{{ t('override_difference') }}: {{ formatCurrency(form.final_price_override - originalTotalAmount) }}</div>
                             </div>
                         </div>
 
                         <!-- Override Reason -->
                         <div v-if="form.override_daily_rate || form.override_final_price" class="space-y-2">
-                            <Label for="override_reason">Override Reason (Optional)</Label>
+                            <Label for="override_reason">{{ t('override_reason_optional') }}</Label>
                             <Textarea
                                 id="override_reason"
                                 v-model="form.override_reason"
-                                placeholder="Explain why this override is necessary..."
+                                :placeholder="t('explain_override_necessary')"
                                 rows="2"
                             />
                             <div v-if="form.errors.override_reason" class="text-sm text-red-600">
@@ -970,40 +1022,40 @@ watch(() => props.newCustomer, (customer) => {
 
                         <!-- Loading indicator -->
                         <div v-if="isCalculatingPricing" class="p-4 bg-blue-50 border border-blue-200 rounded-md">
-                            <div class="flex items-center justify-center">
-                                <span class="text-blue-800">Calculating pricing...</span>
+                            <div class="flex justify-center">
+                                <span class="text-blue-800">{{ t('calculating_pricing') }}</span>
                             </div>
                         </div>
 
                         <!-- Pricing display -->
                         <div v-else-if="totalAmount > 0" class="p-4 bg-green-50 border border-green-200 rounded-md">
-                            <div class="flex justify-between items-center">
-                                <span class="text-green-800 font-medium">Total Rental Amount:</span>
+                            <div class="flex justify-between">
+                                <span class="text-green-800 font-medium">{{ t('total_rental_amount') }}:</span>
                                 <span class="text-2xl font-bold text-green-900">{{ formatCurrency(totalAmount) }}</span>
                             </div>
-                            <div class="flex justify-between items-center text-sm text-green-700 mt-2">
-                                <span>Pricing Tier: {{ pricingTier }} ({{ rateType }})</span>
-                                <span>Effective Daily Rate: {{ formatCurrency(effectiveDailyRate) }}</span>
+                            <div class="flex justify-between text-sm text-green-700 mt-2">
+                                <span>{{ t('pricing_tier') }}: {{ pricingTier }} ({{ rateType }})</span>
+                                <span>{{ t('effective_daily_rate') }}: {{ formatCurrency(effectiveDailyRate) }}</span>
                             </div>
 
                             <!-- Override indicators -->
                             <div v-if="form.override_daily_rate || form.override_final_price" class="mt-3 pt-3 border-t border-green-200">
-                                <div class="flex items-center gap-2 text-sm">
-                                    <span class="font-medium text-orange-700">⚠️ Pricing Override Active</span>
-                                    <span v-if="form.override_daily_rate" class="text-orange-600">(Daily Rate Override)</span>
-                                    <span v-else-if="form.override_final_price" class="text-orange-600">(Final Price Override)</span>
+                                <div class="flex gap-2 text-sm">
+                                    <span class="font-medium text-orange-700">{{ t('pricing_override_active') }}</span>
+                                    <span v-if="form.override_daily_rate" class="text-orange-600">{{ t('daily_rate_override') }}</span>
+                                    <span v-else-if="form.override_final_price" class="text-orange-600">{{ t('final_price_override') }}</span>
                                 </div>
                                 <div v-if="originalTotalAmount" class="text-sm text-orange-600 mt-1">
-                                    Original calculated amount: {{ formatCurrency(originalTotalAmount) }}
+                                    {{ t('original_calculated_amount') }}: {{ formatCurrency(originalTotalAmount) }}
                                     <span v-if="form.override_final_price" class="ml-2">
-                                        (Difference: {{ formatCurrency(form.final_price_override - originalTotalAmount) }})
+                                        ({{ t('override_difference') }}: {{ formatCurrency(form.final_price_override - originalTotalAmount) }})
                                     </span>
                                 </div>
                             </div>
 
                             <!-- Pricing breakdown -->
                             <div v-if="pricingBreakdown" class="mt-3 pt-3 border-t border-green-200">
-                                <h4 class="text-sm font-medium text-green-800 mb-2">Pricing Breakdown:</h4>
+                                <h4 class="text-sm font-medium text-green-800 mb-2">{{ t('pricing_breakdown') }}:</h4>
                                 <div class="space-y-1 text-sm text-green-700">
                                     <!-- Daily pricing -->
                                     <div v-if="pricingBreakdown?.days" class="flex justify-between">
@@ -1044,13 +1096,13 @@ watch(() => props.newCustomer, (customer) => {
 
                         <div class="grid gap-4 md:grid-cols-2">
                             <div class="space-y-2">
-                                <Label for="mileage_limit">Mileage Limit (KM)</Label>
+                                <Label for="mileage_limit">{{ t('mileage_limit_km') }}</Label>
                                 <Input
                                     id="mileage_limit"
                                     type="number"
                                     min="0"
                                     v-model="form.mileage_limit"
-                                    placeholder="Unlimited if not specified"
+                                    :placeholder="t('unlimited_if_not_specified')"
                                 />
                                 <div v-if="form.errors.mileage_limit" class="text-sm text-red-600">
                                     {{ form.errors.mileage_limit }}
@@ -1058,7 +1110,7 @@ watch(() => props.newCustomer, (customer) => {
                             </div>
 
                             <div class="space-y-2">
-                                <Label for="excess_mileage_rate">Excess Mileage Rate (AED/KM)</Label>
+                                <Label for="excess_mileage_rate">{{ t('excess_mileage_rate_aed_km') }}</Label>
                                 <Input
                                     id="excess_mileage_rate"
                                     type="number"
@@ -1074,192 +1126,24 @@ watch(() => props.newCustomer, (customer) => {
                     </CardContent>
                 </Card>
 
-                <!-- Vehicle Condition at Pickup -->
-                <Card v-if="selectedVehicle">
+                <!-- Vehicle Condition at Pickup section removed to allow creating contracts without immediate mileage/condition inputs -->
+
+                <!-- Step 3: Terms and Notes -->
+                <Card v-show="activeStep === 3">
                     <CardHeader>
-                        <CardTitle class="flex items-center gap-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                            </svg>
-                            Vehicle Condition at Pickup
-                        </CardTitle>
-                        <CardDescription>Record the current condition of {{ selectedVehicle.make }} {{ selectedVehicle.model }}</CardDescription>
-                    </CardHeader>
-                    <CardContent class="space-y-6">
-                        <div class="grid gap-4 md:grid-cols-2">
-                            <!-- Current Mileage -->
-                            <div class="space-y-2">
-                                <Label for="current_mileage">Current Odometer Reading (KM) *</Label>
-                                <Input
-                                    id="current_mileage"
-                                    type="number"
-                                    min="0"
-                                    step="1"
-                                    v-model="form.current_mileage"
-                                    placeholder="Enter current mileage"
-                                    required
-                                />
-                                <div v-if="form.errors.current_mileage" class="text-sm text-red-600">
-                                    {{ form.errors.current_mileage }}
-                                </div>
-                                <p class="text-xs text-gray-500">
-                                    Record exact odometer reading at vehicle handover
-                                </p>
-                            </div>
-
-                            <!-- Fuel Level -->
-                            <div class="space-y-2">
-                                <Label for="fuel_level">Current Fuel Level *</Label>
-                                <select
-                                    id="fuel_level"
-                                    v-model="form.fuel_level"
-                                    required
-                                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                    <option value="">Select fuel level</option>
-                                    <option value="full">Full Tank (100%)</option>
-                                    <option value="3/4">3/4 Tank (75%)</option>
-                                    <option value="1/2">1/2 Tank (50%)</option>
-                                    <option value="1/4">1/4 Tank (25%)</option>
-                                    <option value="low">Low Fuel (< 25%)</option>
-                                    <option value="empty">Empty</option>
-                                </select>
-                                <div v-if="form.errors.fuel_level" class="text-sm text-red-600">
-                                    {{ form.errors.fuel_level }}
-                                </div>
-                                <p class="text-xs text-gray-500">
-                                    Customer will return vehicle at this level or pay refueling fee
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- Photo Upload Section -->
-                        <div class="space-y-3">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <Label for="condition_photos">Vehicle Condition Photos</Label>
-                                    <p class="text-sm text-gray-500 mt-1">
-                                        Upload photos to document current vehicle condition (optional)
-                                    </p>
-                                </div>
-                                <div class="text-xs text-gray-400">
-                                    Optional
-                                </div>
-                            </div>
-
-                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-gray-400 transition-colors">
-                                <div class="text-center">
-                                    <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                                    </svg>
-                                    <div class="mt-4">
-                                        <label for="condition_photos" class="cursor-pointer">
-                                            <span class="mt-2 block text-sm font-medium text-gray-900">
-                                                Upload vehicle photos
-                                            </span>
-                                            <span class="mt-1 block text-sm text-gray-500">
-                                                PNG, JPG up to 10MB each
-                                            </span>
-                                        </label>
-                                        <input
-                                            id="condition_photos"
-                                            name="condition_photos"
-                                            type="file"
-                                            class="sr-only"
-                                            multiple
-                                            accept="image/*"
-                                            @change="handlePhotoUpload"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Selected Photos Preview -->
-                            <div v-if="form.condition_photos && form.condition_photos.length > 0" class="mt-4">
-                                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                                    <div
-                                        v-for="(file, index) in form.condition_photos"
-                                        :key="index"
-                                        class="relative group"
-                                    >
-                                        <img
-                                            :src="getFilePreview(file)"
-                                            :alt="`Vehicle condition ${index + 1}`"
-                                            class="h-20 w-full object-cover rounded-md border border-gray-200"
-                                        />
-                                        <button
-                                            type="button"
-                                            @click="removePhoto(index)"
-                                            class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                            ×
-                                        </button>
-                                    </div>
-                                </div>
-                                <p class="text-xs text-gray-500 mt-2">
-                                    {{ form.condition_photos.length }} photo(s) selected
-                                </p>
-                            </div>
-
-                            <div v-if="form.errors.condition_photos" class="text-sm text-red-600">
-                                {{ form.errors.condition_photos }}
-                            </div>
-                        </div>
-
-                        <!-- Quick Condition Summary -->
-                        <div v-if="form.current_mileage || form.fuel_level || (form.condition_photos && form.condition_photos.length > 0)" class="p-4 bg-blue-50 border border-blue-200 rounded-md">
-                            <div class="flex items-start gap-3">
-                                <svg class="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                <div>
-                                    <h4 class="font-medium text-blue-900 mb-1">Pickup Condition Summary</h4>
-                                    <div class="text-sm text-blue-800 space-y-1">
-                                        <p v-if="form.current_mileage">
-                                            <strong>Mileage:</strong> {{ Number(form.current_mileage).toLocaleString() }} KM
-                                        </p>
-                                        <p v-if="form.fuel_level">
-                                            <strong>Fuel:</strong> {{ getFuelLevelDisplay(form.fuel_level) }}
-                                        </p>
-                                        <p v-if="form.condition_photos && form.condition_photos.length > 0">
-                                            <strong>Photos:</strong> {{ form.condition_photos.length }} condition photo(s) attached
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <!-- Terms and Notes -->
-                <Card>
-                    <CardHeader>
-                        <CardTitle class="flex items-center gap-2">
+                        <CardTitle class="flex gap-2">
                             <FileText class="w-5 h-5" />
-                            Terms & Notes
+                            {{ t('terms_notes') }}
                         </CardTitle>
-                        <CardDescription>Additional contract terms and internal notes</CardDescription>
+                        <CardDescription>{{ t('additional_contract_terms_internal_notes') }}</CardDescription>
                     </CardHeader>
                     <CardContent class="space-y-4">
                         <div class="space-y-2">
-                            <Label for="terms_and_conditions">Terms and Conditions</Label>
-                            <Textarea
-                                id="terms_and_conditions"
-                                v-model="form.terms_and_conditions"
-                                placeholder="Enter specific terms and conditions for this contract..."
-                                rows="4"
-                            />
-                            <div v-if="form.errors.terms_and_conditions" class="text-sm text-red-600">
-                                {{ form.errors.terms_and_conditions }}
-                            </div>
-                        </div>
-
-                        <div class="space-y-2">
-                            <Label for="notes">Internal Notes</Label>
+                            <Label for="notes">{{ t('internal_notes') }}</Label>
                             <Textarea
                                 id="notes"
                                 v-model="form.notes"
-                                placeholder="Add any internal notes about this contract..."
+                                :placeholder="t('add_internal_notes_contract')"
                                 rows="3"
                             />
                             <div v-if="form.errors.notes" class="text-sm text-red-600">
@@ -1269,14 +1153,20 @@ watch(() => props.newCustomer, (customer) => {
                     </CardContent>
                 </Card>
 
-                <!-- Actions -->
-                <div class="flex justify-end gap-3">
+                <!-- Step Actions -->
+                <div class="flex justify-between items-center">
                     <Link :href="route('contracts.index')">
-                        <Button type="button" variant="outline">Cancel</Button>
+                        <Button type="button" variant="outline">{{ t('cancel') }}</Button>
                     </Link>
-                    <Button type="submit" :disabled="form.processing">
-                        {{ form.processing ? 'Creating...' : 'Create Contract' }}
-                    </Button>
+                    <div class="flex gap-2">
+                        <Button type="button" variant="outline" @click="prevStep" :disabled="activeStep === 1">{{ t('back') }}</Button>
+                        <Button v-if="activeStep < 3" type="button" @click="nextStep" :disabled="(activeStep === 1 && (!form.customer_id || !form.vehicle_id))">
+                            {{ t('next') }}
+                        </Button>
+                        <Button v-else type="submit" :disabled="form.processing">
+                            {{ form.processing ? t('creating') : t('create_contract') }}
+                        </Button>
+                    </div>
                 </div>
             </form>
         </div>

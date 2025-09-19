@@ -26,6 +26,7 @@ return [
     'accounting' => 'Accounting',
     'team_management' => 'Team Management',
     'settings' => 'Settings',
+    'system_settings' => 'System Settings',
     'profile_settings' => 'Profile Settings',
     'password' => 'Password',
     'appearance' => 'Appearance',
@@ -48,6 +49,7 @@ return [
     'export' => 'Export',
     'import' => 'Import',
     'open' => 'Open',
+    'overview' => 'Overview',
 
     // Customer Blocking
     'block_customer' => 'Block Customer',
@@ -81,6 +83,17 @@ return [
     'print' => 'Print',
     'actions' => 'Actions',
     'more' => 'More',
+    'vip_customer' => 'VIP Customer',
+    'open_contract' => 'Open Contract',
+    'open_contract_description' => 'Currently open or draft contract for this customer',
+    'previous_contracts' => 'Previous Contracts',
+    'invoices_for_customer' => 'Customer Invoices',
+    'customer_memo' => 'Customer Memo',
+    'customer_memo_description' => 'Notes and preferences about this customer',
+    'no_memo' => 'No memo yet',
+    'open_new_contract' => 'Open New Contract',
+    'timeline' => 'Timeline',
+    'customer_events_timeline' => 'Chronological list of customer-related events',
 
     // Status & Messages
     'active' => 'Active',
@@ -157,6 +170,8 @@ return [
     'passport_expiry' => 'Passport Expiry',
     'resident_id_number' => 'Resident ID Number',
     'resident_id_expiry' => 'Resident ID Expiry',
+    'passport_document' => 'Passport Document',
+    'download_passport' => 'Download Passport',
     'visit_visa_document' => 'Visit Visa Document',
     'download_visit_visa' => 'Download Visit Visa',
     'cash_payments_total' => 'Cash Total',

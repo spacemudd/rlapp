@@ -59,7 +59,6 @@ class AccountingDashboardController extends Controller
         // Get total revenue for current month
         $monthlyRevenue = Invoice::whereMonth('invoice_date', now()->month)
             ->whereYear('invoice_date', now()->year)
-            ->where('status', '!=', 'void')
             ->sum('total_amount');
 
         // Get total payments received this month
@@ -70,7 +69,7 @@ class AccountingDashboardController extends Controller
             ->sum('amount');
 
         // Get outstanding receivables
-        $outstandingReceivables = Invoice::whereIn('status', ['unpaid', 'partial_paid'])
+        $outstandingReceivables = Invoice::where('remaining_amount', '>', 0)
             ->sum('remaining_amount');
 
         // Get overdue amount
@@ -137,7 +136,7 @@ class AccountingDashboardController extends Controller
             '180_plus_days' => ['days' => 999, 'amount' => 0, 'count' => 0],
         ];
 
-        $unpaidInvoices = Invoice::whereIn('status', ['unpaid', 'partial_paid'])
+        $unpaidInvoices = Invoice::where('remaining_amount', '>', 0)
             ->with('customer')
             ->get();
 
@@ -212,7 +211,7 @@ class AccountingDashboardController extends Controller
                     'amount' => $invoice->total_amount,
                     'description' => "Invoice {$invoice->invoice_number} - {$invoice->customer->full_name}",
                     'reference' => $invoice->invoice_number,
-                    'status' => $invoice->status,
+                    'status' => $invoice->payment_status,
                     'account' => 'Accounts Receivable',
                 ];
             });
@@ -236,7 +235,6 @@ class AccountingDashboardController extends Controller
             
             $revenue = Invoice::whereMonth('invoice_date', $date->month)
                 ->whereYear('invoice_date', $date->year)
-                ->where('status', '!=', 'void')
                 ->sum('total_amount');
 
             $payments = Payment::whereMonth('payment_date', $date->month)
@@ -247,7 +245,6 @@ class AccountingDashboardController extends Controller
 
             $invoicesCount = Invoice::whereMonth('invoice_date', $date->month)
                 ->whereYear('invoice_date', $date->year)
-                ->where('status', '!=', 'void')
                 ->count();
 
             $months->push([
@@ -362,7 +359,7 @@ class AccountingDashboardController extends Controller
             (($currentRevenue - $previousRevenue) / $previousRevenue) * 100 : 0;
 
         // Days Sales Outstanding (DSO)
-        $totalReceivables = Invoice::whereIn('status', ['unpaid', 'partial_paid'])
+        $totalReceivables = Invoice::where('remaining_amount', '>', 0)
             ->sum('remaining_amount');
         
         $dailyAverageRevenue = $currentRevenue / $currentMonth->daysInMonth;

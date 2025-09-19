@@ -30,6 +30,7 @@ class Vehicle extends Model
         'price_weekly',
         'price_monthly',
         'location_id',
+        'branch_id',
         'status',
         'ownership_status',
         'borrowed_from_office',
@@ -463,5 +464,13 @@ class Vehicle extends Model
     public function location()
     {
         return $this->belongsTo(Location::class);
+    }
+
+    /**
+     * Get the branch where this vehicle is assigned.
+     */
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
     }
 }

@@ -21,6 +21,7 @@ class Contract extends Model
         'status',
         'customer_id',
         'vehicle_id',
+        'branch_id',
         'team_id',
         'start_date',
         'end_date',
@@ -30,6 +31,11 @@ class Contract extends Model
         'voided_at',
         'total_amount',
         'deposit_amount',
+        'deposit_type',
+        'deposit_received_at',
+        'deposit_payment_method',
+        'deposit_third_party_name',
+        'deposit_posted_at',
         'daily_rate',
         'total_days',
         'currency',
@@ -70,6 +76,7 @@ class Contract extends Model
         'voided_at' => 'datetime',
         'total_amount' => 'decimal:2',
         'deposit_amount' => 'decimal:2',
+        'deposit_received_at' => 'datetime',
         'daily_rate' => 'decimal:2',
         'excess_mileage_rate' => 'decimal:2',
         'total_days' => 'integer',
@@ -101,6 +108,14 @@ class Contract extends Model
     public function vehicle()
     {
         return $this->belongsTo(Vehicle::class);
+    }
+
+    /**
+     * Get the branch this contract is registered under.
+     */
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     /**

@@ -4,13 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ArrowLeft, Edit, User, Car, Calendar, DollarSign, FileText, Receipt, MoreVertical, Play, CheckCircle, XCircle, Trash2, Download } from 'lucide-vue-next';
+import { ArrowLeft, Edit, User, Car, Calendar, DollarSign, FileText, Receipt, MoreVertical, Play, CheckCircle, XCircle, Trash2, Download, Mail, FileSignature } from 'lucide-vue-next';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { ref, watch } from 'vue';
+import { ref, watch, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 interface Contract {
@@ -37,13 +37,19 @@ interface Contract {
         year: number;
         color: string;
         chassis_number: string;
+        branch?: {
+            id: string;
+            name: string;
+            city?: string;
+            country: string;
+        }
     };
     start_date: string;
     end_date: string;
     total_amount: number;
     daily_rate: number;
     total_days: number;
-    deposit_amount: number;
+    // deposit removed from contract view
     mileage_limit?: number;
     excess_mileage_rate?: number;
     currency: string;
@@ -59,9 +65,10 @@ interface Contract {
     invoices?: Array<{
         id: string;
         invoice_number: string;
-        status: string;
         total_amount: number;
         invoice_date: string;
+        paid_amount: number;
+        remaining_amount: number;
     }>;
     extensions?: Array<{
         id: string;
@@ -77,6 +84,12 @@ interface Contract {
         created_at: string;
     }>;
     void_reason?: string;
+    branch?: {
+        id: string;
+        name: string;
+        city?: string;
+        country: string;
+    };
 }
 
 interface Props {
@@ -100,11 +113,23 @@ const extensionForm = useForm({
 // Dialog state
 const showVoidDialog = ref(false);
 const showExtendDialog = ref(false);
+const showActivateDialog = ref(false);
 const extensionPricing = ref<any>(null);
+
+// Expand/collapse state
+const allExpanded = ref(false);
 
 // Action handlers
 const activateContract = () => {
-    useForm({}).patch(route('contracts.activate', props.contract.id));
+    showActivateDialog.value = true;
+};
+
+const confirmActivation = () => {
+    useForm({}).patch(route('contracts.activate', props.contract.id), {
+        onSuccess: () => {
+            showActivateDialog.value = false;
+        }
+    });
 };
 
 const completeContract = () => {
@@ -205,6 +230,16 @@ const getStatusColor = (status: string) => {
     }
 };
 
+const getInvoicePaymentStatus = (invoice: any) => {
+    if (invoice.remaining_amount <= 0) {
+        return 'paid';
+    } else if (invoice.paid_amount > 0 && invoice.remaining_amount > 0) {
+        return 'partial_paid';
+    } else {
+        return 'unpaid';
+    }
+};
+
 const getInvoiceStatusColor = (status: string) => {
     switch (status) {
         case 'paid':
@@ -261,13 +296,31 @@ const formatDateTime = (date: string) => {
 function goToCreateInvoice() {
     window.location.href = route('invoices.create', { contract_id: props.contract.id });
 }
+
+// Collapsible sections (accordion-like) structure
+const sectionIds = [
+    'section-information',
+    'section-customer',
+    'section-vehicle',
+    'section-invoices',
+    'section-extensions',
+    'section-void'
+] as const;
+
+const toggleExpandAll = async () => {
+    await nextTick();
+    allExpanded.value = !allExpanded.value;
+    document
+        .querySelectorAll<HTMLDetailsElement>('details[data-collapsible]')
+        .forEach((el) => (el.open = allExpanded.value));
+};
 </script>
 
 <template>
     <Head :title="`${t('contract')} ${contract.contract_number}`" />
 
     <AppLayout>
-        <div class="p-6">
+        <div class="p-4">
                 <!-- Header -->
                 <div class="space-y-4">
                     <!-- Back Button -->
@@ -280,7 +333,7 @@ function goToCreateInvoice() {
                         </Link>
                     </div>
 
-                    <!-- Contract Info and Actions -->
+                    <!-- Contract Info and Actions (compact) -->
                     <div class="flex items-center justify-between">
                         <div>
                             <h1 class="text-2xl font-semibold text-gray-900">{{ contract.contract_number }}</h1>
@@ -315,7 +368,7 @@ function goToCreateInvoice() {
                                     >
                                         <div class="flex flex-col">
                                             <span class="font-medium">{{ invoice.invoice_number }}</span>
-                                            <span class="text-sm text-gray-500">{{ formatCurrency(invoice.total_amount) }} - {{ invoice.status }}</span>
+                                            <span class="text-sm text-gray-500">{{ formatCurrency(invoice.total_amount) }} - {{ getInvoicePaymentStatus(invoice) }}</span>
                                         </div>
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
@@ -405,14 +458,48 @@ function goToCreateInvoice() {
                             </DropdownMenu>
                         </div>
                     </div>
+                    <!-- Compact controls bar -->
+                    <div class="flex items-center gap-2 text-sm">
+                        <Button size="sm" class="h-7 px-2 py-1 text-xs" variant="outline" @click="toggleExpandAll">
+                            {{ allExpanded ? t('collapse_all') : t('expand_all') }}
+                        </Button>
+                        <div class="text-gray-400">|</div>
+                        <div class="flex flex-wrap gap-2">
+                            <Button size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700">
+                                {{ t('quick_pay') }}
+                            </Button>
+                            <Button size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700">
+                                {{ t('additional_fees') }}
+                            </Button>
+                            <Button size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700">
+                                {{ t('traffic_fines') }}
+                            </Button>
+                        </div>
+                        <div class="text-gray-400">|</div>
+                        <div class="flex flex-wrap gap-2">
+                            <a class="underline text-blue-600 hover:text-blue-800" :href="'#section-information'">{{ t('information') }}</a>
+                            <a class="underline text-blue-600 hover:text-blue-800" :href="'#section-customer'">{{ t('customer') }}</a>
+                            <a class="underline text-blue-600 hover:text-blue-800" :href="'#section-vehicle'">{{ t('vehicle') }}</a>
+                            <a class="underline text-blue-600 hover:text-blue-800" :href="'#section-financial'">{{ t('financial_details') }}</a>
+                            <a v-if="contract.invoices?.length" class="underline text-blue-600 hover:text-blue-800" :href="'#section-invoices'">{{ t('invoices') }}</a>
+                            <a v-if="contract.extensions?.length" class="underline text-blue-600 hover:text-blue-800" :href="'#section-extensions'">{{ t('extensions') }}</a>
+                            <a v-if="contract.status === 'void' && contract.void_reason" class="underline text-blue-600 hover:text-blue-800" :href="'#section-void'">{{ t('void_reason') }}</a>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="grid gap-6 lg:grid-cols-2">
+                <!-- Customer & Vehicle -->
+                <details id="section-customer" data-collapsible class="mt-3" open>
+                    <summary class="flex items-center justify-between cursor-pointer rounded-md bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 text-sm font-medium transition-colors">
+                        <span>{{ t('customer_information') }} / {{ t('vehicle_information') }}</span>
+                        <span class="text-gray-300">{{ t('click_to_toggle') }}</span>
+                    </summary>
+                    <div class="mt-3 grid gap-4 lg:grid-cols-2">
                     <!-- Customer Information -->
                     <Card>
-                        <CardHeader>
-                            <CardTitle class="flex items-center gap-2">
-                                <User class="w-5 h-5" />
+                        <CardHeader class="py-3">
+                            <CardTitle class="flex items-center gap-2 text-base">
+                                <User class="w-4 h-4" />
                                 {{ t('customer_information') }}
                             </CardTitle>
                         </CardHeader>
@@ -447,12 +534,12 @@ function goToCreateInvoice() {
 
                     <!-- Vehicle Information -->
                     <Card>
-                        <CardHeader>
-                            <CardTitle class="flex items-center gap-2">
-                                <Car class="w-5 h-5" />
-                                {{ t('vehicle_information') }}
-                            </CardTitle>
-                        </CardHeader>
+                    <CardHeader class="py-3">
+                        <CardTitle class="flex items-center gap-2 text-base">
+                            <Car class="w-4 h-4" />
+                            {{ t('vehicle_information') }}
+                        </CardTitle>
+                    </CardHeader>
                         <CardContent class="space-y-4">
                             <div>
                                 <h3 class="font-semibold text-lg">{{ contract.vehicle.year }} {{ contract.vehicle.make }} {{ contract.vehicle.model }}</h3>
@@ -473,18 +560,18 @@ function goToCreateInvoice() {
                             </div>
                         </CardContent>
                     </Card>
-                </div>
+                    </div>
+                </details>
 
                 <!-- Contract Details -->
-                <Card>
-                    <CardHeader>
-                        <CardTitle class="flex items-center gap-2">
-                            <Calendar class="w-5 h-5" />
-                            {{ t('contract_details') }}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                <details id="section-information" data-collapsible class="mt-3">
+                    <summary class="flex items-center justify-between cursor-pointer rounded-md bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 text-sm font-medium transition-colors">
+                        <span>{{ t('contract_details') }}</span>
+                        <span class="text-gray-300">{{ t('click_to_toggle') }}</span>
+                    </summary>
+                    <Card class="mt-3">
+                        <CardContent class="pt-4">
+                        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                             <div>
                                 <span class="text-sm text-gray-500">{{ t('start_date') }}</span>
                                 <p class="font-medium">{{ formatDate(contract.start_date) }}</p>
@@ -492,6 +579,10 @@ function goToCreateInvoice() {
                             <div>
                                 <span class="text-sm text-gray-500">{{ t('end_date') }}</span>
                                 <p class="font-medium">{{ formatDate(contract.end_date) }}</p>
+                            </div>
+                            <div v-if="contract.branch">
+                                <span class="text-sm text-gray-500">{{ t('branch') }}</span>
+                                <p class="font-medium">{{ contract.branch.name }}<span v-if="contract.branch.city">, {{ contract.branch.city }}</span></p>
                             </div>
                             <div>
                                 <span class="text-sm text-gray-500">{{ t('total_days') }}</span>
@@ -502,27 +593,24 @@ function goToCreateInvoice() {
                                 <p class="font-medium">{{ formatDateTime(contract.created_at) }}</p>
                             </div>
                         </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+                </details>
 
                 <!-- Financial Details -->
-                <Card>
-                    <CardHeader>
-                        <CardTitle class="flex items-center gap-2">
-                            <DollarSign class="w-5 h-5" />
-                            {{ t('financial_details') }}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                <details id="section-financial" data-collapsible class="mt-3">
+                    <summary class="flex items-center justify-between cursor-pointer rounded-md bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 text-sm font-medium transition-colors">
+                        <span>{{ t('financial_details') }}</span>
+                        <span class="text-gray-300">{{ t('click_to_toggle') }}</span>
+                    </summary>
+                    <Card class="mt-3">
+                        <CardContent class="pt-4">
+                        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                             <div>
                                 <span class="text-sm text-gray-500">{{ t('daily_rate') }}</span>
                                 <p class="font-medium">{{ formatCurrency(contract.daily_rate, contract.currency) }}</p>
                             </div>
-                            <div>
-                                <span class="text-sm text-gray-500">{{ t('deposit_amount') }}</span>
-                                <p class="font-medium">{{ formatCurrency(contract.deposit_amount, contract.currency) }}</p>
-                            </div>
+                            
                             <div v-if="contract.mileage_limit">
                                 <span class="text-sm text-gray-500">{{ t('mileage_limit') }}</span>
                                 <p class="font-medium">{{ contract.mileage_limit.toLocaleString() }} KM</p>
@@ -533,7 +621,7 @@ function goToCreateInvoice() {
                             </div>
                         </div>
 
-                        <div class="mt-6 p-4 bg-green-50 border border-green-200 rounded-md">
+                        <div class="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
                             <div class="flex justify-between items-center">
                                 <span class="text-green-800 font-medium">{{ t('total_contract_amount') }}</span>
                                 <span class="text-2xl font-bold text-green-900">{{ formatCurrency(contract.total_amount, contract.currency) }}</span>
@@ -560,11 +648,17 @@ function goToCreateInvoice() {
                                 </div>
                             </div>
                         </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+                </details>
 
                 <!-- Terms and Notes -->
-                <div class="grid gap-6 lg:grid-cols-2">
+                <details data-collapsible class="mt-3">
+                    <summary class="flex items-center justify-between cursor-pointer rounded-md bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 text-sm font-medium transition-colors">
+                        <span>{{ t('terms_and_conditions') }} / {{ t('internal_notes') }}</span>
+                        <span class="text-gray-300">{{ t('click_to_toggle') }}</span>
+                    </summary>
+                    <div class="mt-3 grid gap-4 lg:grid-cols-2">
                     <Card v-if="contract.terms_and_conditions">
                         <CardHeader>
                             <CardTitle class="flex items-center gap-2">
@@ -588,17 +682,17 @@ function goToCreateInvoice() {
                             <p class="text-sm whitespace-pre-wrap">{{ contract.notes }}</p>
                         </CardContent>
                     </Card>
-                </div>
+                    </div>
+                </details>
 
                 <!-- Associated Invoices -->
-                <Card v-if="contract.invoices && contract.invoices.length > 0">
-                    <CardHeader>
-                        <CardTitle class="flex items-center gap-2">
-                            <Receipt class="w-5 h-5" />
-                            {{ t('associated_invoices') }} ({{ contract.invoices.length }})
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
+                <details id="section-invoices" v-if="contract.invoices && contract.invoices.length > 0" data-collapsible class="mt-3">
+                    <summary class="flex items-center justify-between cursor-pointer rounded-md bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 text-sm font-medium transition-colors">
+                        <span>{{ t('associated_invoices') }} ({{ contract.invoices.length }})</span>
+                        <span class="text-gray-300">{{ t('click_to_toggle') }}</span>
+                    </summary>
+                    <Card class="mt-3">
+                    <CardContent class="pt-4">
                         <div class="space-y-3">
                             <div
                                 v-for="invoice in contract.invoices"
@@ -615,24 +709,24 @@ function goToCreateInvoice() {
                                 </div>
                                 <div class="text-right">
                                     <p class="font-medium">{{ formatCurrency(invoice.total_amount) }}</p>
-                                    <Badge :class="getInvoiceStatusColor(invoice.status)" class="text-xs">
-                                        {{ invoice.status.replace('_', ' ').toUpperCase() }}
+                                    <Badge :class="getInvoiceStatusColor(getInvoicePaymentStatus(invoice))" class="text-xs">
+                                        {{ getInvoicePaymentStatus(invoice).replace('_', ' ').toUpperCase() }}
                                     </Badge>
                                 </div>
                             </div>
                         </div>
                     </CardContent>
-                </Card>
+                    </Card>
+                </details>
 
                 <!-- Contract Extensions -->
-                <Card v-if="contract.extensions && contract.extensions.length > 0">
-                    <CardHeader>
-                        <CardTitle class="flex items-center gap-2">
-                            <Calendar class="w-5 h-5" />
-                            Contract Extensions ({{ contract.extensions.length }})
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
+                <details id="section-extensions" v-if="contract.extensions && contract.extensions.length > 0" data-collapsible class="mt-3">
+                    <summary class="flex items-center justify-between cursor-pointer rounded-md bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 text-sm font-medium transition-colors">
+                        <span>Contract Extensions ({{ contract.extensions.length }})</span>
+                        <span class="text-gray-300">{{ t('click_to_toggle') }}</span>
+                    </summary>
+                    <Card class="mt-3">
+                    <CardContent class="pt-4">
                         <div class="space-y-3">
                             <div
                                 v-for="extension in contract.extensions"
@@ -661,17 +755,21 @@ function goToCreateInvoice() {
                             </div>
                         </div>
                     </CardContent>
-                </Card>
+                    </Card>
+                </details>
 
                 <!-- Void Reason (if applicable) -->
-                <Card v-if="contract.status === 'void' && contract.void_reason">
-                    <CardHeader>
-                            <CardTitle class="text-red-600">{{ t('void_reason') }}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p class="text-sm">{{ contract.void_reason }}</p>
-                    </CardContent>
-                </Card>
+                <details id="section-void" v-if="contract.status === 'void' && contract.void_reason" data-collapsible class="mt-3">
+                    <summary class="flex items-center justify-between cursor-pointer rounded-md bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 text-sm font-medium transition-colors">
+                        <span>{{ t('void_reason') }}</span>
+                        <span class="text-gray-300">{{ t('click_to_toggle') }}</span>
+                    </summary>
+                    <Card class="mt-3">
+                        <CardContent>
+                            <p class="text-sm">{{ contract.void_reason }}</p>
+                        </CardContent>
+                    </Card>
+                </details>
         </div>
 
         <!-- Void Contract Dialog -->
@@ -779,6 +877,48 @@ function goToCreateInvoice() {
                         </Button>
                     </DialogFooter>
                 </form>
+            </DialogContent>
+        </Dialog>
+
+        <!-- Activate Contract Confirmation Dialog -->
+        <Dialog v-model:open="showActivateDialog">
+            <DialogContent class="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle class="flex items-center gap-2">
+                        <Play class="w-5 h-5 text-green-600" />
+                        {{ t('activate_contract_confirmation') }}
+                    </DialogTitle>
+                    <DialogDescription>
+                        {{ t('activate_contract_description') }}
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div class="space-y-4">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h4 class="font-medium text-blue-900 mb-3">{{ t('what_will_happen') }}:</h4>
+                        <div class="space-y-3">
+                            <div class="flex items-start gap-3">
+                                <Mail class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                                <div>
+                                    <p class="text-sm text-blue-800 font-medium">{{ t('activation_will_send_welcome') }}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3">
+                                <FileSignature class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                                <div>
+                                    <p class="text-sm text-blue-800 font-medium">{{ t('activation_will_send_contract') }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <DialogFooter>
+                    <Button type="button" variant="outline" @click="showActivateDialog = false">{{ t('cancel') }}</Button>
+                    <Button type="button" @click="confirmActivation" class="bg-green-600 hover:bg-green-700">
+                        {{ t('proceed_with_activation') }}
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     </AppLayout>

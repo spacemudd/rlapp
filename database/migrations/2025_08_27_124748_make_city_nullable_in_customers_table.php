@@ -11,9 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('customers', function (Blueprint $table) {
-            $table->string('city')->nullable()->change();
-        });
+        if (Schema::hasColumn('customers', 'city')) {
+            Schema::table('customers', function (Blueprint $table) {
+                $table->string('city')->nullable()->change();
+            });
+        } else {
+            Schema::table('customers', function (Blueprint $table) {
+                $table->string('city')->nullable()->after('country');
+            });
+        }
     }
 
     /**
@@ -21,8 +27,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('customers', function (Blueprint $table) {
-            $table->string('city')->nullable(false)->change();
-        });
+        if (Schema::hasColumn('customers', 'city')) {
+            Schema::table('customers', function (Blueprint $table) {
+                $table->dropColumn('city');
+            });
+        }
     }
 };

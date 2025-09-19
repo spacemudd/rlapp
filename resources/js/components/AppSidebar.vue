@@ -44,6 +44,11 @@ const mainNavItems = computed<NavItem[]>(() => {
             icon: Users,
         },
         {
+            title: t('contracts'),
+            href: '/contracts',
+            icon: FileText,
+        },
+        {
             title: t('invoices'),
             href: '/invoices',
             icon: Receipt,
@@ -57,11 +62,6 @@ const mainNavItems = computed<NavItem[]>(() => {
             title: t('reservations'),
             href: '/reservations',
             icon: Calendar,
-        },
-        {
-            title: t('contracts'),
-            href: '/contracts',
-            icon: FileText,
         },
         {
             title: t('locations'),
@@ -83,6 +83,13 @@ const mainNavItems = computed<NavItem[]>(() => {
         title: t('traffic_violations'),
         href: '/traffic-violations',
         icon: FileText,
+    });
+
+    // Add Settings link
+    items.push({
+        title: t('system_settings'),
+        href: '/system-settings',
+        icon: Settings,
     });
 
     // Add Team link only for users with manage team settings permission

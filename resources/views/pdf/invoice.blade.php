@@ -137,13 +137,13 @@
         </tr>
         <tr>
             <td class="label">Status</td>
-            <td>{{ ucfirst($invoice->status) }}</td>
+            <td>{{ ucfirst($invoice->payment_status) }}</td>
             <td class="label">Due Date</td>
             <td>{{ $invoice->due_date }}</td>
         </tr>
         <tr>
             <td class="label">Currency</td>
-            <td>{{ $invoice->currency }}</td>
+            <td>AED</td>
             <td class="label">Order</td>
             <td>#{{ $invoice->order_number ?? $invoice->invoice_number }}</td>
         </tr>

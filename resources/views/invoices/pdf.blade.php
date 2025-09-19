@@ -230,8 +230,8 @@
                                 Invoice: <span class="text-bold">#{{ $invoice->invoice_number }}</span><br>
                                 Invoice Date: <span class="text-bold">{{ \Carbon\Carbon::parse($invoice->invoice_date)->format('Y-m-d H:i') }}</span><br>
                                 Due Date: <span class="text-bold">{{ \Carbon\Carbon::parse($invoice->due_date)->format('Y-m-d H:i') }}</span><br>
-                                Invoice Status: <span class="text-bold invoice-status-{{ $invoice->status }}">{{ ucfirst($invoice->status) }}</span><br>
-                                Currency: <span class="text-bold">{{ $invoice->currency }}</span><br>
+                                Invoice Status: <span class="text-bold invoice-status-{{ $invoice->payment_status }}">{{ ucfirst($invoice->payment_status) }}</span><br>
+                                Currency: <span class="text-bold">AED</span><br>
                                 Number of Days: <span class="text-bold">{{ $invoice->total_days }} Days</span><br>
                                 -- from {{ \Carbon\Carbon::parse($invoice->start_datetime)->format('Y-m-d H:i') }} to {{ \Carbon\Carbon::parse($invoice->end_datetime)->format('Y-m-d H:i') }}<br>
                                 Order: <span class="text-bold">#{{ $invoice->invoice_number }}</span><br>
@@ -270,10 +270,10 @@
             <thead>
                 <tr class="heading">
                     <th class="text-left">Description</th>
-                    <th class="text-right">Amount ({{ $invoice->currency }})</th>
-                    <th class="text-right">Discount ({{ $invoice->currency }})</th>
-                    <th class="text-right">Total ({{ $invoice->currency }})</th>
-                    <th class="text-right">Balance ({{ $invoice->currency }})</th>
+                    <th class="text-right">Amount (AED)</th>
+                    <th class="text-right">Discount (AED)</th>
+                    <th class="text-right">Total (AED)</th>
+                    <th class="text-right">Balance (AED)</th>
                 </tr>
             </thead>
             <tbody>

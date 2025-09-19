@@ -13,21 +13,29 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('teams', function (Blueprint $table) {
-            $table->unsignedBigInteger('entity_id')->nullable()->after('description');
-            $table->foreign('entity_id')->references('id')->on('ifrs_entities')->onDelete('cascade');
-            $table->index('entity_id');
+        // If the IFRS entities table is unavailable (e.g., tests), skip adding the foreign key
+        $hasIfrsEntities = Schema::hasTable('ifrs_entities');
+
+        Schema::table('teams', function (Blueprint $table) use ($hasIfrsEntities) {
+            if (!Schema::hasColumn('teams', 'entity_id')) {
+                $table->unsignedBigInteger('entity_id')->nullable()->after('description');
+            }
+            if ($hasIfrsEntities) {
+                $table->foreign('entity_id')->references('id')->on('ifrs_entities')->onDelete('cascade');
+                $table->index('entity_id');
+            }
         });
         
-        // Set existing teams to use the default IFRS entity
-        $defaultEntity = Entity::first();
-        if ($defaultEntity) {
-            DB::table('teams')->update(['entity_id' => $defaultEntity->id]);
-            
-            // Make the column not nullable after setting the values
-            Schema::table('teams', function (Blueprint $table) {
-                $table->unsignedBigInteger('entity_id')->nullable(false)->change();
-            });
+        if ($hasIfrsEntities) {
+            // Set existing teams to use the default IFRS entity
+            $defaultEntity = Entity::first();
+            if ($defaultEntity) {
+                DB::table('teams')->update(['entity_id' => $defaultEntity->id]);
+                // Make the column not nullable after setting the values
+                Schema::table('teams', function (Blueprint $table) {
+                    $table->unsignedBigInteger('entity_id')->nullable(false)->change();
+                });
+            }
         }
     }
 

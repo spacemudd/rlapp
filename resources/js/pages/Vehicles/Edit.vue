@@ -42,9 +42,17 @@ interface Location {
     country: string;
 }
 
+interface Branch {
+    id: string;
+    name: string;
+    city?: string;
+    country: string;
+}
+
 interface Props {
     vehicle: Vehicle;
     locations: Location[];
+    branches: Branch[];
 }
 
 const props = defineProps<Props>();
@@ -69,6 +77,7 @@ const form = useForm({
     price_weekly: props.vehicle.price_weekly,
     price_monthly: props.vehicle.price_monthly,
     location_id: props.vehicle.location_id || '',
+    branch_id: (props.vehicle as any).branch_id || '',
     status: props.vehicle.status,
     ownership_status: props.vehicle.ownership_status || 'owned',
     borrowed_from_office: props.vehicle.borrowed_from_office || '',
@@ -322,8 +331,8 @@ const submit = () => {
                                         <div v-if="form.errors.status" class="text-red-500 text-sm mt-1">
                                             {{ form.errors.status }}
                                         </div>
-                                    </div>
-                                    <div>
+                                </div>
+                                <div>
                                         <Label for="location_id">Current Location</Label>
                                         <select
                                             id="location_id"
@@ -340,6 +349,25 @@ const submit = () => {
                                         </select>
                                         <div v-if="form.errors.location_id" class="text-red-500 text-sm mt-1">
                                             {{ form.errors.location_id }}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <Label for="branch_id">Branch</Label>
+                                        <select
+                                            id="branch_id"
+                                            v-model="form.branch_id"
+                                            :class="[
+                                                'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+                                                { 'border-red-500': (form as any).errors?.branch_id }
+                                            ]"
+                                        >
+                                            <option value="">Select Branch</option>
+                                            <option v-for="branch in props.branches" :key="branch.id" :value="branch.id">
+                                                {{ branch.name }}{{ branch.city ? ', ' + branch.city : '' }}
+                                            </option>
+                                        </select>
+                                        <div v-if="(form as any).errors?.branch_id" class="text-red-500 text-sm mt-1">
+                                            {{ (form as any).errors?.branch_id }}
                                         </div>
                                     </div>
                                 </div>

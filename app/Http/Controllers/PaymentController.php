@@ -71,30 +71,9 @@ class PaymentController extends Controller
                 }
             }
 
-            // Update invoice status based on payments
+            // Update invoice payment tracking fields
             $invoice->refresh();
-            $totalPaid = $invoice->payments()
-                ->where('status', 'completed')
-                ->where('transaction_type', 'payment')
-                ->sum('amount');
-            
-            $totalRefunded = $invoice->payments()
-                ->where('status', 'completed')
-                ->where('transaction_type', 'refund')
-                ->sum('amount');
-            
-            $netPaid = $totalPaid - $totalRefunded;
-            $remainingAmount = $invoice->total_amount - $netPaid;
-
-            if ($remainingAmount <= 0) {
-                $invoice->status = 'paid';
-            } elseif ($netPaid > 0) {
-                $invoice->status = 'partial_paid';
-            } else {
-                $invoice->status = 'unpaid';
-            }
-            
-            $invoice->save();
+            $invoice->syncPaymentFields();
 
             // Update bank/cash account balances
             if ($payment->status === 'completed') {

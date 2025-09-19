@@ -159,7 +159,7 @@
             </table>
             <div class="amount-box">
                 <div class="amount-label">Amount Paid</div>
-                <div class="amount">{{ number_format($payment->amount, 2) }} {{ $invoice->currency }}</div>
+                <div class="amount">{{ number_format($payment->amount, 2) }} AED</div>
             </div>
             <div class="section-title">Invoice Information</div>
             <table class="info-table">

@@ -51,7 +51,9 @@ interface InvoiceItem {
     description: string;
     amount: number;
     discount: number;
-    isVehicle?: boolean;
+    vat_rate: number;
+    vat_amount: number;
+    total_with_vat: number;
 }
 
 // Define props
@@ -60,17 +62,10 @@ const props = defineProps<Props>();
 // Translation
 const { t } = useI18n();
 
-const statusOptions = [
-    { value: 'unpaid', label: 'Unpaid', color: 'text-red-500' },
-    { value: 'paid', label: 'Paid', color: 'text-green-500' },
-    { value: 'partial_paid', label: 'Partial Paid', color: 'text-yellow-500' },
-];
 
 const form = useForm({
     invoice_date: format(new Date(), 'yyyy-MM-dd\'T\'HH:mm'),
     due_date: format(new Date(), 'yyyy-MM-dd\'T\'HH:mm'),
-    status: 'unpaid',
-    currency: 'AED',
     total_days: 0,
     start_datetime: format(new Date(), 'yyyy-MM-dd\'T\'HH:mm'),
     end_datetime: format(new Date(), 'yyyy-MM-dd\'T\'HH:mm'),
@@ -80,9 +75,8 @@ const form = useForm({
     sub_total: 0,
     total_discount: 0,
     total_amount: 0,
-    type: 'Rental',
     items: [
-        { description: '', amount: 0, discount: 0 }
+        { description: '', amount: 0, discount: 0, vat_rate: 5, vat_amount: 0, total_with_vat: 0 }
     ],
     // Discount fields
     general_manager_discount: 0,
@@ -112,6 +106,12 @@ const totalDiscounts = computed(() => {
     return Number(form.general_manager_discount || 0) + Number(form.fazaa_discount || 0) + Number(form.esaad_discount || 0);
 });
 
+// Calculate total VAT amount
+const totalVATAmount = computed(() => {
+    const itemsArray = form.items as InvoiceItem[];
+    return itemsArray.reduce((sum: number, item: InvoiceItem) => sum + (item.vat_amount || 0), 0);
+});
+
 const contractTotalAmount = computed(() => {
     if (!form.contract_id) return null;
     const selectedContract = props.contracts.find(c => c.id === form.contract_id);
@@ -123,9 +123,17 @@ watch(
     () => form.items,
     (items) => {
         const itemsArray = items as InvoiceItem[];
+        
+        // Calculate VAT and totals for each item
+        itemsArray.forEach((item: InvoiceItem) => {
+            const netAmount = (Number(item.amount) || 0) - (Number(item.discount) || 0);
+            item.vat_amount = netAmount * (Number(item.vat_rate) || 0) / 100;
+            item.total_with_vat = netAmount + item.vat_amount;
+        });
+        
         form.sub_total = itemsArray.reduce((sum: number, item: InvoiceItem) => sum + (Number(item.amount) || 0), 0);
         form.total_discount = itemsArray.reduce((sum: number, item: InvoiceItem) => sum + (Number(item.discount) || 0), 0);
-        form.total_amount = form.sub_total - form.total_discount;
+        form.total_amount = itemsArray.reduce((sum: number, item: InvoiceItem) => sum + item.total_with_vat, 0);
     },
     { deep: true }
 );
@@ -143,15 +151,6 @@ watch(
     }
 );
 
-// Watch for paid amount changes
-watch(
-    () => form.status,
-    (newValue) => {
-        if (newValue === 'paid') {
-            form.total_amount = 0;
-        }
-    }
-);
 
 // ووتشر التواريخ ليحسب دائماً الفرق بين التواريخ ناقص 1
 // Only recalculate when NO contract is selected (manual input)
@@ -168,20 +167,7 @@ watch(
     }
 );
 
-// Watch for vehicle selection and update or add the vehicle item in items
-watch(
-    () => form.vehicle_id,
-    (newVal) => {
-        if (!newVal) {
-            // Remove vehicle item if no vehicle selected
-            const itemsArray = form.items as InvoiceItem[];
-            const vehicleIndex = itemsArray.findIndex((item: InvoiceItem) => item.isVehicle);
-            if (vehicleIndex !== -1) {
-                itemsArray.splice(vehicleIndex, 1);
-            }
-        }
-    }
-);
+// Note: Vehicle watcher removed as vehicle items are no longer auto-added
 
 // دالة لتحويل التاريخ لصيغة input datetime-local
 function toDatetimeLocal(dateString: string) {
@@ -212,29 +198,10 @@ watch(
                 // Force UI update
                 forceUpdate.value++;
 
-                // Add or update vehicle item in items
-                const carName = selectedContract.vehicle
-                    ? `${selectedContract.vehicle.year} ${selectedContract.vehicle.make} ${selectedContract.vehicle.model} - ${selectedContract.vehicle.plate_number}`
-                    : selectedContract.vehicle_id;
-                const carAmount = selectedContract.total_amount
-                    ? Number(selectedContract.total_amount)
-                    : (selectedContract.daily_rate && selectedContract.total_days
-                        ? Number(selectedContract.daily_rate) * Number(selectedContract.total_days)
-                        : 0);
-                const vehicleIndex = itemsArray.findIndex((item: InvoiceItem) => item.isVehicle);
-                if (vehicleIndex !== -1) {
-                    itemsArray[vehicleIndex].description = carName;
-                    itemsArray[vehicleIndex].amount = carAmount;
-                } else {
-                    itemsArray.unshift({ description: carName, amount: carAmount, discount: 0, isVehicle: true });
-                }
+                // Note: Vehicle item is no longer auto-added to invoice items
+                // Users can manually add rental fees using the quick-add buttons
             }
         } else {
-            // Remove vehicle item if contract is unselected
-            const vehicleIndex = itemsArray.findIndex((item: InvoiceItem) => item.isVehicle);
-            if (vehicleIndex !== -1) {
-                itemsArray.splice(vehicleIndex, 1);
-            }
             // Clear customer data
             selectedContractCustomer.value = null;
         }
@@ -295,7 +262,10 @@ const handleSubmit = () => {
     form.items = itemsArray.map((item: InvoiceItem) => ({
         description: item.description || '',
         amount: Number(item.amount) || 0,
-        discount: Number(item.discount) || 0
+        discount: Number(item.discount) || 0,
+        vat_rate: Number(item.vat_rate) || 0,
+        vat_amount: Number(item.vat_amount) || 0,
+        total_with_vat: Number(item.total_with_vat) || 0
     }));
 
     form.post(route('invoices.store'), {
@@ -308,9 +278,6 @@ const handleSubmit = () => {
     });
 };
 
-const getStatusColor = (status: string) => {
-    return statusOptions.find(option => option.value === status)?.color || 'text-gray-500';
-};
 
 const getCustomerDisplayName = (customer: any) => {
     if (!customer) return '';
@@ -326,13 +293,11 @@ const accounts = ref([
 
 function addItem() {
     const itemsArray = form.items as InvoiceItem[];
-    itemsArray.push({ description: '', amount: 0, discount: 0 });
+    itemsArray.push({ description: '', amount: 0, discount: 0, vat_rate: 5, vat_amount: 0, total_with_vat: 0 });
 }
 
 function removeItem(idx: number) {
     const itemsArray = form.items as InvoiceItem[];
-    // Prevent removing the vehicle line
-    if (itemsArray[idx] && itemsArray[idx].isVehicle) return;
     itemsArray.splice(idx, 1);
 }
 
@@ -348,23 +313,24 @@ function calculateTotalDays() {
 
 function addSecurityDeposit() {
     const itemsArray = form.items as InvoiceItem[];
-    itemsArray.push({ description: 'Security Deposit', amount: 0, discount: 0 });
+    itemsArray.push({ description: 'Security Deposit', amount: 0, discount: 0, vat_rate: 5, vat_amount: 0, total_with_vat: 0 });
 }
 
 function addSalik() {
     const itemsArray = form.items as InvoiceItem[];
-    itemsArray.push({ description: 'Salik', amount: 0, discount: 0 });
+    itemsArray.push({ description: 'Salik', amount: 0, discount: 0, vat_rate: 5, vat_amount: 0, total_with_vat: 0 });
 }
 
 function addDelivery() {
     const itemsArray = form.items as InvoiceItem[];
-    itemsArray.push({ description: 'Delivery', amount: 0, discount: 0 });
+    itemsArray.push({ description: 'Delivery', amount: 0, discount: 0, vat_rate: 5, vat_amount: 0, total_with_vat: 0 });
 }
 
 function addValueAddedTax() {
     const itemsArray = form.items as InvoiceItem[];
-    itemsArray.push({ description: 'Value Added Tax', amount: 0, discount: 0 });
+    itemsArray.push({ description: 'Value Added Tax', amount: 0, discount: 0, vat_rate: 0, vat_amount: 0, total_with_vat: 0 });
 }
+
 
 const page = usePage();
 
@@ -390,6 +356,9 @@ onMounted(() => {
 // Handle customer selection
 const handleCustomerSelected = (customer: any) => {
     selectedCustomer.value = customer;
+    selectedContractCustomer.value = null;
+    form.contract_id = '';
+    form.vehicle_id = '';
 };
 
 // Create customer functions
@@ -411,6 +380,9 @@ const handleCustomerSubmit = (customerForm: any) => {
                 // Auto-select the newly created customer
                 form.customer_id = customer.id;
                 selectedCustomer.value = customer;
+                selectedContractCustomer.value = null;
+                form.contract_id = '';
+                form.vehicle_id = '';
 
                 // Update the combobox with the new customer data
                 if (customerComboboxRef.value) {
@@ -447,14 +419,8 @@ const handleCustomerCancel = () => {
 // Handle vehicle selection
 const handleVehicleSelected = (vehicle: any) => {
     selectedVehicle.value = vehicle;
-    // Update the vehicle item in items array
-    const itemsArray = form.items as InvoiceItem[];
-    const vehicleIndex = itemsArray.findIndex((item: InvoiceItem) => item.isVehicle);
-    if (vehicleIndex !== -1) {
-        itemsArray[vehicleIndex].description = vehicle.label;
-    } else {
-        itemsArray.unshift({ description: vehicle.label, amount: 0, discount: 0, isVehicle: true });
-    }
+    // Note: Vehicle item is no longer auto-added to invoice items
+    // Users can manually add rental fees using the quick-add buttons
 };
 
 const selectedContractVehicleName = computed(() => {
@@ -467,6 +433,41 @@ const selectedContractVehicleName = computed(() => {
     }
     return contract.vehicle_id || 'Vehicle from Contract';
 });
+
+// Filter contracts based on selected customer
+const filteredContracts = computed(() => {
+    if (!selectedCustomer.value && !selectedContractCustomer.value) {
+        return [];
+    }
+    
+    const customerId = selectedCustomer.value?.id || selectedContractCustomer.value?.id;
+    if (!customerId) return [];
+    
+    return props.contracts.filter(contract => contract.customer_id === customerId);
+});
+
+// Select contract from table
+const selectContract = (contract: any) => {
+    form.contract_id = contract.id;
+    form.customer_id = contract.customer_id;
+    
+    // Update contract data
+    if (contract.start_date) form.start_datetime = toDatetimeLocal(contract.start_date);
+    if (contract.end_date) form.end_datetime = toDatetimeLocal(contract.end_date);
+    if (contract.vehicle_id) form.vehicle_id = contract.vehicle_id;
+    if (contract.total_days) form.total_days = contract.total_days;
+    
+    // Update customer data
+    if (contract.customer) {
+        selectedContractCustomer.value = contract.customer;
+    }
+    
+    // Note: Vehicle item is no longer auto-added to invoice items
+    // Users can manually add rental fees using the quick-add buttons
+    
+    // Force UI update
+    forceUpdate.value++;
+};
 
 // Force update when contract is selected
 const updateContractData = async (contractId: string) => {
@@ -502,512 +503,408 @@ onMounted(async () => {
 
 <template>
     <AppSidebarLayout>
-        <div class="p-6">
+        <div class="p-4 max-w-4xl mx-auto">
             <!-- Header Section -->
-            <div class="flex items-center justify-between mb-8">
-                <div class="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" as-child class="hover:bg-gray-100">
-                        <Link :href="route('invoices')">
-                            <ArrowLeft class="h-5 w-5" />
-                        </Link>
-                    </Button>
-                    <div>
-                        <h1 class="text-2xl font-semibold tracking-tight">Create New Invoice</h1>
-                        <p class="text-sm text-gray-500 mt-1">Fill in the details below to create a new invoice</p>
-                    </div>
+            <div class="flex justify-between gap-3 mb-6">
+                <div>
+                    <h1 class="text-xl font-semibold text-gray-900">{{ t('create_invoice') }}</h1>
+                    <p class="text-xs text-gray-500">{{ t('generate_invoice_car_rental_contract') }}</p>
                 </div>
+                <Button variant="ghost" size="sm" as-child class="hover:bg-gray-100">
+                    <Link :href="route('invoices')">
+                        <ArrowLeft class="h-4 w-4 mr-1" />
+                        {{ t('back') }}
+                    </Link>
+                </Button>
             </div>
 
-            <form id="invoice-form" @submit.prevent="handleSubmit" class="space-y-8">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <!-- Basic Information -->
-                    <Card class="border-none shadow-md">
-                        <CardHeader class="pb-4">
-                            <CardTitle class="text-lg font-medium">Basic Information</CardTitle>
-                            <CardDescription>Enter the basic details of the invoice</CardDescription>
-                        </CardHeader>
-                        <CardContent class="space-y-6">
-                                                        <!-- Customer Selection - Hidden when contract is selected -->
-                            <div v-if="!form.contract_id" class="space-y-2">
-                                <Label for="customer" class="text-sm font-medium">Customer</Label>
-
-                                <AsyncCombobox
-                                    ref="customerComboboxRef"
-                                    v-model="form.customer_id"
-                                    placeholder="Search customers..."
-                                    search-url="/api/customers/search"
-                                    :required="true"
-                                    @option-selected="handleCustomerSelected"
-                                />
-
-                                <!-- Add Create Customer Section -->
-                                <div class="pt-4 border-t">
-                                    <div class="flex items-center justify-between">
-                                        <p class="text-sm text-gray-500">
-                                            Need to add a new customer?
-                                        </p>
-                                        <Dialog v-model:open="showCreateCustomerDialog">
-                                            <DialogTrigger as-child>
-                                                <Button type="button" variant="outline" size="sm">
-                                                    <Plus class="w-4 h-4 mr-2" />
-                                                    Create Customer
-                                                </Button>
-                                            </DialogTrigger>
-                                            <DialogContent class="max-w-2xl max-h-[90vh] overflow-y-auto">
-                                                <DialogHeader>
-                                                    <DialogTitle>Create New Customer</DialogTitle>
-                                                    <DialogDescription>
-                                                        Add a new customer to your database. All fields marked with * are required.
-                                                    </DialogDescription>
-                                                </DialogHeader>
-
-                                                <CreateCustomerForm
-                                                    @submit="handleCustomerSubmit"
-                                                    @cancel="handleCustomerCancel"
-                                                />
-                                            </DialogContent>
-                                        </Dialog>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="space-y-2">
-                                <Label for="invoice_date" class="text-sm font-medium">Invoice Date</Label>
-                                <Input type="datetime-local" id="invoice_date" v-model="form.invoice_date" required class="h-10" />
-                            </div>
-
-                            <div class="space-y-2">
-                                <Label for="due_date" class="text-sm font-medium">Due Date</Label>
-                                <Input type="datetime-local" id="due_date" v-model="form.due_date" required class="h-10" />
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="space-y-2">
-                                    <Label for="status" class="text-sm font-medium">Status</Label>
-                                    <select
-                                        id="status"
-                                        v-model="form.status"
-                                        class="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                                    >
-                                        <option value="unpaid">Unpaid</option>
-                                        <option value="paid">Paid</option>
-                                        <option value="partial_paid">Partial Paid</option>
-                                    </select>
-                                </div>
-                                <div class="space-y-2">
-                                    <Label for="currency" class="text-sm font-medium">Currency</Label>
-                                    <div class="relative">
-                                        <DollarSign class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                                        <Input id="currency" v-model="form.currency" required class="h-10 pl-10" />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Customer Information from Contract -->
-                            <div v-if="selectedContractCustomer" class="mt-6 space-y-4">
-                                <div class="flex items-center gap-2">
-                                    <User class="h-5 w-5 text-green-600" />
-                                    <h3 class="text-sm font-medium text-green-600">{{ t('customer_information_from_contract') }}</h3>
-                                </div>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div class="space-y-1">
-                                        <p class="text-sm text-gray-500">Name</p>
-                                        <p class="text-sm font-medium">{{ getCustomerDisplayName(selectedContractCustomer) }}</p>
-                                    </div>
-                                    <div class="space-y-1">
-                                        <p class="text-sm text-gray-500">Email</p>
-                                        <p class="text-sm font-medium">{{ selectedContractCustomer.email }}</p>
-                                    </div>
-                                    <div class="space-y-1">
-                                        <p class="text-sm text-gray-500">Phone</p>
-                                        <p class="text-sm font-medium">{{ selectedContractCustomer.phone_number || 'N/A' }}</p>
-                                    </div>
-                                    <div class="space-y-1">
-                                        <p class="text-sm text-gray-500">Nationality</p>
-                                        <p class="text-sm font-medium">{{ selectedContractCustomer.nationality || 'N/A' }}</p>
-                                    </div>
-                                    <div class="space-y-1">
-                                        <p class="text-sm text-gray-500">City</p>
-                                        <p class="text-sm font-medium">{{ selectedContractCustomer.city || 'N/A' }}</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Customer Information from Search -->
-                            <div v-if="selectedCustomer && !selectedContractCustomer" class="mt-6 space-y-4">
-                                <div class="flex items-center gap-2">
-                                    <User class="h-5 w-5 text-gray-400" />
-                                    <h3 class="text-sm font-medium">{{ t('customer_information') }}</h3>
-                                </div>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div class="space-y-1">
-                                        <p class="text-sm text-gray-500">Name</p>
-                                        <p class="text-sm font-medium">{{ selectedCustomer.name }}</p>
-                                    </div>
-                                    <div class="space-y-1">
-                                        <p class="text-sm text-gray-500">Email</p>
-                                        <p class="text-sm font-medium">{{ selectedCustomer.email }}</p>
-                                    </div>
-                                    <div class="space-y-1">
-                                        <p class="text-sm text-gray-500">Phone</p>
-                                        <p class="text-sm font-medium">{{ selectedCustomer.phone || 'N/A' }}</p>
-                                    </div>
-                                    <div class="space-y-1">
-                                        <p class="text-sm text-gray-500">License Number</p>
-                                        <p class="text-sm font-medium">{{ selectedCustomer.drivers_license_number || 'N/A' }}</p>
-                                    </div>
-                                </div>
-                                <div class="space-y-1">
-                                    <p class="text-sm text-gray-500">Address</p>
-                                    <p class="text-sm font-medium">
-                                        {{ selectedCustomer.address ? `${selectedCustomer.address}, ${selectedCustomer.city}, ${selectedCustomer.country}` : 'N/A' }}
-                                    </p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <!-- Type Section -->
-                    <Card class="border-none shadow-md">
-                        <CardHeader class="pb-4">
-                            <CardTitle class="text-lg font-medium">Type</CardTitle>
-                            <CardDescription>Select invoice type and related details</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div class="space-y-4">
-                                <div class="space-y-2">
-                                    <Label for="type" class="text-sm font-medium">Type</Label>
-                                    <select
-                                        id="type"
-                                        v-model="form.type"
-                                        class="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                                    >
-                                        <option value="Rental">Rental</option>
-                                        <option value="Service">Service</option>
-                                        <option value="Fee">Fee</option>
-                                        <option value="General">General</option>
-                                    </select>
-                                </div>
-
-                                <!-- Rental Fields - تظهر فقط عند اختيار Rental -->
-                                <div v-if="form.type === 'Rental'" class="space-y-4">
-                                    <!-- Contract -->
-                                    <div class="space-y-2">
-                                        <Label for="contract_id" class="text-sm font-medium">Contract</Label>
-                                        <select
-                                            id="contract_id"
-                                            v-model="form.contract_id"
-                                            class="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                                        >
-                                            <option value="">Select a contract</option>
-                                            <option v-for="contract in props.contracts" :key="contract.id" :value="contract.id">
-                                                {{ contract.contract_number }}
-                                            </option>
-                                        </select>
-                                    </div>
-                                    <!-- Vehicle Dropdown - Hidden when contract is selected -->
-                                    <div v-if="!form.contract_id" class="space-y-2">
-                                        <Label for="vehicle_id" class="text-sm font-medium">Vehicle</Label>
-                                        <AsyncCombobox
-                                            v-model="form.vehicle_id"
-                                            placeholder="Search vehicles..."
-                                            search-url="/api/vehicle-search"
-                                            :required="true"
-                                            @option-selected="handleVehicleSelected"
-                                        />
-                                    </div>
-
-                                    <!-- Dates Grid -->
-                                    <div class="grid grid-cols-2 gap-4">
-                                        <!-- Start Date & Time -->
-                                        <div class="space-y-2">
-                                            <Label for="start_datetime" class="text-sm font-medium">Start Date & Time</Label>
-                                            <Input
-                                                type="datetime-local"
-                                                id="start_datetime"
-                                                v-model="form.start_datetime"
-                                                required
-                                                class="h-10"
-                                                @change="calculateTotalDays"
-                                            />
-                                        </div>
-                                        <!-- End Date & Time -->
-                                        <div class="space-y-2">
-                                            <Label for="end_datetime" class="text-sm font-medium">End Date & Time</Label>
-                                            <Input
-                                                type="datetime-local"
-                                                id="end_datetime"
-                                                v-model="form.end_datetime"
-                                                required
-                                                class="h-10"
-                                                @change="calculateTotalDays"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <!-- Total Days -->
-                                    <div class="space-y-2">
-                                        <Label for="total_days" class="text-sm font-medium">Total Days</Label>
-                                        <Input
-                                            type="number"
-                                            id="total_days"
-                                            v-model="form.total_days"
-                                            required
-                                            class="h-10"
-                                            :readonly="!!form.contract_id"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                <!-- Professional Line Items Section (Full Width) -->
-                <div class="w-full mt-0">
-                  <div class="bg-white rounded-lg shadow border">
-                    <table class="w-full text-sm">
-                      <thead class="bg-gray-50 border-b">
-                        <tr>
-                          <th class="px-4 py-3 text-left font-semibold text-gray-700">Description<span class="text-red-500">*</span></th>
-                          <th class="px-4 py-3 text-center font-semibold text-gray-700">Amount<span class="text-red-500">*</span></th>
-                          <th class="px-4 py-3 text-center font-semibold text-gray-700">Discount</th>
-                          <th class="px-4 py-3 text-right font-semibold text-gray-700">Total</th>
-                          <th class="px-4 py-3"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr v-for="(item, idx) in (form.items as InvoiceItem[])" :key="idx" class="border-b hover:bg-gray-50">
-                          <td class="px-4 py-2">
-                            <input
-                              v-model="item.description"
-                              :readonly="item.isVehicle"
-                              class="w-full border rounded px-2 py-1 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
-                              :class="{ 'bg-gray-100 cursor-not-allowed': item.isVehicle }"
-                              placeholder="Description"
-                              :required="idx === 0"
-                            />
-                          </td>
-                          <td class="px-4 py-2 text-center">
-                            <input
-                              v-model.number="item.amount"
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              class="w-28 border rounded px-2 py-1 text-center focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
-                              required
-                            />
-                          </td>
-                          <td class="px-4 py-2 text-center">
-                            <input
-                              v-model.number="item.discount"
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              class="w-24 border rounded px-2 py-1 text-center focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
-                              placeholder="0.00"
-                            />
-                          </td>
-                          <td class="px-4 py-2 text-right font-semibold">
-                            {{ (Number(item.amount) - Number(item.discount)).toFixed(2) }}
-                          </td>
-                          <td class="px-2 py-2 text-center">
-                            <button
-                              v-if="!item.isVehicle"
-                              type="button"
-                              @click="removeItem(idx)"
-                              class="text-red-500 hover:text-red-700 font-bold text-lg"
-                              title="Remove"
-                            >
-                              &times;
-                            </button>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                    <div class="px-4 py-3 bg-gray-50 rounded-b-lg flex justify-between items-center">
-                      <div class="flex gap-4 flex-wrap">
-                        <button
-                          type="button"
-                          class="text-blue-600 hover:underline font-medium"
-                          @click="addItem"
-                        >
-                          + Item
-                        </button>
-                        <button
-                          type="button"
-                          class="text-green-600 hover:underline font-medium"
-                          @click="addSecurityDeposit"
-                        >
-                          + Security Deposit
-                        </button>
-                        <button
-                          type="button"
-                          class="text-purple-600 hover:underline font-medium"
-                          @click="addSalik"
-                        >
-                          + Salik
-                        </button>
-                        <button
-                          type="button"
-                          class="text-orange-600 hover:underline font-medium"
-                          @click="addDelivery"
-                        >
-                          + Delivery
-                        </button>
-                        <button
-                          type="button"
-                          class="text-red-600 hover:underline font-medium"
-                          @click="addValueAddedTax"
-                        >
-                          + Value Added Tax
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Discounts Section -->
-                <Card class="border-none shadow-md lg:col-span-2">
-                    <CardHeader class="pb-4">
-                        <CardTitle class="text-lg font-medium">Discounts</CardTitle>
-                        <CardDescription>Apply discounts to the total invoice amount</CardDescription>
+            <form id="invoice-form" @submit.prevent="handleSubmit" class="space-y-4">
+                <!-- Customer & Invoice Details -->
+                <Card class="border border-gray-200 shadow-sm">
+                    <CardHeader class="pb-3">
+                        <CardTitle class="text-base font-medium flex gap-2">
+                            <User class="h-4 w-4" />
+                            {{ t('customer_invoice_details') }}
+                        </CardTitle>
+                        <CardDescription class="text-xs">{{ t('select_customer_set_invoice_information') }}</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div class="space-y-2">
-                                <Label for="general_manager_discount" class="text-sm font-medium">General Manager Discount (AED)</Label>
-                                <div class="relative">
-                                    <DollarSign class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                                    <Input
-                                        id="general_manager_discount"
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        v-model="form.general_manager_discount"
-                                        class="h-10 pl-10"
-                                        placeholder="0.00"
-                                    />
-                                </div>
-                                <div v-if="form.errors.general_manager_discount" class="text-sm text-red-600">
-                                    {{ form.errors.general_manager_discount }}
-                                </div>
-                            </div>
-
-                            <div class="space-y-2">
-                                <Label for="fazaa_discount" class="text-sm font-medium">Faza'a Discount (AED)</Label>
-                                <div class="relative">
-                                    <DollarSign class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                                    <Input
-                                        id="fazaa_discount"
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        v-model="form.fazaa_discount"
-                                        class="h-10 pl-10"
-                                        placeholder="0.00"
-                                    />
-                                </div>
-                                <div v-if="form.errors.fazaa_discount" class="text-sm text-red-600">
-                                    {{ form.errors.fazaa_discount }}
-                                </div>
-                            </div>
-
-                            <div class="space-y-2">
-                                <Label for="esaad_discount" class="text-sm font-medium">Esaad Discount (AED)</Label>
-                                <div class="relative">
-                                    <DollarSign class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                                    <Input
-                                        id="esaad_discount"
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        v-model="form.esaad_discount"
-                                        class="h-10 pl-10"
-                                        placeholder="0.00"
-                                    />
-                                </div>
-                                <div v-if="form.errors.esaad_discount" class="text-sm text-red-600">
-                                    {{ form.errors.esaad_discount }}
-                                </div>
+                    <CardContent class="space-y-4">
+                        <!-- Customer Selection -->
+                        <div class="space-y-2">
+                            <Label for="customer" class="text-xs font-medium text-gray-700">{{ t('customer') }}</Label>
+                            <AsyncCombobox
+                                ref="customerComboboxRef"
+                                v-model="form.customer_id"
+                                :placeholder="t('search_customers')"
+                                search-url="/api/customers/search"
+                                :required="true"
+                                @option-selected="handleCustomerSelected"
+                            />
+                            <div class="flex justify-between pt-2">
+                                <p class="text-xs text-gray-500">{{ t('need_add_new_customer') }}</p>
+                                <Dialog v-model:open="showCreateCustomerDialog">
+                                    <DialogTrigger as-child>
+                                        <Button type="button" variant="outline" size="sm" class="h-7 text-xs">
+                                            <Plus class="w-3 h-3 mr-1" />
+                                            {{ t('add_customer') }}
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent class="max-w-2xl max-h-[90vh] overflow-y-auto">
+                                        <DialogHeader>
+                                            <DialogTitle>{{ t('create_new_customer') }}</DialogTitle>
+                                            <DialogDescription>
+                                                {{ t('add_new_customer_database_required_fields') }}
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <CreateCustomerForm
+                                            @submit="handleCustomerSubmit"
+                                            @cancel="handleCustomerCancel"
+                                        />
+                                    </DialogContent>
+                                </Dialog>
                             </div>
                         </div>
 
-                        <div class="mt-6 space-y-2">
-                            <Label for="discount_reason" class="text-sm font-medium">Discount Reason (Optional)</Label>
+                        <!-- Invoice Dates -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-1">
+                                <Label for="invoice_date" class="text-xs font-medium text-gray-700">{{ t('invoice_date') }}</Label>
+                                <Input type="datetime-local" id="invoice_date" v-model="form.invoice_date" required class="h-8 text-sm" />
+                            </div>
+                            <div class="space-y-1">
+                                <Label for="due_date" class="text-xs font-medium text-gray-700">{{ t('due_date') }}</Label>
+                                <Input type="datetime-local" id="due_date" v-model="form.due_date" required class="h-8 text-sm" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <!-- Contract Selection Table -->
+                <Card v-if="selectedCustomer || selectedContractCustomer" class="border border-gray-200 shadow-sm">
+                    <CardHeader class="pb-3">
+                        <CardTitle class="text-base font-medium flex items-center gap-2">
+                            <Car class="h-4 w-4" />
+                            {{ t('available_contracts') }}
+                        </CardTitle>
+                        <CardDescription class="text-xs">{{ t('select_contract_create_invoice') }}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs">
+                                <thead class="bg-gray-50 border-b">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left font-medium text-gray-700">{{ t('contract_number') }}</th>
+                                        <th class="px-3 py-2 text-left font-medium text-gray-700">{{ t('vehicle') }}</th>
+                                        <th class="px-3 py-2 text-left font-medium text-gray-700">{{ t('rental_period') }}</th>
+                                        <th class="px-3 py-2 text-right font-medium text-gray-700">{{ t('total_amount') }}</th>
+                                        <th class="px-3 py-2 text-center font-medium text-gray-700">{{ t('action') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200">
+                                    <tr 
+                                        v-for="contract in filteredContracts" 
+                                        :key="contract.id"
+                                        class="hover:bg-gray-50"
+                                        :class="{ 'bg-blue-50 border-l-4 border-blue-500': form.contract_id === contract.id }"
+                                    >
+                                        <td class="px-3 py-2 font-medium">{{ contract.contract_number }}</td>
+                                        <td class="px-3 py-2">
+                                            <div class="flex flex-col">
+                                                <span class="font-medium">{{ contract.vehicle?.year }} {{ contract.vehicle?.make }} {{ contract.vehicle?.model }}</span>
+                                                <span class="text-gray-500 text-xs">{{ contract.vehicle?.plate_number }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            <div class="flex flex-col">
+                                                <span>{{ format(new Date(contract.start_date), 'MMM dd, yyyy') }}</span>
+                                                <span class="text-gray-500">{{ format(new Date(contract.end_date), 'MMM dd, yyyy') }}</span>
+                                                <span class="text-xs text-gray-500">{{ contract.total_days }} {{ t('days') }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="px-3 py-2 text-right font-medium">
+                                            {{ Number(contract.total_amount || 0).toFixed(2) }} AED
+                                        </td>
+                                        <td class="px-3 py-2 text-center">
+                                            <Button
+                                                v-if="form.contract_id !== contract.id"
+                                                type="button"
+                                                size="sm"
+                                                variant="outline"
+                                                class="h-6 text-xs px-2"
+                                                @click="selectContract(contract)"
+                                            >
+                                                {{ t('select') }}
+                                            </Button>
+                                            <Button
+                                                v-else
+                                                type="button"
+                                                size="sm"
+                                                variant="default"
+                                                class="h-6 text-xs px-2 bg-green-600 hover:bg-green-700"
+                                            >
+                                                {{ t('selected') }}
+                                            </Button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div v-if="filteredContracts.length === 0" class="text-center py-8 text-gray-500 text-xs">
+                            {{ t('no_contracts_found_customer') }}
+                        </div>
+                    </CardContent>
+                </Card>
+
+
+
+
+                <!-- Invoice Items Table -->
+                <Card class="border border-gray-200 shadow-sm">
+                    <CardHeader class="pb-3">
+                        <CardTitle class="text-base font-medium flex items-center gap-2">
+                            <DollarSign class="h-4 w-4" />
+                            {{ t('invoice_items') }}
+                        </CardTitle>
+                        <CardDescription class="text-xs">{{ t('add_rental_charges_additional_fees') }}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs border-collapse">
+                                <thead>
+                                    <tr class="bg-gray-50 border-b">
+                                        <th class="text-left p-2 font-medium text-gray-700 border-r">{{ t('description') }}</th>
+                                        <th class="text-right p-2 font-medium text-gray-700 border-r w-20">{{ t('amount') }}</th>
+                                        <th class="text-right p-2 font-medium text-gray-700 border-r w-20">{{ t('discount') }}</th>
+                                        <th class="text-right p-2 font-medium text-gray-700 border-r w-16">{{ t('net') }}</th>
+                                        <th class="text-center p-2 font-medium text-gray-700 border-r w-16">{{ t('vat_percent') }}</th>
+                                        <th class="text-right p-2 font-medium text-gray-700 border-r w-20">{{ t('vat') }}</th>
+                                        <th class="text-right p-2 font-medium text-gray-700 border-r w-20">{{ t('total') }}</th>
+                                        <th class="text-center p-2 font-medium text-gray-700 w-12">{{ t('action') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(item, idx) in (form.items as InvoiceItem[])" :key="idx" class="border-b hover:bg-gray-50">
+                                        <td class="p-2 border-r">
+                                            <input
+                                                v-model="item.description"
+                                                class="w-full h-7 text-xs border rounded px-2 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                                :placeholder="t('enter_description')"
+                                                :required="idx === 0"
+                                            />
+                                        </td>
+                                        <td class="p-2 border-r">
+                                            <input
+                                                v-model.number="item.amount"
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                class="w-full h-7 text-xs border rounded px-2 text-right focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                                placeholder="0.00"
+                                                required
+                                            />
+                                        </td>
+                                        <td class="p-2 border-r">
+                                            <input
+                                                v-model.number="item.discount"
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                class="w-full h-7 text-xs border rounded px-2 text-right focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                                placeholder="0.00"
+                                            />
+                                        </td>
+                                        <td class="p-2 border-r text-right font-medium">
+                                            {{ ((Number(item.amount) || 0) - (Number(item.discount) || 0)).toFixed(2) }}
+                                        </td>
+                                        <td class="p-2 border-r">
+                                            <select
+                                                v-model.number="item.vat_rate"
+                                                class="w-full h-7 text-xs border rounded px-1 text-center focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                            >
+                                                <option value="0">0%</option>
+                                                <option value="5">5%</option>
+                                            </select>
+                                        </td>
+                                        <td class="p-2 border-r text-right font-medium">
+                                            {{ item.vat_amount.toFixed(2) }}
+                                        </td>
+                                        <td class="p-2 border-r text-right font-medium">
+                                            {{ item.total_with_vat.toFixed(2) }} AED
+                                        </td>
+                                        <td class="p-2 text-center">
+                                            <button
+                                                type="button"
+                                                @click="removeItem(idx)"
+                                                class="text-red-500 hover:text-red-700 text-sm font-bold"
+                                                :title="t('remove_item')"
+                                            >
+                                                ×
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Quick Add Buttons -->
+                        <div class="mt-4 pt-3 border-t">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="text-xs text-gray-500">
+                                    {{ t('total_vat') }}: {{ totalVATAmount.toFixed(2) }} AED
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <button type="button" @click="addItem" class="text-xs px-3 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 border border-blue-200">
+                                    + {{ t('add_item') }}
+                                </button>
+                                <button type="button" @click="addSecurityDeposit" class="text-xs px-3 py-1 bg-green-50 text-green-600 rounded hover:bg-green-100 border border-green-200">
+                                    + {{ t('security_deposit') }}
+                                </button>
+                                <button type="button" @click="addSalik" class="text-xs px-3 py-1 bg-purple-50 text-purple-600 rounded hover:bg-purple-100 border border-purple-200">
+                                    + {{ t('salik') }}
+                                </button>
+                                <button type="button" @click="addDelivery" class="text-xs px-3 py-1 bg-orange-50 text-orange-600 rounded hover:bg-orange-100 border border-orange-200">
+                                    + {{ t('delivery') }}
+                                </button>
+                                <button type="button" @click="addValueAddedTax" class="text-xs px-3 py-1 bg-red-50 text-red-600 rounded hover:bg-red-100 border border-red-200">
+                                    + {{ t('vat_line') }}
+                                </button>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <!-- Discounts -->
+                <Card class="border border-gray-200 shadow-sm">
+                    <CardHeader class="pb-3">
+                        <CardTitle class="text-base font-medium flex items-center gap-2">
+                            <DollarSign class="h-4 w-4" />
+                            {{ t('discounts') }}
+                        </CardTitle>
+                        <CardDescription class="text-xs">{{ t('apply_special_discounts_invoice') }}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div class="space-y-1">
+                                <Label for="general_manager_discount" class="text-xs font-medium text-gray-700">{{ t('gm_discount') }}</Label>
+                                <Input
+                                    id="general_manager_discount"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    v-model="form.general_manager_discount"
+                                    class="h-7 text-xs"
+                                    placeholder="0.00"
+                                />
+                            </div>
+                            <div class="space-y-1">
+                                <Label for="fazaa_discount" class="text-xs font-medium text-gray-700">{{ t('fazaa_discount') }}</Label>
+                                <Input
+                                    id="fazaa_discount"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    v-model="form.fazaa_discount"
+                                    class="h-7 text-xs"
+                                    placeholder="0.00"
+                                />
+                            </div>
+                            <div class="space-y-1">
+                                <Label for="esaad_discount" class="text-xs font-medium text-gray-700">{{ t('esaad_discount') }}</Label>
+                                <Input
+                                    id="esaad_discount"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    v-model="form.esaad_discount"
+                                    class="h-7 text-xs"
+                                    placeholder="0.00"
+                                />
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 space-y-1">
+                            <Label for="discount_reason" class="text-xs font-medium text-gray-700">{{ t('discount_reason_optional') }}</Label>
                             <Textarea
                                 id="discount_reason"
                                 v-model="form.discount_reason"
-                                placeholder="Enter the reason for applying these discounts..."
+                                :placeholder="t('enter_reason_discounts')"
                                 rows="2"
+                                class="text-xs"
                             />
-                            <div v-if="form.errors.discount_reason" class="text-sm text-red-600">
-                                {{ form.errors.discount_reason }}
-                            </div>
                         </div>
 
                         <!-- Discount Summary -->
-                        <div v-if="totalDiscounts > 0" class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-                            <div class="flex items-center justify-between">
-                                <span class="text-blue-800 font-medium">Total Discounts Applied:</span>
-                                <span class="text-xl font-bold text-blue-900">{{ totalDiscounts.toFixed(2) }} AED</span>
+                        <div v-if="totalDiscounts > 0" class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-xs">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-medium text-blue-800">{{ t('total_discounts_label') }}</span>
+                                <span class="font-bold text-blue-900">{{ totalDiscounts.toFixed(2) }} AED</span>
                             </div>
-                            <div class="mt-2 text-sm text-blue-700">
+                            <div class="space-y-1 text-blue-700">
                                 <div v-if="form.general_manager_discount > 0">
-                                    General Manager: {{ Number(form.general_manager_discount).toFixed(2) }} AED
+                                    {{ t('gm') }}: {{ Number(form.general_manager_discount).toFixed(2) }} AED
                                 </div>
                                 <div v-if="form.fazaa_discount > 0">
-                                    Faza'a: {{ Number(form.fazaa_discount).toFixed(2) }} AED
+                                    {{ t('fazaa') }}: {{ Number(form.fazaa_discount).toFixed(2) }} AED
                                 </div>
                                 <div v-if="form.esaad_discount > 0">
-                                    Esaad: {{ Number(form.esaad_discount).toFixed(2) }} AED
+                                    {{ t('esaad') }}: {{ Number(form.esaad_discount).toFixed(2) }} AED
                                 </div>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                <!-- Financial Details -->
-                <Card class="border-none shadow-md lg:col-span-2">
-                    <CardHeader class="pb-4">
-                        <CardTitle class="text-lg font-medium">Financial Details</CardTitle>
-                        <CardDescription>Enter the payment and amount information</CardDescription>
+                <!-- Financial Summary -->
+                <Card class="border border-gray-200 shadow-sm">
+                    <CardHeader class="pb-3">
+                        <CardTitle class="text-base font-medium flex items-center gap-2">
+                            <DollarSign class="h-4 w-4" />
+                            {{ t('financial_summary') }}
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                            <div class="space-y-2">
-                                <Label for="invoice_amount" class="text-sm font-medium">Invoice Amount</Label>
-                                <div class="relative">
-                                    <DollarSign class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                                    <Input id="invoice_amount" :value="contractTotalAmount !== null ? Number(contractTotalAmount).toFixed(2) : Number(invoiceAmount).toFixed(2)" readonly class="h-10 pl-10 bg-gray-100 cursor-not-allowed" />
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-1">
+                                <Label class="text-xs font-medium text-gray-700">{{ t('invoice_amount') }}</Label>
+                                <div class="h-7 bg-gray-50 border rounded px-2 flex items-center text-xs font-medium">
+                                    {{ contractTotalAmount !== null ? Number(contractTotalAmount).toFixed(2) : Number(invoiceAmount).toFixed(2) }} AED
                                 </div>
                             </div>
-                            <div class="space-y-2">
-                                <Label class="block text-sm font-medium mb-1">Total Discounts</Label>
-                                <div class="input w-full bg-red-50 text-red-700 font-medium">{{ totalDiscounts.toFixed(2) }} AED</div>
+                            <div class="space-y-1">
+                                <Label class="text-xs font-medium text-gray-700">{{ t('total_discounts') }}</Label>
+                                <div class="h-7 bg-red-50 border border-red-200 rounded px-2 flex items-center text-xs font-medium text-red-700">
+                                    {{ totalDiscounts.toFixed(2) }} AED
+                                </div>
                             </div>
-                            <div class="space-y-2">
-                                <Label class="block text-sm font-medium mb-1">Paid Amount</Label>
-                                <div class="input w-full bg-gray-50">0</div>
+                            <div class="space-y-1">
+                                <Label class="text-xs font-medium text-gray-700">{{ t('paid_amount') }}</Label>
+                                <div class="h-7 bg-gray-50 border rounded px-2 flex items-center text-xs font-medium">
+                                    0.00 AED
+                                </div>
                             </div>
-                            <div class="space-y-2">
-                                <Label class="block text-sm font-medium mb-1">Remaining Amount</Label>
-                                <div class="input w-full bg-gray-50">{{ form.total_amount }}</div>
+                            <div class="space-y-1">
+                                <Label class="text-xs font-medium text-gray-700">{{ t('remaining_amount') }}</Label>
+                                <div class="h-7 bg-gray-50 border rounded px-2 flex items-center text-xs font-medium">
+                                    {{ form.total_amount.toFixed(2) }} AED
+                                </div>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                <!-- Add the Create Invoice button at the bottom -->
-                <div class="flex justify-end mt-8">
-                    <Button type="submit" form="invoice-form" :disabled="form.processing">
-                        Create
+                <!-- Submit Button -->
+                <div class="flex justify-end pt-4">
+                    <Button type="submit" form="invoice-form" :disabled="form.processing" class="px-6">
+                        {{ form.processing ? t('creating') : t('create_invoice') }}
                     </Button>
                 </div>
-                <div v-if="$page.props.errors && Object.keys($page.props.errors).length" class="text-red-600 mt-4">
-                  <div v-for="(error, key) in $page.props.errors" :key="key">
-                    {{ error }}
-                  </div>
+                
+                <!-- Error Messages -->
+                <div v-if="$page.props.errors && Object.keys($page.props.errors).length" class="text-red-600 text-xs">
+                    <div v-for="(error, key) in $page.props.errors" :key="key">
+                        {{ error }}
+                    </div>
                 </div>
             </form>
         </div>

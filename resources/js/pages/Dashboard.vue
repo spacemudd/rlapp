@@ -315,7 +315,7 @@ function getCustomerName(customer: any) {
                                         </div>
                                         <div class="text-right">
                                             <p class="font-semibold text-gray-900 group-hover:text-red-600 transition-colors duration-200">
-                                                {{ Number(invoice.total_amount).toLocaleString() }} {{ invoice.currency }}
+                                                {{ formatCurrency(invoice.total_amount) }}
                                             </p>
                                             <p class="text-sm text-red-600 font-medium">
                                                 {{ t('overdue') }}

@@ -91,12 +91,213 @@ class CustomerController extends Controller
             abort(403);
         }
 
-        // Load the blocked_by relationship
-        $customer->load('blockedBy');
+        // Load relationships needed for the UI
+        $customer->load(['blockedBy', 'contracts.vehicle', 'invoices', 'customerNotes.user']);
+
+        // Determine open contract (prefer active, then draft)
+        $openContract = $customer->contracts()
+            ->whereIn('status', ['active', 'draft'])
+            ->orderByRaw("FIELD(status, 'active','draft')")
+            ->latest()
+            ->first();
+
+        // Previous contracts (completed/void)
+        $previousContracts = $customer->contracts()
+            ->whereIn('status', ['completed', 'void'])
+            ->latest()
+            ->limit(5)
+            ->get();
+
+        // Recent invoices
+        $invoices = $customer->invoices()
+            ->latest('invoice_date')
+            ->limit(10)
+            ->get();
+
+        // Totals and VIP heuristic
+        $totalContracts = $customer->contracts()->count();
+        $totalInvoicedAmount = (float) $customer->invoices()->sum('total_amount');
+        $isVip = $totalContracts >= 5 || $totalInvoicedAmount >= 50000;
+
+        // Build timeline events
+        $timeline = [];
+
+        // Customer created event
+        $timeline[] = [
+            'id' => (string) $customer->id,
+            'type' => 'customer_created',
+            'title' => 'Customer created',
+            'date' => optional($customer->created_at)->toISOString(),
+            'status' => null,
+            'link' => "/customers/{$customer->id}",
+        ];
+
+        // Block/unblock history
+        $customer->loadMissing('blockHistory.performedBy');
+        foreach ($customer->blockHistory as $entry) {
+            $timeline[] = [
+                'id' => (string) $entry->id,
+                'type' => $entry->action === 'blocked' ? 'customer_blocked' : 'customer_unblocked',
+                'title' => $entry->action === 'blocked' ? 'Customer blocked' : 'Customer unblocked',
+                'date' => optional($entry->performed_at)->toISOString(),
+                'status' => $entry->reason,
+                'meta' => [
+                    'by' => $entry->performedBy?->name,
+                ],
+                'link' => "/customers/{$customer->id}",
+            ];
+        }
+
+        // Contracts events (created, activated, completed, voided)
+        foreach ($customer->contracts as $contract) {
+            // created
+            $timeline[] = [
+                'id' => (string) $contract->id . ':created',
+                'type' => 'contract_created',
+                'title' => 'Contract created ' . $contract->contract_number,
+                'date' => optional($contract->created_at)->toISOString(),
+                'status' => $contract->status,
+                'link' => "/contracts/{$contract->id}",
+            ];
+            if ($contract->activated_at) {
+                $timeline[] = [
+                    'id' => (string) $contract->id . ':activated',
+                    'type' => 'contract_activated',
+                    'title' => 'Contract activated ' . $contract->contract_number,
+                    'date' => optional($contract->activated_at)->toISOString(),
+                    'status' => 'active',
+                    'link' => "/contracts/{$contract->id}",
+                ];
+            }
+            if ($contract->completed_at) {
+                $timeline[] = [
+                    'id' => (string) $contract->id . ':completed',
+                    'type' => 'contract_completed',
+                    'title' => 'Contract completed ' . $contract->contract_number,
+                    'date' => optional($contract->completed_at)->toISOString(),
+                    'status' => 'completed',
+                    'link' => "/contracts/{$contract->id}",
+                ];
+            }
+            if ($contract->voided_at) {
+                $timeline[] = [
+                    'id' => (string) $contract->id . ':voided',
+                    'type' => 'contract_voided',
+                    'title' => 'Contract voided ' . $contract->contract_number,
+                    'date' => optional($contract->voided_at)->toISOString(),
+                    'status' => 'void',
+                    'link' => "/contracts/{$contract->id}",
+                ];
+            }
+        }
+
+        // Invoices created
+        foreach ($customer->invoices as $invoice) {
+            $timeline[] = [
+                'id' => (string) $invoice->id,
+                'type' => 'invoice_created',
+                'title' => 'Invoice ' . $invoice->invoice_number,
+                'date' => optional($invoice->invoice_date ?? $invoice->created_at)->toISOString(),
+                'status' => $invoice->payment_status,
+                'link' => "/invoices/{$invoice->id}",
+            ];
+        }
+
+        // Payments
+        foreach ($customer->payments as $payment) {
+            $timeline[] = [
+                'id' => (string) $payment->id,
+                'type' => 'payment_received',
+                'title' => 'Payment received',
+                'date' => optional($payment->payment_date ?? $payment->created_at)->toISOString(),
+                'status' => (float) $payment->amount,
+                'link' => $payment->invoice_id ? "/invoices/{$payment->invoice_id}" : null,
+                'meta' => [
+                    'method' => $payment->payment_method,
+                ],
+            ];
+        }
+
+        // Sort timeline desc by date
+        usort($timeline, function ($a, $b) {
+            return strcmp($b['date'] ?? '', $a['date'] ?? '');
+        });
 
         return Inertia::render('Customers/Show', [
-            'customer' => $customer,
+            'customer' => array_merge($customer->toArray(), [
+                'drivers_license_url' => $customer->getFirstMedia('drivers_license') ? route('media.stream', $customer->getFirstMedia('drivers_license')->uuid) : null,
+                'passport_url' => $customer->getFirstMedia('passport') ? route('media.stream', $customer->getFirstMedia('passport')->uuid) : null,
+                'resident_id_url' => $customer->getFirstMedia('resident_id') ? route('media.stream', $customer->getFirstMedia('resident_id')->uuid) : null,
+                'trade_license_url' => $customer->getFirstMedia('trade_license') ? route('media.stream', $customer->getFirstMedia('trade_license')->uuid) : null,
+                'visit_visa_url' => $customer->getFirstMedia('visit_visa') ? route('media.stream', $customer->getFirstMedia('visit_visa')->uuid) : null,
+            ]),
+            'openContract' => $openContract ? [
+                'id' => (string) $openContract->id,
+                'contract_number' => $openContract->contract_number,
+                'status' => $openContract->status,
+                'start_date' => optional($openContract->start_date)->toISOString(),
+                'end_date' => optional($openContract->end_date)->toISOString(),
+                'vehicle' => $openContract->relationLoaded('vehicle') && $openContract->vehicle ? [
+                    'id' => (string) $openContract->vehicle->id,
+                    'make' => $openContract->vehicle->make,
+                    'model' => $openContract->vehicle->model,
+                    'plate_number' => $openContract->vehicle->plate_number,
+                ] : null,
+            ] : null,
+            'previousContracts' => $previousContracts->map(function ($c) {
+                return [
+                    'id' => (string) $c->id,
+                    'contract_number' => $c->contract_number,
+                    'status' => $c->status,
+                    'start_date' => optional($c->start_date)->toISOString(),
+                    'end_date' => optional($c->end_date)->toISOString(),
+                ];
+            }),
+            'invoices' => $invoices->map(function ($inv) {
+                return [
+                    'id' => (string) $inv->id,
+                    'invoice_number' => $inv->invoice_number,
+                    'status' => $inv->status,
+                    'total_amount' => (float) $inv->total_amount,
+                    'invoice_date' => optional($inv->invoice_date)->toISOString(),
+                ];
+            }),
+            'totals' => [
+                'contracts' => $totalContracts,
+                'invoiced_amount' => $totalInvoicedAmount,
+            ],
+            'isVip' => $isVip,
+            'timeline' => $timeline,
+            'customerNotes' => ($customer->customerNotes ?? collect())->map(function ($note) {
+                return [
+                    'id' => (string) $note->id,
+                    'content' => $note->content,
+                    'created_at' => optional($note->created_at)->toISOString(),
+                    'user' => $note->user ? [
+                        'id' => (string) $note->user->id,
+                        'name' => $note->user->name,
+                    ] : null,
+                ];
+            }),
         ]);
+    }
+
+    public function addNote(Customer $customer, \Illuminate\Http\Request $request)
+    {
+        if ($customer->team_id !== auth()->user()->team_id) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'content' => 'required|string|max:2000',
+        ]);
+
+        $note = $customer->customerNotes()->create([
+            'user_id' => auth()->id(),
+            'content' => $validated['content'],
+        ]);
+
+        return redirect()->route('customers.show', $customer)->with('success', 'Note added');
     }
 
     /**
@@ -123,27 +324,41 @@ class CustomerController extends Controller
 
         $validated['team_id'] = auth()->user()->team_id;
 
-        // Handle trade license PDF upload
+        // Create customer without raw files
+        $customer = Customer::create(collect($validated)->except([
+            'trade_license_pdf', 'visit_visa_pdf', 'passport_pdf', 'resident_id_pdf',
+        ])->all());
+
+        // Attach media to S3 collections if provided
+        if ($request->hasFile('drivers_license_pdf')) {
+            $customer->addMediaFromRequest('drivers_license_pdf')
+                ->usingFileName('drivers_license_' . time() . '.' . $request->file('drivers_license_pdf')->getClientOriginalExtension())
+                ->toMediaCollection('drivers_license', 's3');
+        }
+
         if ($request->hasFile('trade_license_pdf')) {
-            $file = $request->file('trade_license_pdf');
-            $filename = 'trade_license_' . time() . '_' . $file->getClientOriginalName();
-            $path = $file->storeAs('trade_licenses', $filename, 'public');
-            $validated['trade_license_pdf_path'] = $path;
+            $customer->addMediaFromRequest('trade_license_pdf')
+                ->usingFileName('trade_license_' . time() . '.' . $request->file('trade_license_pdf')->getClientOriginalExtension())
+                ->toMediaCollection('trade_license', 's3');
         }
 
-        // Handle visit visa PDF upload
         if ($request->hasFile('visit_visa_pdf')) {
-            $file = $request->file('visit_visa_pdf');
-            $filename = 'visit_visa_' . time() . '_' . $file->getClientOriginalName();
-            $path = $file->storeAs('visit_visas', $filename, 'public');
-            $validated['visit_visa_pdf_path'] = $path;
+            $customer->addMediaFromRequest('visit_visa_pdf')
+                ->usingFileName('visit_visa_' . time() . '.' . $request->file('visit_visa_pdf')->getClientOriginalExtension())
+                ->toMediaCollection('visit_visa', 's3');
         }
 
-        // Remove the file from validated data since it's not a database field
-        unset($validated['trade_license_pdf']);
-        unset($validated['visit_visa_pdf']);
+        if ($request->hasFile('passport_pdf')) {
+            $customer->addMediaFromRequest('passport_pdf')
+                ->usingFileName('passport_' . time() . '.' . $request->file('passport_pdf')->getClientOriginalExtension())
+                ->toMediaCollection('passport', 's3');
+        }
 
-        $customer = Customer::create($validated);
+        if ($request->hasFile('resident_id_pdf')) {
+            $customer->addMediaFromRequest('resident_id_pdf')
+                ->usingFileName('resident_id_' . time() . '.' . $request->file('resident_id_pdf')->getClientOriginalExtension())
+                ->toMediaCollection('resident_id', 's3');
+        }
 
         $customerData = [
             'id' => $customer->id,
@@ -154,7 +369,6 @@ class CustomerController extends Controller
             'phone' => $customer->phone,
         ];
 
-        // If this is an AJAX request (from contract creation), return JSON
         if ($request->wantsJson() || $request->expectsJson()) {
             return response()->json([
                 'success' => true,
@@ -163,17 +377,14 @@ class CustomerController extends Controller
             ]);
         }
 
-        // Check if this request came from contracts/create page
         $referer = $request->headers->get('referer');
         if ($referer && str_contains($referer, '/contracts/create')) {
-            // Return to contracts/create with customer data in props
             return redirect('/contracts/create')->with([
                 'success' => 'Customer created successfully.',
                 'newCustomer' => $customerData
             ]);
         }
 
-        // For JSON requests, return the customer data directly
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
@@ -182,7 +393,7 @@ class CustomerController extends Controller
             ]);
         }
 
-        return redirect('/customers')->with([
+        return redirect(route('customers.show', $customer))->with([
             'success' => 'Customer created successfully.',
             'customer' => $customerData
         ]);
@@ -193,44 +404,52 @@ class CustomerController extends Controller
      */
     public function update(UpdateCustomerRequest $request, Customer $customer)
     {
-        // Ensure customer belongs to user's team
         if ($customer->team_id !== auth()->user()->team_id) {
             abort(403);
         }
 
         $validated = $request->validated();
 
-        // Handle trade license PDF upload
+        // Update non-file fields only
+        $customer->update(collect($validated)->except([
+            'drivers_license_pdf', 'trade_license_pdf', 'visit_visa_pdf', 'passport_pdf', 'resident_id_pdf',
+        ])->all());
+
+        // Replace media if a new file is uploaded
+        if ($request->hasFile('drivers_license_pdf')) {
+            $customer->clearMediaCollection('drivers_license');
+            $customer->addMediaFromRequest('drivers_license_pdf')
+                ->usingFileName('drivers_license_' . time() . '.' . $request->file('drivers_license_pdf')->getClientOriginalExtension())
+                ->toMediaCollection('drivers_license', 's3');
+        }
+
         if ($request->hasFile('trade_license_pdf')) {
-            // Delete old file if it exists
-            if ($customer->trade_license_pdf_path && \Storage::disk('public')->exists($customer->trade_license_pdf_path)) {
-                \Storage::disk('public')->delete($customer->trade_license_pdf_path);
-            }
-
-            $file = $request->file('trade_license_pdf');
-            $filename = 'trade_license_' . time() . '_' . $file->getClientOriginalName();
-            $path = $file->storeAs('trade_licenses', $filename, 'public');
-            $validated['trade_license_pdf_path'] = $path;
+            $customer->clearMediaCollection('trade_license');
+            $customer->addMediaFromRequest('trade_license_pdf')
+                ->usingFileName('trade_license_' . time() . '.' . $request->file('trade_license_pdf')->getClientOriginalExtension())
+                ->toMediaCollection('trade_license', 's3');
         }
 
-        // Handle visit visa PDF upload
         if ($request->hasFile('visit_visa_pdf')) {
-            // Delete old file if it exists
-            if ($customer->visit_visa_pdf_path && \Storage::disk('public')->exists($customer->visit_visa_pdf_path)) {
-                \Storage::disk('public')->delete($customer->visit_visa_pdf_path);
-            }
-
-            $file = $request->file('visit_visa_pdf');
-            $filename = 'visit_visa_' . time() . '_' . $file->getClientOriginalName();
-            $path = $file->storeAs('visit_visas', $filename, 'public');
-            $validated['visit_visa_pdf_path'] = $path;
+            $customer->clearMediaCollection('visit_visa');
+            $customer->addMediaFromRequest('visit_visa_pdf')
+                ->usingFileName('visit_visa_' . time() . '.' . $request->file('visit_visa_pdf')->getClientOriginalExtension())
+                ->toMediaCollection('visit_visa', 's3');
         }
 
-        // Remove the file from validated data since it's not a database field
-        unset($validated['trade_license_pdf']);
-        unset($validated['visit_visa_pdf']);
+        if ($request->hasFile('passport_pdf')) {
+            $customer->clearMediaCollection('passport');
+            $customer->addMediaFromRequest('passport_pdf')
+                ->usingFileName('passport_' . time() . '.' . $request->file('passport_pdf')->getClientOriginalExtension())
+                ->toMediaCollection('passport', 's3');
+        }
 
-        $customer->update($validated);
+        if ($request->hasFile('resident_id_pdf')) {
+            $customer->clearMediaCollection('resident_id');
+            $customer->addMediaFromRequest('resident_id_pdf')
+                ->usingFileName('resident_id_' . time() . '.' . $request->file('resident_id_pdf')->getClientOriginalExtension())
+                ->toMediaCollection('resident_id', 's3');
+        }
 
         return redirect("/customers/{$customer->id}")->with('success', 'Customer updated successfully.');
     }

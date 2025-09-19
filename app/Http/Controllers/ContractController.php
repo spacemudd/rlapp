@@ -6,6 +6,7 @@ use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\Vehicle;
 use App\Models\Invoice;
+use App\Models\Branch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -111,6 +112,11 @@ class ContractController extends Controller
         if (session()->has('newCustomer')) {
             $props['newCustomer'] = session('newCustomer');
         }
+
+        // Provide active branches for selection
+        $props['branches'] = Branch::active()
+            ->orderBy('name')
+            ->get(['id', 'name', 'city', 'country']);
 
         return Inertia::render('Contracts/Create', $props);
     }
@@ -237,22 +243,22 @@ class ContractController extends Controller
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'vehicle_id' => 'required|exists:vehicles,id',
+            'branch_id' => 'nullable|uuid|exists:branches,id',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
             'daily_rate' => 'required|numeric|min:0',
-            'deposit_amount' => 'nullable|numeric|min:0',
             'mileage_limit' => 'nullable|integer|min:0',
             'excess_mileage_rate' => 'nullable|numeric|min:0',
-            'terms_and_conditions' => 'nullable|string',
+            // 'terms_and_conditions' removed from create flow
             'notes' => 'nullable|string',
             // Override validation
             'override_daily_rate' => 'nullable|boolean',
             'override_final_price' => 'nullable|boolean',
             'final_price_override' => 'nullable|numeric|min:0',
             'override_reason' => 'nullable|string|max:500',
-            // Vehicle condition validation
-            'current_mileage' => 'required|integer|min:0',
-            'fuel_level' => 'required|in:full,3/4,1/2,1/4,low,empty',
+            // Vehicle condition validation (optional during creation)
+            'current_mileage' => 'nullable|integer|min:0',
+            'fuel_level' => 'nullable|in:full,3/4,1/2,1/4,low,empty',
             'condition_photos.*' => 'nullable|image|mimes:jpeg,png,jpg|max:10240', // 10MB max per image
         ]);
 
@@ -317,16 +323,16 @@ class ContractController extends Controller
             'team_id' => Auth::user()->team_id,
             'customer_id' => $validated['customer_id'],
             'vehicle_id' => $validated['vehicle_id'],
+            'branch_id' => $validated['branch_id'] ?? null,
             'start_date' => $validated['start_date'],
             'end_date' => $validated['end_date'],
             'daily_rate' => $dailyRate,
             'total_days' => $totalDays,
             'total_amount' => $totalAmount,
-            'deposit_amount' => $validated['deposit_amount'] ?? 0,
-            'mileage_limit' => $validated['mileage_limit'],
-            'excess_mileage_rate' => $validated['excess_mileage_rate'],
-            'terms_and_conditions' => $validated['terms_and_conditions'],
-            'notes' => $validated['notes'],
+            'mileage_limit' => $validated['mileage_limit'] ?? null,
+            'excess_mileage_rate' => $validated['excess_mileage_rate'] ?? null,
+            // 'terms_and_conditions' removed from create flow
+            'notes' => $validated['notes'] ?? null,
             'created_by' => Auth::user()->name,
             'status' => 'draft',
             // Override fields
@@ -335,8 +341,8 @@ class ContractController extends Controller
             'original_calculated_amount' => $originalCalculatedAmount,
             'override_reason' => $validated['override_reason'] ?? null,
             // Vehicle pickup condition
-            'pickup_mileage' => $validated['current_mileage'],
-            'pickup_fuel_level' => $validated['fuel_level'],
+            'pickup_mileage' => $validated['current_mileage'] ?? null,
+            'pickup_fuel_level' => $validated['fuel_level'] ?? null,
             'pickup_condition_photos' => $photosPaths,
         ]);
 
@@ -349,7 +355,7 @@ class ContractController extends Controller
      */
     public function show(Contract $contract): Response
     {
-        $contract->load(['customer', 'vehicle', 'invoices', 'extensions']);
+        $contract->load(['customer', 'vehicle.branch', 'branch', 'invoices', 'extensions']);
 
         return Inertia::render('Contracts/Show', [
             'contract' => $contract,
@@ -389,13 +395,13 @@ class ContractController extends Controller
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'vehicle_id' => 'required|exists:vehicles,id',
+            'branch_id' => 'nullable|uuid|exists:branches,id',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
             'daily_rate' => 'required|numeric|min:0',
-            'deposit_amount' => 'nullable|numeric|min:0',
             'mileage_limit' => 'nullable|integer|min:0',
             'excess_mileage_rate' => 'nullable|numeric|min:0',
-            'terms_and_conditions' => 'nullable|string',
+            // 'terms_and_conditions' removed from update flow
             'notes' => 'nullable|string',
         ]);
 
@@ -408,15 +414,15 @@ class ContractController extends Controller
         $contract->update([
             'customer_id' => $validated['customer_id'],
             'vehicle_id' => $validated['vehicle_id'],
+            'branch_id' => $validated['branch_id'] ?? null,
             'start_date' => $validated['start_date'],
             'end_date' => $validated['end_date'],
             'daily_rate' => $validated['daily_rate'],
             'total_days' => $totalDays,
             'total_amount' => $totalAmount,
-            'deposit_amount' => $validated['deposit_amount'] ?? 0,
             'mileage_limit' => $validated['mileage_limit'],
             'excess_mileage_rate' => $validated['excess_mileage_rate'],
-            'terms_and_conditions' => $validated['terms_and_conditions'],
+            // 'terms_and_conditions' removed from update flow
             'notes' => $validated['notes'],
         ]);
 
@@ -641,20 +647,7 @@ class ContractController extends Controller
             'discount' => 0,
         ]);
 
-        // Add deposit as separate item if exists
-        if ($contract->deposit_amount > 0) {
-            $invoice->items()->create([
-                'description' => 'Security Deposit',
-                'amount' => $contract->deposit_amount,
-                'discount' => 0,
-            ]);
-
-            // Update invoice totals
-            $invoice->update([
-                'sub_total' => $contract->total_amount + $contract->deposit_amount,
-                'total_amount' => $contract->total_amount + $contract->deposit_amount,
-            ]);
-        }
+        // Note: Deposit is now handled exclusively in the invoicing flow; no auto-adding here.
 
         return redirect()->route('invoices.show', $invoice)
             ->with('success', 'Invoice created successfully for the contract.');

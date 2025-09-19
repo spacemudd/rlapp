@@ -17,6 +17,12 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+// Media routes for secure file access
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/media/{uuid}', [App\Http\Controllers\MediaController::class, 'stream'])->name('media.stream');
+    Route::get('/media/{uuid}/download', [App\Http\Controllers\MediaController::class, 'download'])->name('media.download');
+});
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 
@@ -81,8 +87,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/api/locations', [App\Http\Controllers\LocationController::class, 'api'])->name('api.locations');
 });
 
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::resource('branches', App\Http\Controllers\BranchController::class);
+});
+
 Route::resource('customers', App\Http\Controllers\CustomerController::class)
     ->middleware(['auth', 'verified']);
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::post('/customers/{customer}/notes', [App\Http\Controllers\CustomerController::class, 'addNote'])->name('customers.notes.store');
+});
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/customers/{customer}/block', [App\Http\Controllers\CustomerController::class, 'block'])->name('customers.block');
@@ -170,6 +184,13 @@ Route::get('/sync-progress', function () {
 
 Route::get('/traffic-violations', function () {
     return inertia('TrafficViolations');
+});
+
+// System Settings standalone page
+Route::middleware('auth')->group(function () {
+    Route::get('/system-settings', function () {
+        return Inertia::render('settings/SystemSettings');
+    })->name('system-settings');
 });
 
 Route::get('/traffic-violations/salik', function () {

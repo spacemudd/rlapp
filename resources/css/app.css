@@ -11,6 +11,7 @@
 
 @theme inline {
     --font-sans: Instrument Sans, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-arabic: 'Rubik', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 
     --radius-lg: var(--radius);
     --radius-md: calc(var(--radius) - 2px);
@@ -191,6 +192,7 @@
     [dir="rtl"] {
         text-align: right;
         direction: rtl;
+        font-family: var(--font-arabic);
     }
     
     [dir="ltr"] {
@@ -265,6 +267,7 @@
     [dir="rtl"] [data-sidebar] {
         text-align: right;
         direction: rtl;
+        font-family: var(--font-arabic);
     }
     
     /* RTL User info text alignment */
@@ -304,17 +307,20 @@
     [dir="rtl"] span,
     [dir="rtl"] label {
         text-align: right;
+        font-family: var(--font-arabic);
     }
     
     [dir="rtl"] input,
     [dir="rtl"] textarea,
     [dir="rtl"] select {
         text-align: right;
+        font-family: var(--font-arabic);
     }
     
     /* RTL Navigation */
     [dir="rtl"] nav {
         text-align: right;
+        font-family: var(--font-arabic);
     }
     
     /* RTL Breadcrumbs */
@@ -326,6 +332,7 @@
     [dir="rtl"] .card,
     [dir="rtl"] .content {
         direction: rtl;
+        font-family: var(--font-arabic);
     }
     
     /* RTL specific utility overrides */
@@ -335,6 +342,18 @@
     
     [dir="rtl"] .text-right {
         text-align: left !important;
+    }
+    
+    /* RTL Font family for all text elements */
+    [dir="rtl"] * {
+        font-family: var(--font-arabic);
+    }
+    
+    /* Override for specific elements that should use default font */
+    [dir="rtl"] code,
+    [dir="rtl"] pre,
+    [dir="rtl"] .font-mono {
+        font-family: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
     }
     
     /* RTL padding and margin adjustments */
@@ -401,4 +420,60 @@
 
 @utility duration-200 {
     transition-duration: 200ms;
+}
+
+/* Rubik font utility classes */
+@utility font-rubik {
+    font-family: var(--font-arabic);
+    font-optical-sizing: auto;
+    font-style: normal;
+}
+
+@utility font-rubik-light {
+    font-family: var(--font-arabic);
+    font-weight: 300;
+    font-optical-sizing: auto;
+    font-style: normal;
+}
+
+@utility font-rubik-regular {
+    font-family: var(--font-arabic);
+    font-weight: 400;
+    font-optical-sizing: auto;
+    font-style: normal;
+}
+
+@utility font-rubik-medium {
+    font-family: var(--font-arabic);
+    font-weight: 500;
+    font-optical-sizing: auto;
+    font-style: normal;
+}
+
+@utility font-rubik-semibold {
+    font-family: var(--font-arabic);
+    font-weight: 600;
+    font-optical-sizing: auto;
+    font-style: normal;
+}
+
+@utility font-rubik-bold {
+    font-family: var(--font-arabic);
+    font-weight: 700;
+    font-optical-sizing: auto;
+    font-style: normal;
+}
+
+@utility font-rubik-extrabold {
+    font-family: var(--font-arabic);
+    font-weight: 800;
+    font-optical-sizing: auto;
+    font-style: normal;
+}
+
+@utility font-rubik-black {
+    font-family: var(--font-arabic);
+    font-weight: 900;
+    font-optical-sizing: auto;
+    font-style: normal;
 }
