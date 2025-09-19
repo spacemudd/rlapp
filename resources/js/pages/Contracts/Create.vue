@@ -15,6 +15,8 @@ import { ArrowLeft, Calendar, DollarSign, FileText, User, Car, Plus } from 'luci
 import { Checkbox } from '@/components/ui/checkbox';
 import { useI18n } from 'vue-i18n';
 
+interface BranchOption { id: string; name: string; city?: string; country: string }
+
 interface Props {
     contractNumber: string;
     newCustomer?: any;
@@ -27,6 +29,7 @@ interface Props {
         end_date?: string;
         daily_rate?: number;
     };
+    branches?: BranchOption[];
 }
 
 interface PricingBreakdown {
@@ -45,6 +48,7 @@ const { t } = useI18n();
 const form = useForm({
     customer_id: '',
     vehicle_id: '',
+    branch_id: '',
     start_date: '',
     end_date: '',
     daily_rate: 0,
@@ -815,6 +819,21 @@ watch(() => props.newCustomer, (customer) => {
                         <CardDescription>{{ t('set_rental_period_terms') }}</CardDescription>
                     </CardHeader>
                     <CardContent class="space-y-6">
+                        <div class="grid gap-4 md:grid-cols-2">
+                            <div class="space-y-2">
+                                <Label for="branch_id">{{ t('branch') }}</Label>
+                                <select
+                                    id="branch_id"
+                                    v-model="form.branch_id"
+                                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                >
+                                    <option value="">{{ t('select') || 'Select' }}</option>
+                                    <option v-for="b in (props.branches || [])" :key="b.id" :value="b.id">
+                                        {{ b.name }}{{ b.city ? ', ' + b.city : '' }}
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
                         <div class="grid gap-4 md:grid-cols-2">
                                                             <div class="space-y-2">
                                     <Label for="start_date">{{ t('start_date_time') }} * <span class="text-xs text-gray-500">{{ t('dubai_time_gmt4') }}</span></Label>

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ArrowLeft, Edit, User, Car, Calendar, DollarSign, FileText, Receipt, MoreVertical, Play, CheckCircle, XCircle, Trash2, Download } from 'lucide-vue-next';
+import { ArrowLeft, Edit, User, Car, Calendar, DollarSign, FileText, Receipt, MoreVertical, Play, CheckCircle, XCircle, Trash2, Download, Mail, FileSignature } from 'lucide-vue-next';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -37,6 +37,12 @@ interface Contract {
         year: number;
         color: string;
         chassis_number: string;
+        branch?: {
+            id: string;
+            name: string;
+            city?: string;
+            country: string;
+        }
     };
     start_date: string;
     end_date: string;
@@ -78,6 +84,12 @@ interface Contract {
         created_at: string;
     }>;
     void_reason?: string;
+    branch?: {
+        id: string;
+        name: string;
+        city?: string;
+        country: string;
+    };
 }
 
 interface Props {
@@ -101,11 +113,23 @@ const extensionForm = useForm({
 // Dialog state
 const showVoidDialog = ref(false);
 const showExtendDialog = ref(false);
+const showActivateDialog = ref(false);
 const extensionPricing = ref<any>(null);
+
+// Expand/collapse state
+const allExpanded = ref(false);
 
 // Action handlers
 const activateContract = () => {
-    useForm({}).patch(route('contracts.activate', props.contract.id));
+    showActivateDialog.value = true;
+};
+
+const confirmActivation = () => {
+    useForm({}).patch(route('contracts.activate', props.contract.id), {
+        onSuccess: () => {
+            showActivateDialog.value = false;
+        }
+    });
 };
 
 const completeContract = () => {
@@ -283,18 +307,12 @@ const sectionIds = [
     'section-void'
 ] as const;
 
-const expandAll = async () => {
+const toggleExpandAll = async () => {
     await nextTick();
+    allExpanded.value = !allExpanded.value;
     document
         .querySelectorAll<HTMLDetailsElement>('details[data-collapsible]')
-        .forEach((el) => (el.open = true));
-};
-
-const collapseAll = async () => {
-    await nextTick();
-    document
-        .querySelectorAll<HTMLDetailsElement>('details[data-collapsible]')
-        .forEach((el) => (el.open = false));
+        .forEach((el) => (el.open = allExpanded.value));
 };
 </script>
 
@@ -442,8 +460,21 @@ const collapseAll = async () => {
                     </div>
                     <!-- Compact controls bar -->
                     <div class="flex items-center gap-2 text-sm">
-                        <Button size="sm" class="h-7 px-2 py-1 text-xs" variant="outline" @click="expandAll">{{ t('expand_all') }}</Button>
-                        <Button size="sm" class="h-7 px-2 py-1 text-xs" variant="outline" @click="collapseAll">{{ t('collapse_all') }}</Button>
+                        <Button size="sm" class="h-7 px-2 py-1 text-xs" variant="outline" @click="toggleExpandAll">
+                            {{ allExpanded ? t('collapse_all') : t('expand_all') }}
+                        </Button>
+                        <div class="text-gray-400">|</div>
+                        <div class="flex flex-wrap gap-2">
+                            <Button size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700">
+                                {{ t('quick_pay') }}
+                            </Button>
+                            <Button size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700">
+                                {{ t('additional_fees') }}
+                            </Button>
+                            <Button size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700">
+                                {{ t('traffic_fines') }}
+                            </Button>
+                        </div>
                         <div class="text-gray-400">|</div>
                         <div class="flex flex-wrap gap-2">
                             <a class="underline text-blue-600 hover:text-blue-800" :href="'#section-information'">{{ t('information') }}</a>
@@ -548,6 +579,10 @@ const collapseAll = async () => {
                             <div>
                                 <span class="text-sm text-gray-500">{{ t('end_date') }}</span>
                                 <p class="font-medium">{{ formatDate(contract.end_date) }}</p>
+                            </div>
+                            <div v-if="contract.branch">
+                                <span class="text-sm text-gray-500">{{ t('branch') }}</span>
+                                <p class="font-medium">{{ contract.branch.name }}<span v-if="contract.branch.city">, {{ contract.branch.city }}</span></p>
                             </div>
                             <div>
                                 <span class="text-sm text-gray-500">{{ t('total_days') }}</span>
@@ -842,6 +877,48 @@ const collapseAll = async () => {
                         </Button>
                     </DialogFooter>
                 </form>
+            </DialogContent>
+        </Dialog>
+
+        <!-- Activate Contract Confirmation Dialog -->
+        <Dialog v-model:open="showActivateDialog">
+            <DialogContent class="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle class="flex items-center gap-2">
+                        <Play class="w-5 h-5 text-green-600" />
+                        {{ t('activate_contract_confirmation') }}
+                    </DialogTitle>
+                    <DialogDescription>
+                        {{ t('activate_contract_description') }}
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div class="space-y-4">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h4 class="font-medium text-blue-900 mb-3">{{ t('what_will_happen') }}:</h4>
+                        <div class="space-y-3">
+                            <div class="flex items-start gap-3">
+                                <Mail class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                                <div>
+                                    <p class="text-sm text-blue-800 font-medium">{{ t('activation_will_send_welcome') }}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3">
+                                <FileSignature class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                                <div>
+                                    <p class="text-sm text-blue-800 font-medium">{{ t('activation_will_send_contract') }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <DialogFooter>
+                    <Button type="button" variant="outline" @click="showActivateDialog = false">{{ t('cancel') }}</Button>
+                    <Button type="button" @click="confirmActivation" class="bg-green-600 hover:bg-green-700">
+                        {{ t('proceed_with_activation') }}
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     </AppLayout>

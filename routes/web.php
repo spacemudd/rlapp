@@ -87,6 +87,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/api/locations', [App\Http\Controllers\LocationController::class, 'api'])->name('api.locations');
 });
 
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::resource('branches', App\Http\Controllers\BranchController::class);
+});
+
 Route::resource('customers', App\Http\Controllers\CustomerController::class)
     ->middleware(['auth', 'verified']);
 

@@ -15,11 +15,19 @@ interface Location {
     country: string;
 }
 
-interface Props {
-    locations: Location[];
+interface Branch {
+    id: string;
+    name: string;
+    city?: string;
+    country: string;
 }
 
-const { locations } = defineProps<Props>();
+interface Props {
+    locations: Location[];
+    branches: Branch[];
+}
+
+const { locations, branches } = defineProps<Props>();
 
 const form = useForm({
     plate_number: '',
@@ -34,6 +42,7 @@ const form = useForm({
     price_weekly: undefined as number | undefined,
     price_monthly: undefined as number | undefined,
     location_id: '',
+    branch_id: '',
     status: 'available',
     ownership_status: 'owned',
     borrowed_from_office: '',
@@ -260,7 +269,7 @@ if (!form.insurance_expiry_date) {
                                 <CardTitle>Category & Status</CardTitle>
                             </CardHeader>
                             <CardContent class="space-y-4">
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
                                         <Label for="category">Category *</Label>
                                         <select
@@ -281,7 +290,7 @@ if (!form.insurance_expiry_date) {
                                             {{ form.errors.category }}
                                         </div>
                                     </div>
-                                    <div>
+                        <div>
                                         <Label for="status">Status *</Label>
                                         <select
                                             id="status"
@@ -300,7 +309,7 @@ if (!form.insurance_expiry_date) {
                                             {{ form.errors.status }}
                                         </div>
                                     </div>
-                                    <div>
+                        <div>
                                         <Label for="location_id">Current Location</Label>
                                         <select
                                             id="location_id"
@@ -319,6 +328,25 @@ if (!form.insurance_expiry_date) {
                                             {{ form.errors.location_id }}
                                         </div>
                                     </div>
+                        <div>
+                            <Label for="branch_id">Branch</Label>
+                            <select
+                                id="branch_id"
+                                v-model="form.branch_id"
+                                :class="[
+                                    'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+                                    { 'border-red-500': form.errors.branch_id }
+                                ]"
+                            >
+                                <option value="">Select Branch</option>
+                                <option v-for="branch in branches" :key="branch.id" :value="branch.id">
+                                    {{ branch.name }}{{ branch.city ? ', ' + branch.city : '' }}
+                                </option>
+                            </select>
+                            <div v-if="form.errors.branch_id" class="text-red-500 text-sm mt-1">
+                                {{ form.errors.branch_id }}
+                            </div>
+                        </div>
                                 </div>
                             </CardContent>
                         </Card>

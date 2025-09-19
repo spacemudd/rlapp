@@ -53,6 +53,12 @@ interface Vehicle {
         city?: string;
         country: string;
     };
+    branch?: {
+        id: string;
+        name: string;
+        city?: string;
+        country: string;
+    };
     license_expiry_date: string;
     insurance_expiry_date: string;
     recent_note?: string;
@@ -286,8 +292,14 @@ const formatCurrency = (amount?: number) => {
                                                 {{ vehicle.status.charAt(0).toUpperCase() + vehicle.status.slice(1).replace('_', ' ') }}
                                             </Badge>
                                         </td>
-                                                                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                              {{ vehicle.category }}
+                                         </td>
+                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                             <div class="flex items-center space-x-2" v-if="vehicle.branch">
+                                                 <Building2 class="w-4 h-4 text-gray-500" />
+                                                 <span>{{ vehicle.branch.name }}</span>
+                                             </div>
                                          </td>
                                          <td class="px-6 py-4 whitespace-nowrap">
                                              <div class="flex flex-col">

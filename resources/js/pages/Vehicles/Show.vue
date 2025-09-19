@@ -59,6 +59,12 @@ interface Vehicle {
         country: string;
         full_address: string;
     };
+    branch?: {
+        id: string;
+        name: string;
+        city?: string;
+        country: string;
+    };
     license_expiry_date: string;
     insurance_expiry_date: string;
     recent_note?: string;
@@ -254,6 +260,13 @@ const isExpired = (dateString: string) => {
                                         <dd class="mt-1 text-sm text-gray-900 flex items-center">
                                             <MapPin class="w-4 h-4 mr-1 text-gray-400" />
                                             {{ vehicle.location.name }}{{ vehicle.location.city ? ', ' + vehicle.location.city : '' }}
+                                        </dd>
+                                    </div>
+                                    <div v-if="vehicle.branch">
+                                        <dt class="text-sm font-medium text-gray-500">Branch</dt>
+                                        <dd class="mt-1 text-sm text-gray-900 flex items-center">
+                                            <Building2 class="w-4 h-4 mr-1 text-gray-400" />
+                                            {{ vehicle.branch.name }}{{ vehicle.branch.city ? ', ' + vehicle.branch.city : '' }}
                                         </dd>
                                     </div>
                                 </div>

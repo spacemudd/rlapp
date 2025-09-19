@@ -21,6 +21,7 @@ class Contract extends Model
         'status',
         'customer_id',
         'vehicle_id',
+        'branch_id',
         'team_id',
         'start_date',
         'end_date',
@@ -107,6 +108,14 @@ class Contract extends Model
     public function vehicle()
     {
         return $this->belongsTo(Vehicle::class);
+    }
+
+    /**
+     * Get the branch this contract is registered under.
+     */
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     /**

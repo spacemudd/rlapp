@@ -506,7 +506,7 @@ class AccountingService
     /**
      * Get the current entity.
      */
-    private function getCurrentEntity(): Entity
+    public function getCurrentEntity(): Entity
     {
         static $entity = null;
 

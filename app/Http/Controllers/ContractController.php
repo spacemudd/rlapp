@@ -6,6 +6,7 @@ use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\Vehicle;
 use App\Models\Invoice;
+use App\Models\Branch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -111,6 +112,11 @@ class ContractController extends Controller
         if (session()->has('newCustomer')) {
             $props['newCustomer'] = session('newCustomer');
         }
+
+        // Provide active branches for selection
+        $props['branches'] = Branch::active()
+            ->orderBy('name')
+            ->get(['id', 'name', 'city', 'country']);
 
         return Inertia::render('Contracts/Create', $props);
     }
@@ -237,6 +243,7 @@ class ContractController extends Controller
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'vehicle_id' => 'required|exists:vehicles,id',
+            'branch_id' => 'nullable|uuid|exists:branches,id',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
             'daily_rate' => 'required|numeric|min:0',
@@ -316,6 +323,7 @@ class ContractController extends Controller
             'team_id' => Auth::user()->team_id,
             'customer_id' => $validated['customer_id'],
             'vehicle_id' => $validated['vehicle_id'],
+            'branch_id' => $validated['branch_id'] ?? null,
             'start_date' => $validated['start_date'],
             'end_date' => $validated['end_date'],
             'daily_rate' => $dailyRate,
@@ -347,7 +355,7 @@ class ContractController extends Controller
      */
     public function show(Contract $contract): Response
     {
-        $contract->load(['customer', 'vehicle', 'invoices', 'extensions']);
+        $contract->load(['customer', 'vehicle.branch', 'branch', 'invoices', 'extensions']);
 
         return Inertia::render('Contracts/Show', [
             'contract' => $contract,
@@ -387,6 +395,7 @@ class ContractController extends Controller
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'vehicle_id' => 'required|exists:vehicles,id',
+            'branch_id' => 'nullable|uuid|exists:branches,id',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
             'daily_rate' => 'required|numeric|min:0',
@@ -405,6 +414,7 @@ class ContractController extends Controller
         $contract->update([
             'customer_id' => $validated['customer_id'],
             'vehicle_id' => $validated['vehicle_id'],
+            'branch_id' => $validated['branch_id'] ?? null,
             'start_date' => $validated['start_date'],
             'end_date' => $validated['end_date'],
             'daily_rate' => $validated['daily_rate'],
