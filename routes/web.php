@@ -15,7 +15,7 @@ Route::get('/', function () {
         return redirect()->route('dashboard');
     }
     return redirect()->route('login');
-});
+})->name('home');
 
 // Media routes for secure file access
 Route::middleware(['auth', 'verified'])->group(function () {
