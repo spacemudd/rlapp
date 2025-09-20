@@ -28,6 +28,7 @@ interface Props {
         start_date?: string;
         end_date?: string;
         daily_rate?: number;
+        branch_id?: string;
     };
     branches?: BranchOption[];
 }
@@ -318,6 +319,13 @@ watch(() => form.final_price_override, (newFinalPrice) => {
     }
 });
 
+// Watch for branch selection changes to save to cookie
+watch(() => form.branch_id, (newBranchId) => {
+    if (newBranchId) {
+        setCookie('selected_branch_id', newBranchId, 30); // Save for 30 days
+    }
+});
+
 // Handle vehicle selection
 const handleVehicleSelected = (vehicle: any) => {
     selectedVehicle.value = vehicle;
@@ -384,6 +392,24 @@ const formatCurrency = (amount: number, currency: string = 'AED') => {
         currency: currency,
         minimumFractionDigits: 2,
     }).format(amount);
+};
+
+// Cookie utility functions
+const setCookie = (name: string, value: string, days: number = 30) => {
+    const expires = new Date();
+    expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+    document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
+};
+
+const getCookie = (name: string): string | null => {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
 };
 
 const translateBlockReason = (reason: string) => {
@@ -523,6 +549,12 @@ const submit = () => {
         return;
     }
 
+    // Validate required fields
+    if (!form.branch_id) {
+        form.setError('branch_id', 'Branch selection is required.');
+        return;
+    }
+
     // Convert Dubai time to UTC for backend storage
     const formData = { ...form.data() };
 
@@ -544,6 +576,14 @@ const submit = () => {
 
 // Initialize component
 onMounted(() => {
+    // Load saved branch from cookie if no prefill branch is provided
+    if (!props.prefill?.branch_id) {
+        const savedBranchId = getCookie('selected_branch_id');
+        if (savedBranchId) {
+            form.branch_id = savedBranchId;
+        }
+    }
+
     // Prefill values if provided (from reservations list)
     if (props.prefill) {
         if (props.prefill.customer_id) {
@@ -576,6 +616,9 @@ onMounted(() => {
         }
         if (props.prefill.daily_rate) {
             form.daily_rate = props.prefill.daily_rate;
+        }
+        if (props.prefill.branch_id) {
+            form.branch_id = props.prefill.branch_id;
         }
     }
 
@@ -634,14 +677,14 @@ watch(() => props.newCustomer, (customer) => {
                         <button type="button" class="px-3 py-1 rounded-md text-sm"
                                 :class="activeStep === 2 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'"
                                 @click="goToStep(2)"
-                                :disabled="!form.customer_id || !form.vehicle_id">
+                                :disabled="!form.customer_id || !form.vehicle_id || !form.branch_id">
                             2. {{ t('pricing') }}
                         </button>
                         <span class="text-muted-foreground">→</span>
                         <button type="button" class="px-3 py-1 rounded-md text-sm"
                                 :class="activeStep === 3 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'"
                                 @click="goToStep(3)"
-                                :disabled="!form.customer_id || !form.vehicle_id">
+                                :disabled="!form.customer_id || !form.vehicle_id || !form.branch_id">
                             3. {{ t('terms') }}
                         </button>
                     </div>
@@ -788,20 +831,26 @@ watch(() => props.newCustomer, (customer) => {
                                 @option-selected="handleVehicleSelected"
                             />
 
-                            <div v-if="selectedVehicle" class="p-3 bg-gray-50 rounded-md">
+                            <div class="p-3 bg-gray-50 rounded-md">
                                 <h4 class="font-medium text-gray-900 mb-2">{{ t('pricing_options') }}</h4>
                                 <div class="grid grid-cols-3 gap-2 text-sm">
                                     <div>
                                         <span class="text-gray-500">{{ t('daily') }}:</span>
-                                        <p class="font-medium">{{ formatCurrency(selectedVehicle.price_daily) }}</p>
+                                        <p class="font-medium">
+                                            {{ selectedVehicle ? formatCurrency(selectedVehicle.price_daily) : '-' }}
+                                        </p>
                                     </div>
                                     <div>
                                         <span class="text-gray-500">{{ t('weekly') }}:</span>
-                                        <p class="font-medium">{{ formatCurrency(selectedVehicle.price_weekly) }}</p>
+                                        <p class="font-medium">
+                                            {{ selectedVehicle ? formatCurrency(selectedVehicle.price_weekly) : '-' }}
+                                        </p>
                                     </div>
                                     <div>
                                         <span class="text-gray-500">{{ t('monthly') }}:</span>
-                                        <p class="font-medium">{{ formatCurrency(selectedVehicle.price_monthly) }}</p>
+                                        <p class="font-medium">
+                                            {{ selectedVehicle ? formatCurrency(selectedVehicle.price_monthly) : '-' }}
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -821,17 +870,22 @@ watch(() => props.newCustomer, (customer) => {
                     <CardContent class="space-y-6">
                         <div class="grid gap-4 md:grid-cols-2">
                             <div class="space-y-2">
-                                <Label for="branch_id">{{ t('branch') }}</Label>
+                                <Label for="branch_id">{{ t('branch') }} *</Label>
                                 <select
                                     id="branch_id"
                                     v-model="form.branch_id"
                                     class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                    :class="{ 'border-red-500': form.errors.branch_id }"
+                                    required
                                 >
                                     <option value="">{{ t('select') || 'Select' }}</option>
                                     <option v-for="b in (props.branches || [])" :key="b.id" :value="b.id">
                                         {{ b.name }}{{ b.city ? ', ' + b.city : '' }}
                                     </option>
                                 </select>
+                                <div v-if="form.errors.branch_id" class="text-sm text-red-600">
+                                    {{ form.errors.branch_id }}
+                                </div>
                             </div>
                         </div>
                         <div class="grid gap-4 md:grid-cols-2">
@@ -1160,7 +1214,7 @@ watch(() => props.newCustomer, (customer) => {
                     </Link>
                     <div class="flex gap-2">
                         <Button type="button" variant="outline" @click="prevStep" :disabled="activeStep === 1">{{ t('back') }}</Button>
-                        <Button v-if="activeStep < 3" type="button" @click="nextStep" :disabled="(activeStep === 1 && (!form.customer_id || !form.vehicle_id))">
+                        <Button v-if="activeStep < 3" type="button" @click="nextStep" :disabled="(activeStep === 1 && (!form.customer_id || !form.vehicle_id || !form.branch_id))">
                             {{ t('next') }}
                         </Button>
                         <Button v-else type="submit" :disabled="form.processing">

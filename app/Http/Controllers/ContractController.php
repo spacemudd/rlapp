@@ -334,7 +334,7 @@ class ContractController extends Controller
             // 'terms_and_conditions' removed from create flow
             'notes' => $validated['notes'] ?? null,
             'created_by' => Auth::user()->name,
-            'status' => 'draft',
+            'status' => 'active',
             // Override fields
             'override_daily_rate' => $overrideDailyRate,
             'override_final_price' => $overrideFinalPrice,

@@ -678,6 +678,31 @@ const messages = {
         no_invoice: 'No invoice',
         unknown_customer: 'Unknown customer',
         customer_information_from_contract: 'Customer Information (from Contract)',
+        
+        // Vehicle Delivery & Pickup
+        vehicles_to_deliver_today: 'Scheduled Deliveries',
+        vehicles_to_receive: 'Scheduled Pickups',
+        delivery_schedule: 'Delivery Schedule',
+        pickup_schedule: 'Pickup Schedule',
+        scheduled_deliveries: 'Scheduled Deliveries',
+        scheduled_pickups: 'Scheduled Pickups',
+        contract_starting_today: 'Contract Starting Today',
+        contracts_ending_today: 'Contracts Ending Today',
+        contracts_ending_tomorrow: 'Contracts Ending Tomorrow',
+        no_deliveries_today: 'No deliveries scheduled for today',
+        no_pickups_scheduled: 'No pickups scheduled',
+        upcoming_reservations: 'Upcoming Reservations',
+        no_upcoming_reservations: 'No upcoming reservations',
+        vehicle_info: 'Vehicle Info',
+        start_time: 'Start Time',
+        end_time: 'End Time',
+        unknown_vehicle: 'Unknown Vehicle',
+        
+        // Dashboard Sections
+        finance_overview: 'Finance Overview',
+        fleet_management: 'Fleet Management',
+        contracts_overview: 'Contracts Overview',
+        payment_methods: 'Payment Methods',
     },
     ar: {
         // Profile & Settings
@@ -1355,6 +1380,31 @@ const messages = {
         no_invoice: 'لا توجد فاتورة',
         unknown_customer: 'عميل غير معروف',
         customer_information_from_contract: 'معلومات العميل (من العقد)',
+        
+        // Vehicle Delivery & Pickup
+        vehicles_to_deliver_today: 'التسليمات المجدولة',
+        vehicles_to_receive: 'الاستلامات المجدولة',
+        delivery_schedule: 'جدول التسليم',
+        pickup_schedule: 'جدول الاستلام',
+        scheduled_deliveries: 'التسليمات المجدولة',
+        scheduled_pickups: 'الاستلامات المجدولة',
+        contract_starting_today: 'عقد يبدأ اليوم',
+        contracts_ending_today: 'عقود تنتهي اليوم',
+        contracts_ending_tomorrow: 'عقود تنتهي غداً',
+        no_deliveries_today: 'لا توجد تسليمات مجدولة لليوم',
+        no_pickups_scheduled: 'لا توجد استلامات مجدولة',
+        upcoming_reservations: 'الحجوزات القادمة',
+        no_upcoming_reservations: 'لا توجد حجوزات قادمة',
+        vehicle_info: 'معلومات المركبة',
+        start_time: 'وقت البداية',
+        end_time: 'وقت النهاية',
+        unknown_vehicle: 'مركبة غير معروفة',
+        
+        // Dashboard Sections
+        finance_overview: 'نظرة عامة مالية',
+        fleet_management: 'إدارة الأسطول',
+        contracts_overview: 'نظرة عامة على العقود',
+        payment_methods: 'طرق الدفع',
     },
 };
 

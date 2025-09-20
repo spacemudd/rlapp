@@ -21,7 +21,7 @@ const { isRtl, marginClasses } = useDirection();
                 <DropdownMenuTrigger as-child>
                     <SidebarMenuButton size="lg" class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground" :class="{ 'flex-row-reverse': isRtl }">
                         <UserInfo :user="user" />
-                        <ChevronsUpDown :class="[marginClasses.ml('auto').value, 'size-4']" />
+                        <ChevronsUpDown :class="[marginClasses.ml('auto').value, 'size-4 group-data-[collapsible=icon]:hidden']" />
                     </SidebarMenuButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent

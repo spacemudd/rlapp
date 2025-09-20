@@ -70,12 +70,12 @@ const toggleLanguage = () => {
                         :class="{ 'flex-row-reverse': isRtl }"
                     >
                         <template v-if="isRtl">
-                            <span>{{ toggleLanguageText }}</span>
-                            <Globe class="size-4" />
+                            <span class="group-data-[collapsible=icon]:hidden">{{ toggleLanguageText }}</span>
+                            <Globe class="size-4 group-data-[collapsible=icon]:mx-auto" />
                         </template>
                         <template v-else>
-                            <Globe class="size-4" />
-                            <span>{{ toggleLanguageText }}</span>
+                            <Globe class="size-4 group-data-[collapsible=icon]:mx-auto" />
+                            <span class="group-data-[collapsible=icon]:hidden">{{ toggleLanguageText }}</span>
                         </template>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -85,12 +85,12 @@ const toggleLanguage = () => {
                     <SidebarMenuButton class="text-neutral-600 hover:text-neutral-800 dark:text-neutral-300 dark:hover:text-neutral-100" as-child>
                         <a :href="item.href" target="_blank" rel="noopener noreferrer" :class="{ 'flex-row-reverse': isRtl }">
                             <template v-if="isRtl">
-                                <span>{{ item.title }}</span>
-                                <component :is="item.icon" />
+                                <span class="group-data-[collapsible=icon]:hidden">{{ item.title }}</span>
+                                <component :is="item.icon" class="group-data-[collapsible=icon]:mx-auto" />
                             </template>
                             <template v-else>
-                                <component :is="item.icon" />
-                                <span>{{ item.title }}</span>
+                                <component :is="item.icon" class="group-data-[collapsible=icon]:mx-auto" />
+                                <span class="group-data-[collapsible=icon]:hidden">{{ item.title }}</span>
                             </template>
                         </a>
                     </SidebarMenuButton>
