@@ -611,6 +611,26 @@ const messages = {
         copied: 'Copied!',
         remove_member: 'Remove Member',
 
+        // Invitation Page
+        invitation: {
+            title: 'Accept Team Invitation',
+            you_are_invited: "You're Invited!",
+            invited_by_text: 'has invited you to join',
+            as_role: 'as a',
+            email: 'Email',
+            expires: 'Expires',
+            full_name: 'Full Name',
+            enter_full_name: 'Enter your full name',
+            password: 'Password',
+            create_password: 'Create a password',
+            confirm_password: 'Confirm Password',
+            confirm_your_password: 'Confirm your password',
+            accept_invitation: 'Accept Invitation & Create Account',
+            creating_account: 'Creating Account...',
+            decline_invitation: 'Decline Invitation',
+            decline_confirm: 'Are you sure you want to decline this invitation?',
+        },
+
         // General
         all_status: 'All Status',
         maintenance: 'Maintenance',
@@ -1267,6 +1287,26 @@ const messages = {
         copy_link: 'نسخ الرابط',
         copied: 'تم النسخ!',
         remove_member: 'إزالة العضو',
+
+        // Invitation Page
+        invitation: {
+            title: 'قبول دعوة الفريق',
+            you_are_invited: 'أنت مدعو!',
+            invited_by_text: 'دعاك للانضمام إلى',
+            as_role: 'كـ',
+            email: 'البريد الإلكتروني',
+            expires: 'ينتهي في',
+            full_name: 'الاسم الكامل',
+            enter_full_name: 'أدخل اسمك الكامل',
+            password: 'كلمة المرور',
+            create_password: 'إنشاء كلمة مرور',
+            confirm_password: 'تأكيد كلمة المرور',
+            confirm_your_password: 'أكد كلمة المرور',
+            accept_invitation: 'قبول الدعوة وإنشاء حساب',
+            creating_account: 'جاري إنشاء الحساب...',
+            decline_invitation: 'رفض الدعوة',
+            decline_confirm: 'هل أنت متأكد من رفض هذه الدعوة؟',
+        },
 
         // General
         all_status: 'جميع الحالات',
