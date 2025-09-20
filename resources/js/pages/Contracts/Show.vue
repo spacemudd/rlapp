@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ArrowLeft, Edit, User, Car, Calendar, DollarSign, FileText, Receipt, MoreVertical, Play, CheckCircle, XCircle, Trash2, Download, Mail, FileSignature } from 'lucide-vue-next';
+import { Edit, User, Car, Calendar, DollarSign, FileText, Receipt, MoreVertical, Play, CheckCircle, XCircle, Trash2, Download, Mail, FileSignature } from 'lucide-vue-next';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -94,6 +94,10 @@ interface Contract {
 
 interface Props {
     contract: Contract;
+    breadcrumbs?: Array<{
+        title: string;
+        href?: string;
+    }>;
 }
 
 const props = defineProps<Props>();
@@ -118,6 +122,7 @@ const extensionPricing = ref<any>(null);
 
 // Expand/collapse state
 const allExpanded = ref(false);
+
 
 // Action handlers
 const activateContract = () => {
@@ -319,22 +324,13 @@ const toggleExpandAll = async () => {
 <template>
     <Head :title="`${t('contract')} ${contract.contract_number}`" />
 
-    <AppLayout>
+    <AppLayout :breadcrumbs="props.breadcrumbs?.map(item => ({ title: item.title, href: item.href || '#' }))">
         <div class="p-4">
                 <!-- Header -->
                 <div class="space-y-4">
-                    <!-- Back Button -->
-                    <div>
-                        <Link :href="route('contracts.index')">
-                            <Button variant="ghost" size="sm">
-                                <ArrowLeft class="w-4 h-4 mr-2" />
-                                {{ t('back_to_contracts') }}
-                            </Button>
-                        </Link>
-                    </div>
 
                     <!-- Contract Info and Actions (compact) -->
-                    <div class="flex items-center justify-between">
+                    <div class="flex justify-between">
                         <div>
                             <h1 class="text-2xl font-semibold text-gray-900">{{ contract.contract_number }}</h1>
                             <div class="flex items-center gap-3 mt-1">

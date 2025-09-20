@@ -15,9 +15,9 @@ const props = defineProps<{
 
 const { isRtl } = useDirection();
 
-// Reverse breadcrumbs order in RTL mode
+// Keep breadcrumbs in original order, RTL styling handles the visual direction
 const orderedBreadcrumbs = computed(() => {
-    return isRtl.value ? [...props.breadcrumbs].reverse() : props.breadcrumbs;
+    return props.breadcrumbs;
 });
 </script>
 

@@ -708,7 +708,7 @@ function isReservationTomorrow(pickupDate: string) {
                                     <div class="space-y-3">
                                         <div v-if="vehiclesToReceive.length === 0" class="text-center py-4">
                                             <Truck class="w-8 h-8 mx-auto text-gray-400 mb-2" />
-                                            <p class="text-xs text-gray-500">{{ t('no_pickups_scheduled') }}</p>
+                                            <p class="text-xs text-gray-500 text-center">{{ t('no_pickups_scheduled') }}</p>
                                         </div>
                                         
                                         <div

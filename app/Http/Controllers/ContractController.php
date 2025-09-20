@@ -357,8 +357,23 @@ class ContractController extends Controller
     {
         $contract->load(['customer', 'vehicle.branch', 'branch', 'invoices', 'extensions']);
 
+        $breadcrumbs = [
+            [
+                'title' => __('words.dashboard'),
+                'href' => route('dashboard'),
+            ],
+            [
+                'title' => __('words.contracts'),
+                'href' => route('contracts.index'),
+            ],
+            [
+                'title' => $contract->contract_number,
+            ],
+        ];
+
         return Inertia::render('Contracts/Show', [
             'contract' => $contract,
+            'breadcrumbs' => $breadcrumbs,
         ]);
     }
 
