@@ -1,13 +1,6 @@
 ---
-description:
-globs:
 alwaysApply: true
 ---
-
----
-alwaysApply: true
----
-
   This is a Laravel web-based application.
 
   Key Principles
@@ -62,4 +55,14 @@ alwaysApply: true
   8. Use Laravel's event and listener system for decoupled code.
   9. Implement proper database transactions for data integrity.
   10. Use Laravel's built-in scheduling features for recurring tasks.
+
+  ---
+
+  1. When adding strings, make sure it is translated in the words.php files and in the i18n file.
+  2. Don't run php artisan serve since it is run locally.
+  3. Don't use the css class "items-center" since it doesn't work in RTL mode.
+  4. RTL mode is used in this system, meaning, need to take care for CSS settings for RTL/LTR mode.
+  5. If there is a string for numbers, give span a dir=ltr.
+  6. If there is a string for email, give span dir=ltr.
+
   

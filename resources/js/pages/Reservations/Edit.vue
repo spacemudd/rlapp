@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, Save, ArrowLeft } from 'lucide-vue-next';
 import { ref, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 interface Customer {
   id: number;
@@ -46,6 +47,7 @@ const page = usePage();
 const reservation = page.props.reservation as Reservation;
 const customers = page.props.customers as Customer[];
 const vehicles = page.props.vehicles as Vehicle[];
+const { t } = useI18n();
 
 // Format datetime for input
 const formatDateTimeLocal = (dateString: string) => {
@@ -91,19 +93,19 @@ onMounted(() => {
 
 <template>
   <AppSidebarLayout :breadcrumbs="[
-    { title: 'Reservations', href: '/reservations' },
+    { title: t('reservations'), href: '/reservations' },
     { title: reservation.uid, href: `/reservations/${reservation.id}` },
-    { title: 'Edit', href: `/reservations/${reservation.id}/edit` }
+    { title: t('edit'), href: `/reservations/${reservation.id}/edit` }
   ]">
     <div class="p-6">
       <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
-        <div class="flex items-center space-x-4">
+      <div class="flex justify-between mb-6">
+        <div class="flex space-x-4">
           <Button variant="ghost" @click="$inertia.visit(`/reservations/${reservation.id}`)" class="p-2">
             <ArrowLeft class="w-4 h-4" />
           </Button>
           <div>
-            <h1 class="text-3xl font-bold text-gray-900">Edit Reservation</h1>
+            <h1 class="text-3xl font-bold text-gray-900">{{ t('edit') }} {{ t('reservations') }}</h1>
             <p class="text-gray-600 mt-1">{{ reservation.uid }}</p>
           </div>
         </div>
@@ -112,9 +114,9 @@ onMounted(() => {
       <!-- Form -->
       <Card class="max-w-4xl">
         <CardHeader>
-          <CardTitle class="flex items-center">
+          <CardTitle class="flex">
             <Calendar class="w-5 h-5 mr-2" />
-            Reservation Details
+            {{ t('reservation_details_title') }}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -122,14 +124,14 @@ onMounted(() => {
             <!-- Customer Selection -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <Label for="customer_id" class="text-base font-medium">Customer *</Label>
+                <Label for="customer_id" class="text-base font-medium">{{ t('customer') }} *</Label>
                 <Select v-model="form.customer_id">
                   <SelectTrigger class="mt-2">
-                    <SelectValue placeholder="Select a customer" />
+                    <SelectValue :placeholder="t('select_customer')" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem v-for="customer in customers" :key="customer.id" :value="customer.id.toString()">
-                      {{ customer.name }} - {{ customer.email }}
+                      {{ customer.first_name }} {{ customer.last_name }} - {{ customer.email }}
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -140,10 +142,10 @@ onMounted(() => {
 
               <!-- Vehicle Selection -->
               <div>
-                <Label for="vehicle_id" class="text-base font-medium">Vehicle *</Label>
+                <Label for="vehicle_id" class="text-base font-medium">{{ t('vehicle') }} *</Label>
                 <Select v-model="form.vehicle_id" @update:model-value="handleVehicleSelect">
                   <SelectTrigger class="mt-2">
-                    <SelectValue placeholder="Select a vehicle" />
+                    <SelectValue :placeholder="t('select_vehicle')" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem v-for="vehicle in vehicles" :key="vehicle.id" :value="vehicle.id">
@@ -160,12 +162,13 @@ onMounted(() => {
             <!-- Dates and Location -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <Label for="pickup_date" class="text-base font-medium">Pickup Date *</Label>
+                <Label for="pickup_date" class="text-base font-medium">{{ t('pickup_date') }} *</Label>
                 <Input
                   id="pickup_date"
                   v-model="form.pickup_date"
                   type="datetime-local"
                   class="mt-2"
+                  dir="ltr"
                 />
                 <div v-if="form.errors.pickup_date" class="text-red-500 text-sm mt-1">
                   {{ form.errors.pickup_date }}
@@ -173,12 +176,13 @@ onMounted(() => {
               </div>
 
               <div>
-                <Label for="return_date" class="text-base font-medium">Return Date *</Label>
+                <Label for="return_date" class="text-base font-medium">{{ t('return_date') }} *</Label>
                 <Input
                   id="return_date"
                   v-model="form.return_date"
                   type="datetime-local"
                   class="mt-2"
+                  dir="ltr"
                 />
                 <div v-if="form.errors.return_date" class="text-red-500 text-sm mt-1">
                   {{ form.errors.return_date }}
@@ -186,11 +190,11 @@ onMounted(() => {
               </div>
 
               <div>
-                <Label for="pickup_location" class="text-base font-medium">Pickup Location *</Label>
+                <Label for="pickup_location" class="text-base font-medium">{{ t('pickup_location') }} *</Label>
                 <Input
                   id="pickup_location"
                   v-model="form.pickup_location"
-                  placeholder="Enter pickup location"
+                  :placeholder="t('enter_pickup_location')"
                   class="mt-2"
                 />
                 <div v-if="form.errors.pickup_location" class="text-red-500 text-sm mt-1">
@@ -202,7 +206,7 @@ onMounted(() => {
             <!-- Rate and Status -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <Label for="rate" class="text-base font-medium">Daily Rate (AED) *</Label>
+                <Label for="rate" class="text-base font-medium">{{ t('daily_rate_aed') }} *</Label>
                 <Input
                   id="rate"
                   v-model="form.rate"
@@ -210,6 +214,7 @@ onMounted(() => {
                   step="0.01"
                   placeholder="0.00"
                   class="mt-2"
+                  dir="ltr"
                 />
                 <div v-if="form.errors.rate" class="text-red-500 text-sm mt-1">
                   {{ form.errors.rate }}
@@ -217,16 +222,16 @@ onMounted(() => {
               </div>
 
               <div>
-                <Label for="status" class="text-base font-medium">Status</Label>
+                <Label for="status" class="text-base font-medium">{{ t('status') }}</Label>
                 <Select v-model="form.status">
                   <SelectTrigger class="mt-2">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="confirmed">Confirmed</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="canceled">Canceled</SelectItem>
+                    <SelectItem value="pending">{{ t('pending') }}</SelectItem>
+                    <SelectItem value="confirmed">{{ t('confirmed') }}</SelectItem>
+                    <SelectItem value="completed">{{ t('completed') }}</SelectItem>
+                    <SelectItem value="canceled">{{ t('cancelled') }}</SelectItem>
                   </SelectContent>
                 </Select>
                 <div v-if="form.errors.status" class="text-red-500 text-sm mt-1">
@@ -237,11 +242,11 @@ onMounted(() => {
 
             <!-- Notes -->
             <div>
-              <Label for="notes" class="text-base font-medium">Notes</Label>
+              <Label for="notes" class="text-base font-medium">{{ t('notes') }}</Label>
               <Textarea
                 id="notes"
                 v-model="form.notes"
-                placeholder="Add any additional notes about this reservation..."
+                :placeholder="t('add_notes_reservation')"
                 class="mt-2"
                 rows="4"
               />
@@ -253,11 +258,11 @@ onMounted(() => {
             <!-- Submit Button -->
             <div class="flex justify-end space-x-4 pt-6 border-t">
               <Button type="button" variant="outline" @click="$inertia.visit(`/reservations/${reservation.id}`)">
-                Cancel
+                {{ t('cancel') }}
               </Button>
               <Button type="submit" :disabled="form.processing" class="bg-blue-600 hover:bg-blue-700">
                 <Save class="w-4 h-4 mr-2" />
-                {{ form.processing ? 'Updating...' : 'Update Reservation' }}
+                {{ form.processing ? t('updating') : t('update_reservation') }}
               </Button>
             </div>
           </form>

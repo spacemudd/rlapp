@@ -78,6 +78,13 @@ const searchOptions = async (query: string) => {
 
 const selectOption = (option: Option) => {
     console.log('AsyncCombobox: Selecting option:', option);
+    
+    // Prevent selection of disabled options
+    if (option.disabled) {
+        console.log('AsyncCombobox: Option is disabled, preventing selection');
+        return;
+    }
+    
     selectedOption.value = option;
     searchQuery.value = option.label;
     isOpen.value = false;
@@ -245,16 +252,22 @@ defineExpose({
                         v-for="option in options"
                         :key="option.id"
                         type="button"
-                        class="w-full px-4 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none"
+                        class="w-full px-4 py-2 text-left focus:outline-none"
                         :class="{
-                            'bg-red-50 border-l-4 border-red-500': option.is_blocked,
-                            'bg-blue-50': selectedOption?.id === option.id && !option.is_blocked
+                            'bg-red-50 border-l-4 border-red-500 cursor-not-allowed opacity-75': option.disabled,
+                            'hover:bg-gray-50 focus:bg-gray-50': !option.disabled,
+                            'bg-red-50 border-l-4 border-red-500': option.is_blocked && !option.disabled,
+                            'bg-blue-50': selectedOption?.id === option.id && !option.is_blocked && !option.disabled
                         }"
+                        :disabled="option.disabled"
                         @click="selectOption(option)"
                     >
                         <div class="flex items-center justify-between">
                             <div class="flex-1">
-                                <div class="font-medium" :class="{ 'text-red-700': option.is_blocked }">
+                                <div class="font-medium" :class="{ 
+                                    'text-red-700': option.is_blocked || option.disabled,
+                                    'text-gray-400': option.disabled
+                                }">
                                     {{ option.label }}
                                 </div>
                                 <div v-if="option.email" class="text-sm text-gray-500">
@@ -267,9 +280,13 @@ defineExpose({
                                         Blocked {{ formatBlockDate(option.blocked_at) }} by {{ option.blocked_by?.name }}
                                     </span>
                                 </div>
+                                <!-- Show vehicle contract status if disabled -->
+                                <div v-if="option.disabled" class="text-sm text-red-600 font-medium mt-1">
+                                    ⚠️ {{ option.unavailable_reason }}
+                                </div>
                             </div>
 
-                            <Check v-if="selectedOption?.id === option.id"
+                            <Check v-if="selectedOption?.id === option.id && !option.disabled"
                                    class="h-4 w-4 text-blue-600" />
                         </div>
                     </button>

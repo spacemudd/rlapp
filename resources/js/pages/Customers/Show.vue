@@ -40,6 +40,14 @@ interface Customer {
         id: string;
         name: string;
     };
+    // Source fields
+    source_id?: string;
+    custom_referral?: string;
+    source?: {
+        id: string;
+        name: string;
+        slug: string;
+    };
     // Secondary identification fields
     secondary_identification_type?: 'passport' | 'resident_id' | 'visit_visa';
     passport_number?: string;
@@ -818,6 +826,23 @@ const handleCustomerUnblocked = () => {
                                     <div class="flex  gap-2 text-sm" >
                                         <Calendar class="h-4 w-4" />
                                         {{ formatDate(customer.created_at) }}
+                                    </div>
+                                </div>
+
+                                <!-- Source Information -->
+                                <div v-if="customer.source || customer.custom_referral" class="grid gap-2">
+                                    <label class="text-sm font-medium text-muted-foreground" >
+                                        {{ t('source') }} / المصدر
+                                    </label>
+                                    <div class="text-sm bg-muted/50 p-3 rounded-md space-y-1">
+                                        <div v-if="customer.source" class="flex gap-2">
+                                            <span class="font-medium">{{ t('source') }}:</span>
+                                            <span>{{ customer.source.name }}</span>
+                                        </div>
+                                        <div v-if="customer.custom_referral" class="flex gap-2">
+                                            <span class="font-medium">{{ t('custom_referral') }}:</span>
+                                            <span>{{ customer.custom_referral }}</span>
+                                        </div>
                                     </div>
                                 </div>
 

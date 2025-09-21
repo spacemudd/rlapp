@@ -478,7 +478,7 @@ function isReservationTomorrow(pickupDate: string) {
                                                 <p class="text-xs font-medium text-gray-900 truncate">{{ getCustomerName(reservation.customer) }}</p>
                                                 <p class="text-xs text-gray-500 truncate">{{ getVehicleInfo(reservation.vehicle) }}</p>
                                                 <div class="flex justify-between">
-                                                    <span class="text-xs text-gray-400">{{ formatTime(reservation.pickup_date) }}</span>
+                                                    <span class="text-xs text-gray-400" dir="ltr">{{ formatTime(reservation.pickup_date) }}</span>
                                                     <span 
                                                         class="text-xs font-medium px-1.5 py-0.5 rounded"
                                                         :class="getReservationStatusColor(reservation.status)"
@@ -545,7 +545,7 @@ function isReservationTomorrow(pickupDate: string) {
                                                             />
                                                         </div>
                                                         <span
-                                                            class="px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize transition-colors duration-200"
+                                                            class="p-2 rounded-full text-[10px] font-semibold capitalize transition-colors duration-200"
                                                             :class="stat.badgeColor"
                                                         >
                                                             {{ stat.badge }}
@@ -728,7 +728,7 @@ function isReservationTomorrow(pickupDate: string) {
                                                 </div>
                                                 <p class="text-xs font-medium text-gray-900 truncate">{{ getCustomerName(pickup.customer) }}</p>
                                                 <p class="text-xs text-gray-500 truncate">{{ getVehicleInfo(pickup.vehicle) }}</p>
-                                                <p class="text-xs text-gray-400">{{ formatTime(pickup.end_date) }}</p>
+                                                <p class="text-xs text-gray-400" dir="ltr">{{ formatTime(pickup.end_date) }}</p>
                                             </div>
                                         </div>
                                     </div>

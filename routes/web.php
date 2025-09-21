@@ -80,7 +80,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/api/pricing/calculate', [App\Http\Controllers\ContractController::class, 'calculatePricing'])->name('api.pricing.calculate');
     Route::get('/api/customers/search', [App\Http\Controllers\ContractController::class, 'searchCustomers'])->name('api.customers.search');
     Route::get('/api/vehicle-search', [App\Http\Controllers\ContractController::class, 'searchVehicles'])->name('api.vehicles.search');
+    
+    // Enhanced reservation API endpoints (moved outside middleware group for testing)
+    
+    // Test page for vehicle availability
+    Route::get('/test/vehicle-availability', function () {
+        return Inertia::render('TestVehicleAvailability');
+    })->name('test.vehicle-availability');
 });
+
+// Vehicle availability API endpoints (using different path to avoid API route conflicts)
+Route::post('/vehicle-availability/search', [App\Http\Controllers\ReservationController::class, 'searchVehiclesWithAvailability'])->name('api.vehicles.availability');
+Route::post('/vehicle-availability/check', [App\Http\Controllers\ReservationController::class, 'checkVehicleAvailability'])->name('api.vehicles.check-availability');
+Route::post('/vehicle-availability/similar', [App\Http\Controllers\ReservationController::class, 'getSimilarVehicles'])->name('api.vehicles.similar');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('locations', App\Http\Controllers\LocationController::class);
@@ -102,6 +114,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/customers/{customer}/block', [App\Http\Controllers\CustomerController::class, 'block'])->name('customers.block');
     Route::post('/customers/{customer}/unblock', [App\Http\Controllers\CustomerController::class, 'unblock'])->name('customers.unblock');
     Route::get('/customers/{customer}/block-history', [App\Http\Controllers\CustomerController::class, 'blockHistory'])->name('customers.block-history');
+    Route::get('/api/sources', [App\Http\Controllers\CustomerController::class, 'getSources'])->name('api.sources');
 });
 
 

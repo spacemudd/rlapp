@@ -62,6 +62,8 @@ Route::prefix('v1')->group(function () {
 
 // Search endpoints moved to web routes for proper session authentication
 
+// Vehicle availability endpoints moved to web routes to avoid API key conflicts
+
 Route::middleware(['api.key'])->group(function () {
     // Vehicle API endpoints (requires API key)
     Route::prefix('vehicles')->group(function () {

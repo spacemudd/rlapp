@@ -257,7 +257,7 @@ async function sendEmail() {
                     <CardContent class="space-y-6">
                         <div>
                             <h3 class="font-medium mb-2">Customer</h3>
-                            <p>{{ invoice.customer.name }}</p>
+                            <p>{{ invoice.customer.first_name }} {{ invoice.customer.last_name }}</p>
                             <p class="text-gray-500">{{ invoice.customer.email }}</p>
                             <p v-if="invoice.customer.phone" class="text-gray-500">{{ invoice.customer.phone }}</p>
                             <p v-if="invoice.customer.address" class="text-gray-500 mt-1">{{ invoice.customer.address }}</p>

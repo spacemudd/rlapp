@@ -169,7 +169,7 @@ function deleteInvoice(id: string) {
                                 </td>
                                 <td class="py-4 px-4">
                                     <div class="flex flex-col">
-                                        <span class="text-gray-900">{{ invoice.customer ? invoice.customer.name : invoice.customer_id }}</span>
+                                        <span class="text-gray-900">{{ invoice.customer ? `${invoice.customer.first_name} ${invoice.customer.last_name}` : invoice.customer_id }}</span>
                                     </div>
                                 </td>
                                 <td class="py-4 px-4">

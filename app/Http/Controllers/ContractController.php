@@ -14,6 +14,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 use Barryvdh\Snappy\Facades\SnappyPdf as PDF;
+use Illuminate\Support\Facades\App;
 
 class ContractController extends Controller
 {
@@ -183,7 +184,11 @@ class ContractController extends Controller
     {
         $query = $request->get('query', '');
 
-        $vehicles = Vehicle::where('status', 'available')
+        $vehicles = Vehicle::with(['contracts' => function ($q) {
+                $q->whereIn('status', ['draft', 'active'])->latest()->limit(1);
+            }])
+            ->where('status', 'available')
+            ->where('is_active', true)
             ->where(function ($q) use ($query) {
                 $q->where('make', 'like', "%{$query}%")
                     ->orWhere('model', 'like', "%{$query}%")
@@ -195,6 +200,9 @@ class ContractController extends Controller
             ->limit(20)
             ->get()
             ->map(function ($vehicle) {
+                $hasActiveContract = $vehicle->contracts->isNotEmpty();
+                $contractStatus = $hasActiveContract ? $vehicle->contracts->first()->status : null;
+                
                 return [
                     'id' => $vehicle->id,
                     'label' => $vehicle->year . ' ' . $vehicle->make . ' ' . $vehicle->model . ' - ' . $vehicle->plate_number,
@@ -206,6 +214,11 @@ class ContractController extends Controller
                     'price_daily' => $vehicle->price_daily,
                     'price_weekly' => $vehicle->price_weekly,
                     'price_monthly' => $vehicle->price_monthly,
+                    'disabled' => $hasActiveContract,
+                    'contract_status' => $contractStatus,
+                    'unavailable_reason' => $hasActiveContract ? 
+                        ($contractStatus === 'active' ? __('words.already_has_active_contract') : __('words.has_draft_contract')) : 
+                        null,
                 ];
             });
 

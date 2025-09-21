@@ -243,6 +243,7 @@ class ReservationApiController extends Controller
 
         $reservationData = $request->all();
         $reservationData['team_id'] = $user->team_id;
+        $reservationData['reservation_source'] = Reservation::SOURCE_WEB;
 
         $reservation = Reservation::create($reservationData);
         $reservation->load(['customer', 'vehicle', 'team']);

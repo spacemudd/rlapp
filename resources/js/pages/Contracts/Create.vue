@@ -4,16 +4,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import AsyncCombobox from '@/components/ui/combobox/AsyncCombobox.vue';
+import VehicleSelectionWithAvailability from '@/components/VehicleSelectionWithAvailability.vue';
 import CreateCustomerForm from '@/components/CreateCustomerForm.vue';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import { ref, computed, watch, onMounted } from 'vue';
-import { ArrowLeft, Calendar, DollarSign, FileText, User, Car, Plus } from 'lucide-vue-next';
+import axios from 'axios';
+import { Calendar, DollarSign, FileText, User, Car, Plus, AlertTriangle } from 'lucide-vue-next';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useI18n } from 'vue-i18n';
+import { useDirection } from '@/composables/useDirection';
+import { useVehicleAvailability } from '@/composables/useVehicleAvailability';
 
 interface BranchOption { id: string; name: string; city?: string; country: string }
 
@@ -45,6 +48,14 @@ interface PricingBreakdown {
 
 const props = defineProps<Props>();
 const { t } = useI18n();
+const { isRtl } = useDirection();
+
+// Breadcrumbs (reversed for RTL display)
+const breadcrumbs = [
+    { title: t('create_contract'), href: `/contracts/create` },
+    { title: t('contracts'), href: '/contracts' },
+    { title: t('dashboard'), href: '/dashboard' },
+];
 
 const form = useForm({
     customer_id: '',
@@ -74,6 +85,16 @@ const customerComboboxRef = ref<any>(null);
 const durationDays = ref<number>(1);
 const selectedBlockedCustomer = ref<any>(null);
 const blockedCustomerError = ref<string>('');
+// Vehicle availability composable
+const {
+    conflictDetails,
+    alternativeVehicles,
+    loadingAlternatives,
+    hasConflict,
+    handleVehicleSelected: handleVehicleAvailability,
+    selectAlternativeVehicle,
+    clearConflicts
+} = useVehicleAvailability();
 
 // Simple multi-step flow (1: Basics, 2: Pricing, 3: Terms)
 const activeStep = ref<number>(1);
@@ -105,6 +126,17 @@ const totalDays = computed(() => {
     return Math.max(0, diffDays); // Exclude end date (day 1 to day 11 = 10 days)
 });
 
+// Form validation
+const canSubmit = computed(() => {
+    return !hasConflict.value && 
+           form.start_date && 
+           form.end_date && 
+           form.vehicle_id && 
+           form.customer_id &&
+           form.branch_id &&
+           !form.processing;
+});
+
 // Reactive refs for pricing
 const totalAmount = ref(0);
 const effectiveDailyRate = ref(0);
@@ -117,48 +149,6 @@ const isCalculatingPricing = ref(false);
 const calculatedDailyRate = ref(0);
 const originalTotalAmount = ref(0);
 
-// Photo handling methods
-const handlePhotoUpload = (event: Event) => {
-    const target = event.target as HTMLInputElement;
-    const files = target.files;
-
-    if (files) {
-        const fileArray = Array.from(files);
-        // Limit to 10 photos and 10MB each
-        const validFiles = fileArray.filter(file => {
-            const isValidType = file.type.startsWith('image/');
-            const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB
-            return isValidType && isValidSize;
-        }).slice(0, 10);
-
-        form.condition_photos = validFiles;
-    }
-};
-
-const removePhoto = (index: number) => {
-    if (form.condition_photos) {
-        form.condition_photos.splice(index, 1);
-        if (form.condition_photos.length === 0) {
-            form.condition_photos = null;
-        }
-    }
-};
-
-const getFilePreview = (file: File): string => {
-    return URL.createObjectURL(file);
-};
-
-const getFuelLevelDisplay = (level: string): string => {
-    const levels: Record<string, string> = {
-        'full': 'Full Tank (100%)',
-        '3/4': '3/4 Tank (75%)',
-        '1/2': '1/2 Tank (50%)',
-        '1/4': '1/4 Tank (25%)',
-        'low': 'Low Fuel (< 25%)',
-        'empty': 'Empty'
-    };
-    return levels[level] || level;
-};
 
 // Function to calculate pricing via API
 const calculatePricing = async () => {
@@ -274,6 +264,11 @@ const handleFinalPriceOverride = () => {
 
 // Watch for changes that require pricing recalculation
 watch([() => form.vehicle_id, () => form.start_date, () => form.end_date], async () => {
+    // Clear conflicts when dates change
+    if (form.start_date && form.end_date) {
+        clearConflicts();
+    }
+    
     // Only recalculate if no overrides are active
     if (!form.override_daily_rate && !form.override_final_price) {
         await calculatePricing();
@@ -328,9 +323,26 @@ watch(() => form.branch_id, (newBranchId) => {
 
 // Handle vehicle selection
 const handleVehicleSelected = (vehicle: any) => {
+    if (!vehicle) {
+        selectedVehicle.value = null;
+        form.vehicle_id = '';
+        clearConflicts();
+        return;
+    }
+    
     selectedVehicle.value = vehicle;
     form.vehicle_id = vehicle.id;
+    
+    // Use composable for availability checking
+    handleVehicleAvailability(vehicle, form.start_date, form.end_date);
+    
     // Pricing will be calculated automatically via the watch
+};
+
+// Handle alternative vehicle selection
+const handleAlternativeVehicleSelection = (vehicle: any) => {
+    const selectedVehicle = selectAlternativeVehicle(vehicle);
+    handleVehicleSelected(selectedVehicle);
 };
 
 // Create customer
@@ -549,9 +561,12 @@ const submit = () => {
         return;
     }
 
-    // Validate required fields
-    if (!form.branch_id) {
-        form.setError('branch_id', 'Branch selection is required.');
+    if (!canSubmit.value) {
+        if (hasConflict.value) {
+            alert('Cannot create contract with vehicle conflicts. Please select an available vehicle.');
+            return;
+        }
+        alert('Please fill in all required fields.');
         return;
     }
 
@@ -571,7 +586,7 @@ const submit = () => {
     }
 
     // Submit with UTC timestamps
-    form.transform((data) => formData).post(route('contracts.store'));
+    form.transform(() => formData).post(route('contracts.store'));
 };
 
 // Initialize component
@@ -648,43 +663,35 @@ watch(() => props.newCustomer, (customer) => {
 <template>
     <Head title="Create Contract" />
 
-    <AppLayout>
+    <AppLayout :breadcrumbs="breadcrumbs">
         <div class="p-6">
             <!-- Header -->
-            <div class="flex justify-between">
-                <div class="text-right">
-                    <h1 class="text-2xl font-semibold text-gray-900">{{ t('create_new_contract') }}</h1>
-                    <p class="text-gray-600 mt-1">{{ t('contract_number') }}: {{ contractNumber }}</p>
-                </div>
-                <Link :href="route('contracts.index')">
-                    <Button variant="ghost" size="sm">
-                        <ArrowLeft class="w-4 h-4 mr-2" />
-                        {{ t('back_to_contracts') }}
-                    </Button>
-                </Link>
+            <div>
+                <h1 class="text-2xl font-semibold text-gray-900">{{ t('create_contract') }}</h1>
+                <p class="text-gray-600 mt-1">{{ t('contract_number') }}: {{ contractNumber }}</p>
             </div>
 
             <form @submit.prevent="submit" class="space-y-6 mt-5">
                 <!-- Stepper Header -->
-                <div class="flex items-center justify-between bg-muted/30 rounded-md p-3">
-                    <div class="flex items-center gap-2">
+                <div class="flex justify-between bg-muted/30 rounded-md p-3">
+                    <div class="flex gap-2">
                         <button type="button" class="px-3 py-1 rounded-md text-sm"
                                 :class="activeStep === 1 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'"
                                 @click="goToStep(1)">
                             1. {{ t('basics') }}
                         </button>
-                        <span class="text-muted-foreground">→</span>
+                        <span class="text-muted-foreground">{{ isRtl ? '←' : '→' }}</span>
                         <button type="button" class="px-3 py-1 rounded-md text-sm"
                                 :class="activeStep === 2 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'"
                                 @click="goToStep(2)"
-                                :disabled="!form.customer_id || !form.vehicle_id || !form.branch_id">
+                                :disabled="!form.customer_id || !form.vehicle_id || !form.branch_id || hasConflict">
                             2. {{ t('pricing') }}
                         </button>
-                        <span class="text-muted-foreground">→</span>
+                        <span class="text-muted-foreground">{{ isRtl ? '←' : '→' }}</span>
                         <button type="button" class="px-3 py-1 rounded-md text-sm"
                                 :class="activeStep === 3 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'"
                                 @click="goToStep(3)"
-                                :disabled="!form.customer_id || !form.vehicle_id || !form.branch_id">
+                                :disabled="!form.customer_id || !form.vehicle_id || !form.branch_id || hasConflict">
                             3. {{ t('terms') }}
                         </button>
                     </div>
@@ -821,11 +828,11 @@ watch(() => props.newCustomer, (customer) => {
                             </CardTitle>
                         </CardHeader>
                         <CardContent class="space-y-4">
-                            <AsyncCombobox
-                                ref="vehicleComboboxRef"
+                            <VehicleSelectionWithAvailability
                                 v-model="form.vehicle_id"
                                 :placeholder="t('search_vehicles_placeholder')"
-                                search-url="/api/vehicle-search"
+                                :pickup-date="form.start_date"
+                                :return-date="form.end_date"
                                 :required="true"
                                 :error="form.errors.vehicle_id"
                                 @option-selected="handleVehicleSelected"
@@ -856,6 +863,50 @@ watch(() => props.newCustomer, (customer) => {
                             </div>
                         </CardContent>
                     </Card>
+                </div>
+
+                <!-- Vehicle Conflict Warning -->
+                <div v-if="hasConflict" class="bg-red-50 border-l-4 border-red-400 p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <AlertTriangle class="h-5 w-5 text-red-400" />
+                        </div>
+                        <div class="ml-3 flex-1">
+                            <h3 class="text-sm font-medium text-red-800">
+                                {{ t('vehicle_not_available') }}
+                            </h3>
+                            <div class="mt-2 text-sm text-red-700">
+                                <p><span class="font-medium">{{ t('conflict_contract') }}:</span> {{ conflictDetails.contract_number }}</p>
+                                <p><span class="font-medium">{{ t('conflict_customer') }}:</span> {{ conflictDetails.customer_name }}</p>
+                                <p><span class="font-medium">{{ t('conflict_period') }}:</span> {{ conflictDetails.start_date }} - {{ conflictDetails.end_date }}</p>
+                            </div>
+                            
+                            <!-- Alternative Suggestions -->
+                            <div v-if="alternativeVehicles.length > 0" class="mt-3">
+                                <p class="text-sm font-medium text-red-800">{{ t('alternative_vehicles') }}:</p>
+                                <div class="mt-2 space-y-2">
+                                    <div 
+                                        v-for="alt in alternativeVehicles" 
+                                        :key="alt.id"
+                                        class="flex items-center justify-between p-2 bg-white rounded border"
+                                    >
+                                        <span class="text-sm">{{ alt.label }}</span>
+                                        <Button size="sm" @click="handleAlternativeVehicleSelection(alt)">
+                                            {{ t('select_vehicle') }}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div v-else-if="loadingAlternatives" class="mt-3 text-sm text-red-600">
+                                {{ t('loading_alternatives') }}
+                            </div>
+                            
+                            <div v-else class="mt-3 text-sm text-red-600">
+                                {{ t('no_alternatives_found') }}
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Contract Details (Basics) -->
@@ -1214,10 +1265,10 @@ watch(() => props.newCustomer, (customer) => {
                     </Link>
                     <div class="flex gap-2">
                         <Button type="button" variant="outline" @click="prevStep" :disabled="activeStep === 1">{{ t('back') }}</Button>
-                        <Button v-if="activeStep < 3" type="button" @click="nextStep" :disabled="(activeStep === 1 && (!form.customer_id || !form.vehicle_id || !form.branch_id))">
+                        <Button v-if="activeStep < 3" type="button" @click="nextStep" :disabled="(activeStep === 1 && (!form.customer_id || !form.vehicle_id || !form.branch_id || hasConflict))">
                             {{ t('next') }}
                         </Button>
-                        <Button v-else type="submit" :disabled="form.processing">
+                        <Button v-else type="submit" :disabled="!canSubmit">
                             {{ form.processing ? t('creating') : t('create_contract') }}
                         </Button>
                     </div>

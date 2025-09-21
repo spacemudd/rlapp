@@ -28,6 +28,7 @@ class Reservation extends Model
         'total_amount',
         'duration_days',
         'team_id',
+        'reservation_source',
     ];
 
     protected $casts = [
@@ -46,6 +47,10 @@ class Reservation extends Model
     const STATUS_CANCELED = 'canceled';
     const STATUS_EXPIRED = 'expired';
 
+    // Reservation source constants
+    const SOURCE_WEB = 'web';
+    const SOURCE_AGENT = 'agent';
+
     /**
      * Get all available statuses
      */
@@ -56,6 +61,17 @@ class Reservation extends Model
             self::STATUS_CONFIRMED => 'Confirmed',
             self::STATUS_COMPLETED => 'Completed',
             self::STATUS_CANCELED => 'Canceled',
+        ];
+    }
+
+    /**
+     * Get all available reservation sources
+     */
+    public static function getReservationSources()
+    {
+        return [
+            self::SOURCE_WEB => 'Web',
+            self::SOURCE_AGENT => 'Agent',
         ];
     }
 
@@ -230,8 +246,8 @@ class Reservation extends Model
         });
 
         static::created(function ($reservation) {
-            // Schedule expiration job if reservation is pending
-            if ($reservation->status === self::STATUS_PENDING) {
+            // Schedule expiration job only for web reservations that are pending
+            if ($reservation->status === self::STATUS_PENDING && $reservation->reservation_source === self::SOURCE_WEB) {
                 ExpireReservationJob::dispatch($reservation->id)->delay(now()->addMinutes(5));
             }
         });
