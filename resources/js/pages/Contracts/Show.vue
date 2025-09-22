@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { Edit, User, Car, Calendar, DollarSign, FileText, Receipt, MoreVertical, Play, CheckCircle, XCircle, Trash2, Download, Mail, FileSignature } from 'lucide-vue-next';
+import { Edit, User, Car, Calendar, DollarSign, FileText, Receipt, Play, CheckCircle, XCircle, Trash2, Download, Mail, FileSignature } from 'lucide-vue-next';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -370,88 +370,7 @@ const toggleExpandAll = async () => {
                                 </DropdownMenuContent>
                             </DropdownMenu>
 
-                            <!-- Actions Dropdown -->
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" size="sm">
-                                        <MoreVertical class="w-4 h-4" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" class="w-48">
-                                    <!-- Download PDF -->
-                                    <DropdownMenuItem
-                                        @click="downloadPdf"
-                                        class="cursor-pointer"
-                                    >
-                                        <Download class="w-4 h-4 mr-2" />
-                                        {{ t('download_pdf') }}
-                                    </DropdownMenuItem>
-
-                                    <DropdownMenuSeparator />
-
-                                    <!-- Activate Contract -->
-                                    <DropdownMenuItem
-                                        v-if="contract.status === 'draft'"
-                                        @click="activateContract"
-                                        class="cursor-pointer"
-                                    >
-                                        <Play class="w-4 h-4 mr-2" />
-                                        {{ t('activate_contract') }}
-                                    </DropdownMenuItem>
-
-                                    <!-- Complete Contract -->
-                                    <DropdownMenuItem
-                                        v-if="contract.status === 'active'"
-                                        @click="completeContract"
-                                        class="cursor-pointer"
-                                    >
-                                        <CheckCircle class="w-4 h-4 mr-2" />
-                                        {{ t('finalize_complete_contract') }}
-                                    </DropdownMenuItem>
-
-                                    <!-- Create Invoice -->
-                                    <DropdownMenuItem
-                                        v-if="contract.status !== 'void'"
-                                        @click="goToCreateInvoice"
-                                        class="cursor-pointer"
-                                    >
-                                        <Receipt class="w-4 h-4 mr-2" />
-                                        {{ t('create_invoice') }}
-                                    </DropdownMenuItem>
-
-                                    <!-- Extend Contract -->
-                                    <DropdownMenuItem
-                                        v-if="contract.status === 'active'"
-                                        @click="openExtendDialog"
-                                        class="cursor-pointer"
-                                    >
-                                        <Calendar class="w-4 h-4 mr-2" />
-                                        {{ t('extend_contract') }}
-                                    </DropdownMenuItem>
-
-                                    <DropdownMenuSeparator v-if="contract.status !== 'completed' && contract.status !== 'void'" />
-
-                                    <!-- Void Contract -->
-                                    <DropdownMenuItem
-                                        v-if="contract.status !== 'completed' && contract.status !== 'void'"
-                                        @click="showVoidDialog = true"
-                                        class="cursor-pointer text-red-600 focus:text-red-600"
-                                    >
-                                        <XCircle class="w-4 h-4 mr-2" />
-                                        {{ t('void_contract') }}
-                                    </DropdownMenuItem>
-
-                                    <!-- Delete Contract -->
-                                    <DropdownMenuItem
-                                        v-if="contract.status === 'draft'"
-                                        @click="deleteContract"
-                                        class="cursor-pointer text-red-600 focus:text-red-600"
-                                    >
-                                        <Trash2 class="w-4 h-4 mr-2" />
-                                        {{ t('delete_contract') }}
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                            
                         </div>
                     </div>
                     <!-- Compact controls bar -->
@@ -469,6 +388,28 @@ const toggleExpandAll = async () => {
                             </Button>
                             <Button size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700">
                                 {{ t('traffic_fines') }}
+                            </Button>
+                            <!-- Extracted actions from dropdown -->
+                            <Button size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="downloadPdf">
+                                {{ t('download_pdf') }}
+                            </Button>
+                            <Button v-if="contract.status === 'draft'" size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="activateContract">
+                                {{ t('activate_contract') }}
+                            </Button>
+                            <Button v-if="contract.status === 'active'" size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="completeContract">
+                                {{ t('finalize_complete_contract') }}
+                            </Button>
+                            <Button v-if="contract.status !== 'void'" size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="goToCreateInvoice">
+                                {{ t('create_invoice') }}
+                            </Button>
+                            <Button v-if="contract.status === 'active'" size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="openExtendDialog">
+                                {{ t('extend_contract') }}
+                            </Button>
+                            <Button v-if="contract.status !== 'completed' && contract.status !== 'void'" size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="showVoidDialog = true">
+                                {{ t('void_contract') }}
+                            </Button>
+                            <Button v-if="contract.status === 'draft'" size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="deleteContract">
+                                {{ t('delete_contract') }}
                             </Button>
                         </div>
                         <div class="text-gray-400">|</div>

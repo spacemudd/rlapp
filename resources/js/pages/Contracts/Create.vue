@@ -1035,199 +1035,199 @@ watch(() => props.newCustomer, (customer) => {
                             <DollarSign class="w-5 h-5" />
                             {{ t('pricing_financial_details') }}
                         </CardTitle>
-                        <CardDescription>{{ t('set_rates_deposit_requirements') }}</CardDescription>
+                        <CardDescription class="text-xs">{{ t('set_rates_deposit_requirements') }}</CardDescription>
                     </CardHeader>
-                    <CardContent class="space-y-6">
-                        <div class="grid gap-4 md:grid-cols-2">
-                            <div class="space-y-2">
-                                <div class="flex justify-between">
-                                    <Label for="daily_rate">{{ t('daily_rate_aed') }} *</Label>
-                                    <div class="flex gap-2">
-                                        <Checkbox
-                                            id="override_rate"
-                                            v-model="form.override_daily_rate"
-                                            @change="handleRateOverride"
+                    <CardContent class="text-xs">
+                        <table class="w-full border-collapse">
+                            <tbody class="divide-y">
+                                <tr v-if="isCalculatingPricing">
+                                    <td colspan="2" class="py-2">
+                                        <div class="p-3 bg-blue-50 border border-blue-200 rounded-md text-center text-blue-800">
+                                            {{ t('calculating_pricing') }}
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <th class="text-muted-foreground font-medium text-start align-top w-56 py-2 pr-3">{{ t('daily_rate_aed') }} *</th>
+                                    <td class="py-2">
+                                        <div class="flex items-center gap-2">
+                                            <Input
+                                                id="daily_rate"
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                v-model="form.daily_rate"
+                                                required
+                                                class="h-9 text-sm"
+                                            />
+                                            <div class="flex items-center gap-2">
+                                                <Checkbox
+                                                    id="override_rate"
+                                                    v-model="form.override_daily_rate"
+                                                    @change="handleRateOverride"
+                                                />
+                                                <Label for="override_rate" class="text-xs">{{ t('lock_rate_prevent_auto_updates') }}</Label>
+                                            </div>
+                                        </div>
+                                        <div v-if="form.errors.daily_rate" class="text-xs text-red-600 mt-1">
+                                            {{ form.errors.daily_rate }}
+                                        </div>
+                                        <div class="text-[11px] text-gray-500 mt-1">
+                                            {{ t('daily_rate_automatically_calculated') }}
+                                        </div>
+                                        <div v-if="form.override_daily_rate && calculatedDailyRate" class="text-[11px] text-gray-500 mt-1">
+                                            {{ t('original_calculated_rate') }}: <span dir="ltr">{{ formatCurrency(calculatedDailyRate) }}</span>
+                                        </div>
+                                        <div v-if="form.override_daily_rate && !form.override_final_price" class="text-[11px] text-blue-600 mt-1">
+                                            {{ t('rate_manually_adjusted') }}
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <th class="text-muted-foreground font-medium text-start align-top w-56 py-2 pr-3">{{ t('final_price_override') }}</th>
+                                    <td class="py-2">
+                                        <div class="flex items-center gap-2">
+                                            <Input
+                                                id="final_price_override"
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                v-model="form.final_price_override"
+                                                :disabled="!form.override_final_price"
+                                                :placeholder="t('enter_final_amount')"
+                                                class="h-9 text-sm"
+                                            />
+                                            <div class="flex items-center gap-2">
+                                                <Checkbox
+                                                    id="override_final_price"
+                                                    v-model="form.override_final_price"
+                                                    @change="handleFinalPriceOverride"
+                                                />
+                                                <Label for="override_final_price" class="text-xs">{{ t('override_total_amount') }}</Label>
+                                            </div>
+                                        </div>
+                                        <div v-if="form.override_final_price && form.final_price_override" class="text-[11px] text-gray-500 mt-1">
+                                            <div>{{ t('original_calculated_amount') }}: <span dir="ltr">{{ formatCurrency(originalTotalAmount) }}</span></div>
+                                            <div>{{ t('override_difference') }}: <span dir="ltr">{{ formatCurrency(form.final_price_override - originalTotalAmount) }}</span></div>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr v-if="totalAmount > 0">
+                                    <th class="text-green-800 font-medium text-start align-top w-56 py-2 pr-3">{{ t('total_rental_amount') }}</th>
+                                    <td class="py-2">
+                                        <div class="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded-md">
+                                            <span class="text-green-800 text-xs">{{ t('pricing_tier') }}: {{ pricingTier }} ({{ rateType }})</span>
+                                            <span class="text-xl font-bold text-green-900" dir="ltr">{{ formatCurrency(totalAmount) }}</span>
+                                        </div>
+                                        <div class="mt-1 text-[11px] text-green-700">
+                                            {{ t('effective_daily_rate') }}: <span dir="ltr">{{ formatCurrency(effectiveDailyRate) }}</span>
+                                        </div>
+
+                                        <div v-if="form.override_daily_rate || form.override_final_price" class="mt-2 pt-2 border-t border-green-200">
+                                            <div class="flex gap-2 text-[11px]">
+                                                <span class="font-medium text-orange-700">{{ t('pricing_override_active') }}</span>
+                                                <span v-if="form.override_daily_rate" class="text-orange-600">{{ t('daily_rate_override') }}</span>
+                                                <span v-else-if="form.override_final_price" class="text-orange-600">{{ t('final_price_override') }}</span>
+                                            </div>
+                                            <div v-if="originalTotalAmount" class="text-[11px] text-orange-600 mt-1">
+                                                {{ t('original_calculated_amount') }}: <span dir="ltr">{{ formatCurrency(originalTotalAmount) }}</span>
+                                                <span v-if="form.override_final_price" class="ml-2">
+                                                    ({{ t('override_difference') }}: <span dir="ltr">{{ formatCurrency(form.final_price_override - originalTotalAmount) }}</span>)
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div v-if="pricingBreakdown" class="mt-2 pt-2 border-t border-green-200">
+                                            <h4 class="text-[11px] font-medium text-green-800 mb-2">{{ t('pricing_breakdown') }}:</h4>
+                                            <div class="space-y-1 text-[11px] text-green-700">
+                                                <div v-if="pricingBreakdown?.days" class="flex justify-between">
+                                                    <span>{{ pricingBreakdown.days }} {{ t('day') }}{{ pricingBreakdown.days !== 1 ? 's' : '' }} @ <span dir="ltr">{{ formatCurrency(form.daily_rate) }}</span>/{{ t('day') }}</span>
+                                                    <span dir="ltr">{{ formatCurrency(pricingBreakdown.daily_cost || 0) }}</span>
+                                                </div>
+
+                                                <template v-if="pricingBreakdown?.complete_weeks !== undefined">
+                                                    <div v-if="(pricingBreakdown.complete_weeks || 0) > 0" class="flex justify-between">
+                                                        <span>{{ pricingBreakdown.complete_weeks }} {{ t('week') }}(s) @ <span dir="ltr">{{ formatCurrency(selectedVehicle?.price_weekly || 0) }}</span>/{{ t('week') }}</span>
+                                                        <span dir="ltr">{{ formatCurrency(pricingBreakdown.weekly_cost || 0) }}</span>
+                                                    </div>
+                                                    <div v-if="(pricingBreakdown.remaining_days || 0) > 0" class="flex justify-between">
+                                                        <span>{{ pricingBreakdown.remaining_days }} {{ t('day') }}(s) @ <span dir="ltr">{{ formatCurrency(selectedVehicle?.price_daily || 0) }}</span>/{{ t('day') }}</span>
+                                                        <span dir="ltr">{{ formatCurrency(pricingBreakdown.daily_cost || 0) }}</span>
+                                                    </div>
+                                                </template>
+
+                                                <template v-if="pricingBreakdown?.complete_months !== undefined">
+                                                    <div v-if="(pricingBreakdown.complete_months || 0) > 0" class="flex justify-between">
+                                                        <span>{{ pricingBreakdown.complete_months }} {{ t('month') }}(s) @ <span dir="ltr">{{ formatCurrency(selectedVehicle?.price_monthly || 0) }}</span>/{{ t('month') }}</span>
+                                                        <span dir="ltr">{{ formatCurrency(pricingBreakdown.monthly_cost || 0) }}</span>
+                                                    </div>
+                                                    <div v-if="(pricingBreakdown.complete_weeks || 0) > 0" class="flex justify-between">
+                                                        <span>{{ pricingBreakdown.complete_weeks }} {{ t('week') }}(s) @ <span dir="ltr">{{ formatCurrency(selectedVehicle?.price_weekly || 0) }}</span>/{{ t('week') }}</span>
+                                                        <span dir="ltr">{{ formatCurrency(pricingBreakdown.weekly_cost || 0) }}</span>
+                                                    </div>
+                                                    <div v-if="(pricingBreakdown.remaining_days || 0) > 0" class="flex justify-between">
+                                                        <span>{{ pricingBreakdown.remaining_days }} {{ t('day') }}(s) @ <span dir="ltr">{{ formatCurrency(selectedVehicle?.price_daily || 0) }}</span>/{{ t('day') }}</span>
+                                                        <span dir="ltr">{{ formatCurrency(pricingBreakdown.daily_cost || 0) }}</span>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <th class="text-muted-foreground font-medium text-start align-top w-56 py-2 pr-3">{{ t('mileage_limit_km') }}</th>
+                                    <td class="py-2">
+                                        <Input
+                                            id="mileage_limit"
+                                            type="number"
+                                            min="0"
+                                            v-model="form.mileage_limit"
+                                            :placeholder="t('unlimited_if_not_specified')"
+                                            class="h-9 text-sm"
                                         />
-                                        <Label for="override_rate" class="text-sm">{{ t('lock_rate_prevent_auto_updates') }}</Label>
-                                    </div>
-                                </div>
-
-                                <Input
-                                    id="daily_rate"
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    v-model="form.daily_rate"
-                                    required
-                                />
-                                <div v-if="form.errors.daily_rate" class="text-sm text-red-600">
-                                    {{ form.errors.daily_rate }}
-                                </div>
-
-                                <p class="text-xs text-gray-500">
-                                    {{ t('daily_rate_automatically_calculated') }}
-                                </p>
-
-                                <!-- Show original calculated rate when overridden -->
-                                <div v-if="form.override_daily_rate && calculatedDailyRate" class="text-sm text-gray-500">
-                                    {{ t('original_calculated_rate') }}: {{ formatCurrency(calculatedDailyRate) }}
-                                </div>
-
-                                <!-- Show when rate has been manually adjusted -->
-                                <div v-if="form.override_daily_rate && !form.override_final_price" class="text-sm text-blue-600">
-                                    {{ t('rate_manually_adjusted') }}
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Final Price Override -->
-                        <div class="space-y-2">
-                            <div class="flex justify-between">
-                                <Label for="final_price_override">{{ t('final_price_override') }}</Label>
-                                <div class="flex gap-2">
-                                    <Checkbox
-                                        id="override_final_price"
-                                        v-model="form.override_final_price"
-                                        @change="handleFinalPriceOverride"
-                                    />
-                                    <Label for="override_final_price" class="text-sm">{{ t('override_total_amount') }}</Label>
-                                </div>
-                            </div>
-
-                            <Input
-                                id="final_price_override"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                v-model="form.final_price_override"
-                                :disabled="!form.override_final_price"
-                                :placeholder="t('enter_final_amount')"
-                            />
-
-                            <!-- Show breakdown when final price is overridden -->
-                            <div v-if="form.override_final_price && form.final_price_override" class="text-sm text-gray-500">
-                                <div>{{ t('original_calculated_amount') }}: {{ formatCurrency(originalTotalAmount) }}</div>
-                                <div>{{ t('override_difference') }}: {{ formatCurrency(form.final_price_override - originalTotalAmount) }}</div>
-                            </div>
-                        </div>
-
-                        <!-- Override Reason -->
-                        <div v-if="form.override_daily_rate || form.override_final_price" class="space-y-2">
-                            <Label for="override_reason">{{ t('override_reason_optional') }}</Label>
-                            <Textarea
-                                id="override_reason"
-                                v-model="form.override_reason"
-                                :placeholder="t('explain_override_necessary')"
-                                rows="2"
-                            />
-                            <div v-if="form.errors.override_reason" class="text-sm text-red-600">
-                                {{ form.errors.override_reason }}
-                            </div>
-                        </div>
-
-                        <!-- Loading indicator -->
-                        <div v-if="isCalculatingPricing" class="p-4 bg-blue-50 border border-blue-200 rounded-md">
-                            <div class="flex justify-center">
-                                <span class="text-blue-800">{{ t('calculating_pricing') }}</span>
-                            </div>
-                        </div>
-
-                        <!-- Pricing display -->
-                        <div v-else-if="totalAmount > 0" class="p-4 bg-green-50 border border-green-200 rounded-md">
-                            <div class="flex justify-between">
-                                <span class="text-green-800 font-medium">{{ t('total_rental_amount') }}:</span>
-                                <span class="text-2xl font-bold text-green-900">{{ formatCurrency(totalAmount) }}</span>
-                            </div>
-                            <div class="flex justify-between text-sm text-green-700 mt-2">
-                                <span>{{ t('pricing_tier') }}: {{ pricingTier }} ({{ rateType }})</span>
-                                <span>{{ t('effective_daily_rate') }}: {{ formatCurrency(effectiveDailyRate) }}</span>
-                            </div>
-
-                            <!-- Override indicators -->
-                            <div v-if="form.override_daily_rate || form.override_final_price" class="mt-3 pt-3 border-t border-green-200">
-                                <div class="flex gap-2 text-sm">
-                                    <span class="font-medium text-orange-700">{{ t('pricing_override_active') }}</span>
-                                    <span v-if="form.override_daily_rate" class="text-orange-600">{{ t('daily_rate_override') }}</span>
-                                    <span v-else-if="form.override_final_price" class="text-orange-600">{{ t('final_price_override') }}</span>
-                                </div>
-                                <div v-if="originalTotalAmount" class="text-sm text-orange-600 mt-1">
-                                    {{ t('original_calculated_amount') }}: {{ formatCurrency(originalTotalAmount) }}
-                                    <span v-if="form.override_final_price" class="ml-2">
-                                        ({{ t('override_difference') }}: {{ formatCurrency(form.final_price_override - originalTotalAmount) }})
-                                    </span>
-                                </div>
-                            </div>
-
-                            <!-- Pricing breakdown -->
-                            <div v-if="pricingBreakdown" class="mt-3 pt-3 border-t border-green-200">
-                                <h4 class="text-sm font-medium text-green-800 mb-2">{{ t('pricing_breakdown') }}:</h4>
-                                <div class="space-y-1 text-sm text-green-700">
-                                    <!-- Daily pricing -->
-                                    <div v-if="pricingBreakdown?.days" class="flex justify-between">
-                                        <span>{{ pricingBreakdown.days }} days @ {{ formatCurrency(form.daily_rate) }}/day</span>
-                                        <span>{{ formatCurrency(pricingBreakdown.daily_cost || 0) }}</span>
-                                    </div>
-
-                                    <!-- Weekly + days pricing -->
-                                    <template v-if="pricingBreakdown?.complete_weeks !== undefined">
-                                        <div v-if="(pricingBreakdown.complete_weeks || 0) > 0" class="flex justify-between">
-                                            <span>{{ pricingBreakdown.complete_weeks }} week(s) @ {{ formatCurrency(selectedVehicle?.price_weekly || 0) }}/week</span>
-                                            <span>{{ formatCurrency(pricingBreakdown.weekly_cost || 0) }}</span>
+                                        <div v-if="form.errors.mileage_limit" class="text-xs text-red-600 mt-1">
+                                            {{ form.errors.mileage_limit }}
                                         </div>
-                                        <div v-if="(pricingBreakdown.remaining_days || 0) > 0" class="flex justify-between">
-                                            <span>{{ pricingBreakdown.remaining_days }} day(s) @ {{ formatCurrency(selectedVehicle?.price_daily || 0) }}/day</span>
-                                            <span>{{ formatCurrency(pricingBreakdown.daily_cost || 0) }}</span>
-                                        </div>
-                                    </template>
+                                    </td>
+                                </tr>
 
-                                    <!-- Monthly + weekly + days pricing -->
-                                    <template v-if="pricingBreakdown?.complete_months !== undefined">
-                                        <div v-if="(pricingBreakdown.complete_months || 0) > 0" class="flex justify-between">
-                                            <span>{{ pricingBreakdown.complete_months }} month(s) @ {{ formatCurrency(selectedVehicle?.price_monthly || 0) }}/month</span>
-                                            <span>{{ formatCurrency(pricingBreakdown.monthly_cost || 0) }}</span>
+                                <tr>
+                                    <th class="text-muted-foreground font-medium text-start align-top w-56 py-2 pr-3">{{ t('excess_mileage_rate_aed_km') }}</th>
+                                    <td class="py-2">
+                                        <Input
+                                            id="excess_mileage_rate"
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            v-model="form.excess_mileage_rate"
+                                            class="h-9 text-sm"
+                                        />
+                                        <div v-if="form.errors.excess_mileage_rate" class="text-xs text-red-600 mt-1">
+                                            {{ form.errors.excess_mileage_rate }}
                                         </div>
-                                        <div v-if="(pricingBreakdown.complete_weeks || 0) > 0" class="flex justify-between">
-                                            <span>{{ pricingBreakdown.complete_weeks }} week(s) @ {{ formatCurrency(selectedVehicle?.price_weekly || 0) }}/week</span>
-                                            <span>{{ formatCurrency(pricingBreakdown.weekly_cost || 0) }}</span>
-                                        </div>
-                                        <div v-if="(pricingBreakdown.remaining_days || 0) > 0" class="flex justify-between">
-                                            <span>{{ pricingBreakdown.remaining_days }} day(s) @ {{ formatCurrency(selectedVehicle?.price_daily || 0) }}/day</span>
-                                            <span>{{ formatCurrency(pricingBreakdown.daily_cost || 0) }}</span>
-                                        </div>
-                                    </template>
-                                </div>
-                            </div>
-                        </div>
+                                    </td>
+                                </tr>
 
-                        <div class="grid gap-4 md:grid-cols-2">
-                            <div class="space-y-2">
-                                <Label for="mileage_limit">{{ t('mileage_limit_km') }}</Label>
-                                <Input
-                                    id="mileage_limit"
-                                    type="number"
-                                    min="0"
-                                    v-model="form.mileage_limit"
-                                    :placeholder="t('unlimited_if_not_specified')"
-                                />
-                                <div v-if="form.errors.mileage_limit" class="text-sm text-red-600">
-                                    {{ form.errors.mileage_limit }}
-                                </div>
-                            </div>
-
-                            <div class="space-y-2">
-                                <Label for="excess_mileage_rate">{{ t('excess_mileage_rate_aed_km') }}</Label>
-                                <Input
-                                    id="excess_mileage_rate"
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    v-model="form.excess_mileage_rate"
-                                />
-                                <div v-if="form.errors.excess_mileage_rate" class="text-sm text-red-600">
-                                    {{ form.errors.excess_mileage_rate }}
-                                </div>
-                            </div>
-                        </div>
+                                <tr v-if="form.override_daily_rate || form.override_final_price">
+                                    <th class="text-muted-foreground font-medium text-start align-top w-56 py-2 pr-3">{{ t('override_reason_optional') }}</th>
+                                    <td class="py-2">
+                                        <Textarea
+                                            id="override_reason"
+                                            v-model="form.override_reason"
+                                            :placeholder="t('explain_override_necessary')"
+                                            rows="2"
+                                        />
+                                        <div v-if="form.errors.override_reason" class="text-xs text-red-600 mt-1">
+                                            {{ form.errors.override_reason }}
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </CardContent>
                 </Card>
 

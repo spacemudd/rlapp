@@ -807,7 +807,7 @@ const messages = {
         click_to_toggle: 'انقر للتبديل',
         quick_pay: 'دفع سريع',
         additional_fees: 'رسوم إضافية',
-        traffic_fines: 'غرامات المرور',
+        traffic_fines: 'مخالفات المرورية',
         activate_contract_confirmation: 'تفعيل العقد',
         activate_contract_description: 'هل أنت متأكد من أنك تريد تفعيل هذا العقد؟',
         activation_will_send_welcome: 'سيستلم العميل رسالة ترحيبية',
