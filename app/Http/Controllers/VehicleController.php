@@ -27,9 +27,13 @@ class VehicleController extends Controller
                   ->orWhere('plate_number', 'like', "%$search%")
                   ->orWhere('chassis_number', 'like', "%$search%")
                   ->orWhere('color', 'like', "%$search%")
-                  ->orWhere('current_location', 'like', "%$search%")
                   ->orWhere('category', 'like', "%$search%")
-                  ;
+                  ->orWhereHas('location', function ($locationQuery) use ($search) {
+                      $locationQuery->where('name', 'like', "%$search%");
+                  })
+                  ->orWhereHas('branch', function ($branchQuery) use ($search) {
+                      $branchQuery->where('name', 'like', "%$search%");
+                  });
             });
         }
 

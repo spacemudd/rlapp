@@ -22,6 +22,8 @@ class StoreCustomerRequest extends FormRequest
     public function rules(): array
     {
         $rules = [
+            'source_id' => 'nullable|exists:sources,id',
+            'custom_referral' => 'nullable|string|max:255',
             'business_type' => 'required|in:individual,business',
             'business_name' => 'nullable|string|max:255|required_if:business_type,business',
             'driver_name' => 'nullable|string|max:255',

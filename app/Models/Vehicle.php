@@ -458,6 +458,11 @@ class Vehicle extends Model
         return $this->hasMany(Contract::class);
     }
 
+    public function reservations()
+    {
+        return $this->hasMany(Reservation::class);
+    }
+
     /**
      * Get the location where this vehicle is stationed.
      */

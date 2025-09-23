@@ -7,6 +7,7 @@ use App\Models\Contract;
 use App\Models\Vehicle;
 use App\Models\User;
 use App\Models\Payment;
+use App\Models\Reservation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
@@ -61,6 +62,31 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
+        // Vehicles to deliver today (contracts starting today)
+        $vehiclesToDeliverToday = Contract::where('status', 'active')
+            ->whereDate('start_date', today())
+            ->with(['customer', 'vehicle'])
+            ->orderBy('start_date')
+            ->get();
+
+        // Vehicles to receive (contracts ending today and tomorrow)
+        $vehiclesToReceive = Contract::where('status', 'active')
+            ->where(function($query) {
+                $query->whereDate('end_date', today())
+                      ->orWhereDate('end_date', Carbon::tomorrow());
+            })
+            ->with(['customer', 'vehicle'])
+            ->orderBy('end_date')
+            ->get();
+
+        // Upcoming reservations in the next 24 hours
+        $upcomingReservations = Reservation::whereIn('status', ['pending', 'confirmed'])
+            ->where('pickup_date', '>=', now())
+            ->where('pickup_date', '<=', now()->addHours(24))
+            ->with(['customer', 'vehicle'])
+            ->orderBy('pickup_date')
+            ->get();
+
         return Inertia::render('Dashboard', [
             'stats' => [
                 'late_invoices' => $lateInvoicesCount,
@@ -103,6 +129,70 @@ class DashboardController extends Controller
                         'first_name' => $payment->customer->first_name,
                         'last_name' => $payment->customer->last_name,
                         'business_name' => $payment->customer->business_name,
+                    ] : null,
+                ];
+            }),
+            'vehicles_to_deliver_today' => $vehiclesToDeliverToday->map(function($contract) {
+                return [
+                    'id' => $contract->id,
+                    'contract_number' => $contract->contract_number,
+                    'start_date' => $contract->start_date,
+                    'customer' => $contract->customer ? [
+                        'id' => $contract->customer->id,
+                        'first_name' => $contract->customer->first_name,
+                        'last_name' => $contract->customer->last_name,
+                        'business_name' => $contract->customer->business_name,
+                    ] : null,
+                    'vehicle' => $contract->vehicle ? [
+                        'id' => $contract->vehicle->id,
+                        'plate_number' => $contract->vehicle->plate_number,
+                        'make' => $contract->vehicle->make,
+                        'model' => $contract->vehicle->model,
+                        'year' => $contract->vehicle->year,
+                    ] : null,
+                ];
+            }),
+            'vehicles_to_receive' => $vehiclesToReceive->map(function($contract) {
+                return [
+                    'id' => $contract->id,
+                    'contract_number' => $contract->contract_number,
+                    'end_date' => $contract->end_date,
+                    'customer' => $contract->customer ? [
+                        'id' => $contract->customer->id,
+                        'first_name' => $contract->customer->first_name,
+                        'last_name' => $contract->customer->last_name,
+                        'business_name' => $contract->customer->business_name,
+                    ] : null,
+                    'vehicle' => $contract->vehicle ? [
+                        'id' => $contract->vehicle->id,
+                        'plate_number' => $contract->vehicle->plate_number,
+                        'make' => $contract->vehicle->make,
+                        'model' => $contract->vehicle->model,
+                        'year' => $contract->vehicle->year,
+                    ] : null,
+                ];
+            }),
+            'upcoming_reservations' => $upcomingReservations->map(function($reservation) {
+                return [
+                    'id' => $reservation->id,
+                    'uid' => $reservation->uid,
+                    'pickup_date' => $reservation->pickup_date,
+                    'return_date' => $reservation->return_date,
+                    'status' => $reservation->status,
+                    'total_amount' => $reservation->total_amount,
+                    'duration_days' => $reservation->duration_days,
+                    'customer' => $reservation->customer ? [
+                        'id' => $reservation->customer->id,
+                        'first_name' => $reservation->customer->first_name,
+                        'last_name' => $reservation->customer->last_name,
+                        'business_name' => $reservation->customer->business_name,
+                    ] : null,
+                    'vehicle' => $reservation->vehicle ? [
+                        'id' => $reservation->vehicle->id,
+                        'plate_number' => $reservation->vehicle->plate_number,
+                        'make' => $reservation->vehicle->make,
+                        'model' => $reservation->vehicle->model,
+                        'year' => $reservation->vehicle->year,
                     ] : null,
                 ];
             }),

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\Source;
 use App\Models\Team;
 use App\Http\Requests\StoreCustomerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
@@ -92,7 +93,7 @@ class CustomerController extends Controller
         }
 
         // Load relationships needed for the UI
-        $customer->load(['blockedBy', 'contracts.vehicle', 'invoices', 'customerNotes.user']);
+        $customer->load(['blockedBy', 'source', 'contracts.vehicle', 'invoices', 'customerNotes.user']);
 
         // Determine open contract (prefer active, then draft)
         $openContract = $customer->contracts()
@@ -529,5 +530,14 @@ class CustomerController extends Controller
             'customer' => $customer,
             'history' => $history
         ]);
+    }
+
+    /**
+     * Get all available sources.
+     */
+    public function getSources()
+    {
+        $sources = Source::orderBy('name')->get();
+        return response()->json($sources);
     }
 }

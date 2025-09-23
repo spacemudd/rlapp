@@ -11,9 +11,11 @@ import {
   useForwardPropsEmits,
 } from 'reka-ui'
 import { computed, type HTMLAttributes } from 'vue'
+import { useDirection } from '@/composables/useDirection'
 
 const props = defineProps<DialogContentProps & { class?: HTMLAttributes['class'] }>()
 const emits = defineEmits<DialogContentEmits>()
+const { isRtl } = useDirection()
 
 const delegatedProps = computed(() => {
   const { class: _, ...delegated } = props
@@ -48,7 +50,10 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
         <slot />
 
         <DialogClose
-          class="absolute top-4 right-4 p-0.5 transition-colors rounded-md hover:bg-secondary"
+          :class="cn(
+            'absolute top-4 p-0.5 transition-colors rounded-md hover:bg-secondary',
+            isRtl ? 'left-4' : 'right-4'
+          )"
         >
           <X class="w-4 h-4" />
           <span class="sr-only">Close</span>

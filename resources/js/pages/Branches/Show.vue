@@ -14,9 +14,10 @@ interface Branch {
     status: 'active' | 'inactive';
     created_at: string;
     updated_at: string;
+    ifrs_vat_account_id?: string | null;
 }
 
-const props = defineProps<{ branch: Branch }>();
+const props = defineProps<{ branch: Branch & { quick_pay_accounts?: { liability?: Record<string, string>, income?: Record<string, string> } }; vatAccount?: { id: string; name: string; code: string } | null }>();
 const { t } = useI18n();
 </script>
 
@@ -53,6 +54,35 @@ const { t } = useI18n();
                         <div>
                             <div class="text-sm text-gray-500">{{ t('status') }}</div>
                             <div class="text-base">{{ props.branch.status }}</div>
+                        </div>
+                        <div class="md:col-span-2">
+                            <div class="text-sm text-gray-500">{{ t('vat') }} (IFRS)</div>
+                            <div class="text-base" dir="ltr">
+                                <span v-if="props.vatAccount">{{ props.vatAccount.code }} — {{ props.vatAccount.name }}</span>
+                                <span v-else>-</span>
+                            </div>
+                        </div>
+                        <div class="md:col-span-2">
+                            <div class="text-sm text-gray-700 font-semibold mt-4">{{ t('quick_pay_settings') }}</div>
+                            <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <div class="text-gray-600 mb-1">{{ t('liability_section') || 'Liability' }}</div>
+                                    <ul class="space-y-1">
+                                        <li>• {{ t('qp_violation_guarantee') }}: <span dir="ltr">{{ props.branch.quick_pay_accounts?.liability?.violation_guarantee || '-' }}</span></li>
+                                        <li>• {{ t('qp_prepayment') }}: <span dir="ltr">{{ props.branch.quick_pay_accounts?.liability?.prepayment || '-' }}</span></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <div class="text-gray-600 mb-1">{{ t('income_section') || 'Income' }}</div>
+                                    <ul class="space-y-1">
+                                        <li>• {{ t('qp_rental_income') }}: <span dir="ltr">{{ props.branch.quick_pay_accounts?.income?.rental_income || '-' }}</span></li>
+                                        <li>• {{ t('qp_vat_collection') }}: <span dir="ltr">{{ props.branch.quick_pay_accounts?.income?.vat_collection || '-' }}</span></li>
+                                        <li>• {{ t('qp_insurance_fee') }}: <span dir="ltr">{{ props.branch.quick_pay_accounts?.income?.insurance_fee || '-' }}</span></li>
+                                        <li>• {{ t('qp_fines') }}: <span dir="ltr">{{ props.branch.quick_pay_accounts?.income?.fines || '-' }}</span></li>
+                                        <li>• {{ t('qp_salik_fees') }}: <span dir="ltr">{{ props.branch.quick_pay_accounts?.income?.salik_fees || '-' }}</span></li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </CardContent>

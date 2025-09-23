@@ -22,6 +22,8 @@ class Customer extends Model implements HasMedia
      */
     protected $fillable = [
         'team_id',
+        'source_id',
+        'custom_referral',
         'business_type',
         'business_name',
         'driver_name',
@@ -129,6 +131,14 @@ class Customer extends Model implements HasMedia
     public function team()
     {
         return $this->belongsTo(Team::class);
+    }
+
+    /**
+     * Get the source that the customer came from.
+     */
+    public function source(): BelongsTo
+    {
+        return $this->belongsTo(Source::class);
     }
 
     /**

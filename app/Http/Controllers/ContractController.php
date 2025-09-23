@@ -7,13 +7,17 @@ use App\Models\Customer;
 use App\Models\Vehicle;
 use App\Models\Invoice;
 use App\Models\Branch;
+use App\Models\PaymentReceipt;
+use App\Services\AccountingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 use Barryvdh\Snappy\Facades\SnappyPdf as PDF;
+use Illuminate\Support\Facades\App;
 
 class ContractController extends Controller
 {
@@ -183,7 +187,11 @@ class ContractController extends Controller
     {
         $query = $request->get('query', '');
 
-        $vehicles = Vehicle::where('status', 'available')
+        $vehicles = Vehicle::with(['contracts' => function ($q) {
+                $q->whereIn('status', ['draft', 'active'])->latest()->limit(1);
+            }])
+            ->where('status', 'available')
+            ->where('is_active', true)
             ->where(function ($q) use ($query) {
                 $q->where('make', 'like', "%{$query}%")
                     ->orWhere('model', 'like', "%{$query}%")
@@ -195,6 +203,9 @@ class ContractController extends Controller
             ->limit(20)
             ->get()
             ->map(function ($vehicle) {
+                $hasActiveContract = $vehicle->contracts->isNotEmpty();
+                $contractStatus = $hasActiveContract ? $vehicle->contracts->first()->status : null;
+                
                 return [
                     'id' => $vehicle->id,
                     'label' => $vehicle->year . ' ' . $vehicle->make . ' ' . $vehicle->model . ' - ' . $vehicle->plate_number,
@@ -206,6 +217,11 @@ class ContractController extends Controller
                     'price_daily' => $vehicle->price_daily,
                     'price_weekly' => $vehicle->price_weekly,
                     'price_monthly' => $vehicle->price_monthly,
+                    'disabled' => $hasActiveContract,
+                    'contract_status' => $contractStatus,
+                    'unavailable_reason' => $hasActiveContract ? 
+                        ($contractStatus === 'active' ? __('words.already_has_active_contract') : __('words.has_draft_contract')) : 
+                        null,
                 ];
             });
 
@@ -334,7 +350,7 @@ class ContractController extends Controller
             // 'terms_and_conditions' removed from create flow
             'notes' => $validated['notes'] ?? null,
             'created_by' => Auth::user()->name,
-            'status' => 'draft',
+            'status' => 'active',
             // Override fields
             'override_daily_rate' => $overrideDailyRate,
             'override_final_price' => $overrideFinalPrice,
@@ -355,10 +371,25 @@ class ContractController extends Controller
      */
     public function show(Contract $contract): Response
     {
-        $contract->load(['customer', 'vehicle.branch', 'branch', 'invoices', 'extensions']);
+        $contract->load(['customer', 'vehicle.branch', 'branch', 'invoices', 'extensions', 'paymentReceipts.allocations.glAccount']);
+
+        $breadcrumbs = [
+            [
+                'title' => __('words.dashboard'),
+                'href' => route('dashboard'),
+            ],
+            [
+                'title' => __('words.contracts'),
+                'href' => route('contracts.index'),
+            ],
+            [
+                'title' => $contract->contract_number,
+            ],
+        ];
 
         return Inertia::render('Contracts/Show', [
             'contract' => $contract,
+            'breadcrumbs' => $breadcrumbs,
         ]);
     }
 
@@ -621,36 +652,8 @@ class ContractController extends Controller
                 ->with('error', 'Cannot create invoice for voided contract.');
         }
 
-        // Create invoice with contract details
-        $invoice = Invoice::create([
-            'invoice_number' => Invoice::generateInvoiceNumber(),
-            'customer_id' => $contract->customer_id,
-            'vehicle_id' => $contract->vehicle_id,
-            'contract_id' => $contract->id,
-            'invoice_date' => now(),
-            'due_date' => now()->addDays(30),
-            'status' => 'unpaid',
-            'currency' => $contract->currency ?? 'AED',
-            'total_days' => $contract->total_days,
-            'start_datetime' => $contract->start_date,
-            'end_datetime' => $contract->end_date,
-            'sub_total' => $contract->total_amount,
-            'total_discount' => 0,
-            'total_amount' => $contract->total_amount,
-            // 'team_id' => $contract->team_id,
-        ]);
-
-        // Create invoice items
-        $invoice->items()->create([
-            'description' => "Car Rental - {$contract->total_days} days @ " . number_format($contract->daily_rate, 2) . " AED/day",
-            'amount' => $contract->total_amount,
-            'discount' => 0,
-        ]);
-
-        // Note: Deposit is now handled exclusively in the invoicing flow; no auto-adding here.
-
-        return redirect()->route('invoices.show', $invoice)
-            ->with('success', 'Invoice created successfully for the contract.');
+        // Redirect to invoice creation page prefilled with contract; do not persist yet
+        return redirect()->route('invoices.create', ['contract_id' => $contract->id]);
     }
 
     /**
@@ -740,6 +743,261 @@ class ContractController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => 'Error calculating pricing: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Quick Pay: return a grouped summary of open balances for allocation.
+     */
+    public function quickPaySummary(Request $request, Contract $contract)
+    {
+        $contract->load(['vehicle.branch', 'customer']);
+
+        // Get branch quick pay account mappings
+        $branchQp = $contract->vehicle?->branch?->quick_pay_accounts ?? [];
+        $liabilityMap = $branchQp['liability'] ?? [];
+        $incomeMap = $branchQp['income'] ?? [];
+
+        // Get GL account details for the mapped accounts
+        $glAccountIds = array_merge(array_values($liabilityMap), array_values($incomeMap));
+        $glAccounts = \IFRS\Models\Account::whereIn('id', $glAccountIds)->get()->keyBy('id');
+
+        $response = [
+            'contract_id' => (string) $contract->id,
+            'currency' => $contract->currency ?? 'AED',
+            'sections' => [
+                [
+                    'key' => 'liability',
+                    'rows' => [
+                        [
+                            'id' => 'violation_guarantee',
+                            'description' => __('words.qp_violation_guarantee'),
+                            'gl_account_id' => $liabilityMap['violation_guarantee'] ?? '',
+                            'gl_account' => $glAccounts->get($liabilityMap['violation_guarantee'] ?? '')?->name ?? __('words.qp_violation_guarantee'),
+                            'total' => 0,
+                            'paid' => 0,
+                            'remaining' => 0,
+                            'amount' => 0,
+                            'editable' => true,
+                        ],
+                        [
+                            'id' => 'prepayment',
+                            'description' => __('words.qp_prepayment'),
+                            'gl_account_id' => $liabilityMap['prepayment'] ?? '',
+                            'gl_account' => $glAccounts->get($liabilityMap['prepayment'] ?? '')?->name ?? __('words.qp_prepayment'),
+                            'total' => 0,
+                            'paid' => 0,
+                            'remaining' => 0,
+                            'amount' => 0,
+                            'editable' => true,
+                        ],
+                    ],
+                ],
+                [
+                    'key' => 'income',
+                    'rows' => [
+                        [
+                            'id' => 'rental_income',
+                            'description' => __('words.qp_rental_income'),
+                            'gl_account_id' => $incomeMap['rental_income'] ?? '',
+                            'gl_account' => $glAccounts->get($incomeMap['rental_income'] ?? '')?->name ?? __('words.qp_rental_income'),
+                            'total' => 0,
+                            'paid' => 0,
+                            'remaining' => 0,
+                            'amount' => 0,
+                            'editable' => true,
+                        ],
+                        [
+                            'id' => 'vat_collection',
+                            'description' => __('words.qp_vat_collection'),
+                            'gl_account_id' => $incomeMap['vat_collection'] ?? '',
+                            'gl_account' => $glAccounts->get($incomeMap['vat_collection'] ?? '')?->name ?? __('words.qp_vat_collection'),
+                            'total' => 0,
+                            'paid' => 0,
+                            'remaining' => 0,
+                            'amount' => 0,
+                            'editable' => true,
+                        ],
+                        [
+                            'id' => 'insurance_fee',
+                            'description' => __('words.qp_insurance_fee'),
+                            'gl_account_id' => $incomeMap['insurance_fee'] ?? '',
+                            'gl_account' => $glAccounts->get($incomeMap['insurance_fee'] ?? '')?->name ?? __('words.qp_insurance_fee'),
+                            'total' => 0,
+                            'paid' => 0,
+                            'remaining' => 0,
+                            'amount' => 0,
+                            'editable' => true,
+                        ],
+                        [
+                            'id' => 'fines',
+                            'description' => __('words.qp_fines'),
+                            'gl_account_id' => $incomeMap['fines'] ?? '',
+                            'gl_account' => $glAccounts->get($incomeMap['fines'] ?? '')?->name ?? __('words.qp_fines'),
+                            'total' => 0,
+                            'paid' => 0,
+                            'remaining' => 0,
+                            'amount' => 0,
+                            'editable' => true,
+                        ],
+                        [
+                            'id' => 'salik_fees',
+                            'description' => __('words.qp_salik_fees'),
+                            'gl_account_id' => $incomeMap['salik_fees'] ?? '',
+                            'gl_account' => $glAccounts->get($incomeMap['salik_fees'] ?? '')?->name ?? __('words.qp_salik_fees'),
+                            'total' => 0,
+                            'paid' => 0,
+                            'remaining' => 0,
+                            'amount' => 0,
+                            'editable' => true,
+                        ],
+                    ],
+                ],
+            ],
+            'totals' => [
+                'payable_now' => 0,
+                'allocated' => 0,
+                'remaining_to_allocate' => 0,
+            ],
+        ];
+
+        // Calculate consumed rental income to date (accrued)
+        try {
+            $tz = config('app.timezone', 'UTC');
+            $start = \Carbon\Carbon::parse($contract->start_date)->timezone($tz)->startOfDay();
+            $end = \Carbon\Carbon::parse($contract->end_date)->timezone($tz)->startOfDay();
+            $now = now()->timezone($tz)->startOfDay();
+
+            // Clamp now to contract period
+            $clampedNow = $now->lt($start) ? $start : ($now->gt($end) ? $end : $now);
+            $daysConsumed = 0;
+            if ($clampedNow->gte($start)) {
+                // +1 to include the start day itself
+                $daysConsumed = $start->diffInDays($clampedNow) + 1;
+            }
+            $totalDays = max(0, (int) $contract->total_days);
+            $daysConsumed = min($daysConsumed, $totalDays);
+
+            // Prefer per-day derived from total to avoid overridden VAT/rounding mismatches
+            $perDay = 0.0;
+            if ($totalDays > 0 && $contract->total_amount !== null) {
+                $perDay = round(((float) $contract->total_amount) / $totalDays, 2);
+            } else {
+                $perDay = round((float) ($contract->daily_rate ?? 0), 2);
+            }
+            $consumedAmount = round($perDay * $daysConsumed, 2);
+
+            // Sum of amounts allocated to rental_income via Quick Pay receipts
+            $paidToRental = (float) \App\Models\PaymentReceiptAllocation::query()
+                ->where('row_id', 'rental_income')
+                ->whereHas('paymentReceipt', function ($q) use ($contract) {
+                    $q->where('contract_id', $contract->id)
+                      ->where('status', 'completed');
+                })
+                ->sum('amount');
+
+            $remaining = max(0, $consumedAmount - $paidToRental);
+
+            // Inject values into the response for the rental_income row
+            foreach ($response['sections'] as &$section) {
+                if (($section['key'] ?? null) === 'income') {
+                    foreach ($section['rows'] as &$row) {
+                        if (($row['id'] ?? null) === 'rental_income') {
+                            $row['total'] = $consumedAmount;
+                            $row['paid'] = round($paidToRental, 2);
+                            $row['remaining'] = round($remaining, 2);
+                            break;
+                        }
+                    }
+                }
+            }
+            unset($section, $row);
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to compute consumed rental income for quick pay summary', [
+                'contract_id' => $contract->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return response()->json($response);
+    }
+
+    /**
+     * Quick Pay: accept allocations and record a receipt.
+     */
+    public function quickPay(Request $request, Contract $contract)
+    {
+        $validated = $request->validate([
+            'payment_method' => 'required|in:cash,card,bank_transfer',
+            'reference' => 'nullable|string|max:255',
+            'allocations' => 'required|array|min:1',
+            'allocations.*.row_id' => 'required|string',
+            'allocations.*.amount' => 'required|numeric|min:0',
+            'allocations.*.memo' => 'nullable|string',
+            'allocations.*.type' => 'nullable|in:security_deposit,advance_payment,invoice_settlement',
+            'allocations.*.invoice_id' => 'nullable|uuid|exists:invoices,id',
+            'amount_total' => 'required|numeric|min:0',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            // Load contract relationships
+            $contract->load(['customer', 'vehicle.branch', 'branch']);
+
+            // Create payment receipt
+            $paymentReceipt = PaymentReceipt::create([
+                'receipt_number' => PaymentReceipt::generateReceiptNumber(),
+                'contract_id' => $contract->id,
+                'customer_id' => $contract->customer_id,
+                'branch_id' => $contract->branch_id ?? $contract->vehicle->branch_id,
+                'total_amount' => $validated['amount_total'],
+                'payment_method' => $validated['payment_method'],
+                'reference_number' => $validated['reference'] ?? null,
+                'payment_date' => now()->toDateString(),
+                'status' => 'completed',
+                'created_by' => auth()->user()->name ?? 'System',
+            ]);
+
+            // Get branch quick pay account mappings
+            $branch = $contract->branch ?? $contract->vehicle->branch;
+            $branchQp = $branch?->quick_pay_accounts ?? [];
+            $liabilityMap = $branchQp['liability'] ?? [];
+            $incomeMap = $branchQp['income'] ?? [];
+            $allMappings = array_merge($liabilityMap, $incomeMap);
+
+            // Create allocations and IFRS transaction
+            $accountingService = app(AccountingService::class);
+            $ifrsTransaction = $accountingService->recordPaymentReceipt($paymentReceipt, $validated['allocations'], $allMappings);
+
+            // Update payment receipt with IFRS transaction ID
+            $paymentReceipt->update(['ifrs_transaction_id' => $ifrsTransaction->id]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => __('words.payment_receipt_created_successfully'),
+                'receipt' => [
+                    'id' => $paymentReceipt->id,
+                    'receipt_number' => $paymentReceipt->receipt_number,
+                    'total_amount' => $paymentReceipt->total_amount,
+                ],
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Quick pay failed', [
+                'contract_id' => $contract->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => __('words.payment_receipt_creation_failed'),
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

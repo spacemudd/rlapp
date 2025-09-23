@@ -38,6 +38,9 @@ interface Props {
         total_amount: number;
         paid_amount: number;
         remaining_amount: number;
+        applied_credits_total?: number;
+        applied_credits?: { id: string; description: string; amount: number; memo?: string | null; payment_receipt_id?: string }[];
+        amount_due?: number;
         customer: {
             id: string;
             name: string;
@@ -257,7 +260,7 @@ async function sendEmail() {
                     <CardContent class="space-y-6">
                         <div>
                             <h3 class="font-medium mb-2">Customer</h3>
-                            <p>{{ invoice.customer.name }}</p>
+                            <p>{{ invoice.customer.first_name }} {{ invoice.customer.last_name }}</p>
                             <p class="text-gray-500">{{ invoice.customer.email }}</p>
                             <p v-if="invoice.customer.phone" class="text-gray-500">{{ invoice.customer.phone }}</p>
                             <p v-if="invoice.customer.address" class="text-gray-500 mt-1">{{ invoice.customer.address }}</p>
@@ -343,10 +346,14 @@ async function sendEmail() {
                                     <span class="text-gray-500">Paid Amount</span>
                                     <span>{{ formatCurrency(invoice.paid_amount) }}</span>
                                 </div>
+                                <div v-if="invoice.applied_credits_total && invoice.applied_credits_total > 0" class="flex justify-between text-sm">
+                                    <span class="text-gray-500">Applied Credits</span>
+                                    <span>-{{ formatCurrency(invoice.applied_credits_total) }}</span>
+                                </div>
                                 <div class="flex justify-between text-sm font-medium pt-2 border-t">
-                                    <span>Remaining Amount</span>
+                                    <span>Amount Due</span>
                                     <span :class="getStatusColor(invoice.status)">
-                                        {{ formatCurrency(invoice.remaining_amount) }}
+                                        {{ formatCurrency(invoice.amount_due ?? invoice.remaining_amount) }}
                                     </span>
                                 </div>
                             </div>
@@ -361,6 +368,25 @@ async function sendEmail() {
                     <CardDescription>All payments made for this invoice.</CardDescription>
                 </CardHeader>
                 <CardContent>
+                    <div v-if="invoice.applied_credits && invoice.applied_credits.length" class="mb-6">
+                        <h3 class="font-medium mb-2">Applied Credits</h3>
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b">
+                                    <th class="py-2 text-left">Description</th>
+                                    <th class="py-2 text-left">Memo</th>
+                                    <th class="py-2 text-right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="c in invoice.applied_credits" :key="c.id" class="border-b">
+                                    <td class="py-3 px-4">{{ c.description }}</td>
+                                    <td class="py-3 px-4">{{ c.memo || '-' }}</td>
+                                    <td class="py-3 px-4 text-right">{{ formatCurrency(c.amount) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                     <div v-if="invoice.payments && invoice.payments.length > 0">
                         <table class="w-full text-sm">
                             <thead>

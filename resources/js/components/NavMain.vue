@@ -20,12 +20,12 @@ const { isRtl } = useDirection();
                 <SidebarMenuButton as-child :is-active="item.href === page.url" :tooltip="item.title">
                     <Link :href="item.href" :class="{ 'flex-row-reverse': isRtl }">
                         <template v-if="isRtl">
-                            <span>{{ item.title }}</span>
-                            <component :is="item.icon" />
+                            <span class="group-data-[collapsible=icon]:hidden">{{ item.title }}</span>
+                            <component :is="item.icon" class="group-data-[collapsible=icon]:mx-auto" />
                         </template>
                         <template v-else>
-                            <component :is="item.icon" />
-                            <span>{{ item.title }}</span>
+                            <component :is="item.icon" class="group-data-[collapsible=icon]:mx-auto" />
+                            <span class="group-data-[collapsible=icon]:hidden">{{ item.title }}</span>
                         </template>
                     </Link>
                 </SidebarMenuButton>
@@ -33,7 +33,7 @@ const { isRtl } = useDirection();
                     <SidebarMenuSubItem v-for="child in item.children" :key="child.title">
                         <SidebarMenuSubButton as-child :is-active="child.href === page.url">
                             <Link :href="child.href" :class="{ 'flex-row-reverse': isRtl }">
-                                <span>{{ child.title }}</span>
+                                <span class="group-data-[collapsible=icon]:hidden">{{ child.title }}</span>
                             </Link>
                         </SidebarMenuSubButton>
                     </SidebarMenuSubItem>

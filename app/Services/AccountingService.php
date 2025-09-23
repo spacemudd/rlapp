@@ -3,10 +3,13 @@
 namespace App\Services;
 
 use App\Models\Bank;
+use App\Models\Branch;
 use App\Models\CashAccount;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Models\PaymentReceipt;
+use App\Models\PaymentReceiptAllocation;
 use App\Models\Vehicle;
 use IFRS\Models\Account;
 use IFRS\Models\Transaction;
@@ -476,6 +479,23 @@ class AccountingService
         }
 
         return $account;
+    }
+
+    /**
+     * Resolve VAT account for a specific branch; fallback to global VAT account.
+     */
+    public function getVatAccountForBranch(?string $branchId): Account
+    {
+        if ($branchId) {
+            $branch = \App\Models\Branch::find($branchId);
+            if ($branch && $branch->ifrs_vat_account_id) {
+                $acc = Account::find($branch->ifrs_vat_account_id);
+                if ($acc) {
+                    return $acc;
+                }
+            }
+        }
+        return $this->getOrCreateVatAccount();
     }
 
     /**
@@ -979,5 +999,264 @@ class AccountingService
 
             throw $e;
         }
+    }
+
+    /**
+     * Record payment receipt in the IFRS system.
+     */
+    public function recordPaymentReceipt(PaymentReceipt $paymentReceipt, array $allocations, array $accountMappings): Transaction
+    {
+        DB::beginTransaction();
+
+        try {
+            // Determine the cash/bank account to debit
+            $cashAccount = $this->getPaymentAccountForMethod($paymentReceipt->payment_method, $paymentReceipt->branch);
+
+            // Create the main IFRS transaction
+            $transaction = Transaction::create([
+                'transaction_type' => Transaction::JN, // Journal Entry
+                'transaction_date' => $paymentReceipt->payment_date,
+                'narration' => "Payment Receipt {$paymentReceipt->receipt_number} for Contract {$paymentReceipt->contract->contract_number}",
+                'entity_id' => $this->getCurrentEntity()->id,
+                'currency_id' => $this->getDefaultCurrency()->id,
+                'account_id' => $cashAccount->id, // Main account for the transaction
+            ]);
+
+            // Debit: Cash/Bank Account (total amount)
+            $cashLineItem = LineItem::create([
+                'transaction_id' => $transaction->id,
+                'account_id' => $cashAccount->id,
+                'narration' => "Payment received via {$paymentReceipt->payment_method}",
+                'amount' => $paymentReceipt->total_amount,
+                'quantity' => 1,
+                'vat_inclusive' => false,
+                'entity_id' => $this->getCurrentEntity()->id,
+                'credited' => false, // Debit
+            ]);
+
+            // Note: Do NOT touch Accounts Receivable here.
+            // Quick Pay creates receipts for deposits/advances or miscellaneous allocations.
+            // AR settlement should be handled explicitly when applying payments to invoices.
+
+            // Credit: Various GL accounts based on allocations
+            foreach ($allocations as $allocation) {
+                if ($allocation['amount'] > 0) {
+                    $glAccountId = $accountMappings[$allocation['row_id']] ?? null;
+                    
+                    if (!$glAccountId) {
+                        throw new \Exception("No GL account mapping found for row_id: {$allocation['row_id']}");
+                    }
+
+                    // Create IFRS line item
+                    $lineItem = LineItem::create([
+                        'transaction_id' => $transaction->id,
+                        'account_id' => $glAccountId,
+                        'narration' => $allocation['memo'] ?? $allocation['row_id'],
+                        'amount' => $allocation['amount'],
+                        'quantity' => 1,
+                        'vat_inclusive' => false,
+                        'entity_id' => $this->getCurrentEntity()->id,
+                        'credited' => true, // Credit
+                    ]);
+
+                    // Create payment receipt allocation record
+                    PaymentReceiptAllocation::create([
+                        'payment_receipt_id' => $paymentReceipt->id,
+                        'gl_account_id' => $glAccountId,
+                        'row_id' => $allocation['row_id'],
+                        'description' => $this->getDescriptionForRowId($allocation['row_id']),
+                        'allocation_type' => $allocation['type'] ?? null,
+                        'invoice_id' => $allocation['invoice_id'] ?? null,
+                        'amount' => $allocation['amount'],
+                        'memo' => $allocation['memo'] ?? null,
+                        'ifrs_line_item_id' => $lineItem->id,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            Log::info("Payment receipt recorded in IFRS system", [
+                'receipt_id' => $paymentReceipt->id,
+                'transaction_id' => $transaction->id,
+            ]);
+
+            return $transaction;
+
+        } catch (Exception $e) {
+            DB::rollback();
+            Log::error("Failed to record payment receipt in IFRS system", [
+                'receipt_id' => $paymentReceipt->id,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Apply available advances to an invoice by debiting deferred revenue and crediting AR.
+     * Marks applied allocations with the invoice_id for traceability.
+     */
+    public function applyAdvancesToInvoice(Invoice $invoice): ?Transaction
+    {
+        DB::beginTransaction();
+
+        try {
+            // Collect unapplied advance allocations for this contract/customer
+            $advanceAllocations = PaymentReceiptAllocation::query()
+                ->whereNull('invoice_id')
+                ->whereHas('paymentReceipt', function ($q) use ($invoice) {
+                    $q->where('contract_id', $invoice->contract_id)
+                      ->where('customer_id', $invoice->customer_id)
+                      ->where('status', 'completed');
+                })
+                ->where(function ($q) {
+                    $q->where('allocation_type', 'advance_payment')
+                      ->orWhere('row_id', 'prepayment');
+                })
+                ->get();
+
+            $totalAdvance = $advanceAllocations->sum('amount');
+            if ($totalAdvance <= 0) {
+                DB::rollBack();
+                return null;
+            }
+
+            // AR account (customer receivable)
+            $receivableAccount = $this->getCustomerReceivableAccount($invoice->customer);
+
+            // Create transaction to apply advances
+            $transaction = Transaction::create([
+                'transaction_type' => Transaction::JN,
+                'transaction_date' => $invoice->invoice_date ?? now()->toDateString(),
+                'narration' => "Apply advances to Invoice {$invoice->invoice_number}",
+                'entity_id' => $this->getCurrentEntity()->id,
+                'currency_id' => $this->getDefaultCurrency()->id,
+                'account_id' => $receivableAccount->id,
+            ]);
+
+            // Debit each deferred revenue account for its amount
+            foreach ($advanceAllocations as $alloc) {
+                LineItem::create([
+                    'transaction_id' => $transaction->id,
+                    'account_id' => $alloc->gl_account_id, // deferred revenue account mapped at receipt time
+                    'narration' => $alloc->description ?: 'Advance application',
+                    'amount' => $alloc->amount,
+                    'quantity' => 1,
+                    'vat_inclusive' => false,
+                    'entity_id' => $this->getCurrentEntity()->id,
+                    'credited' => false, // Debit deferred revenue
+                ]);
+            }
+
+            // Credit AR for total advances
+            LineItem::create([
+                'transaction_id' => $transaction->id,
+                'account_id' => $receivableAccount->id,
+                'narration' => "Advance applied to Invoice {$invoice->invoice_number}",
+                'amount' => $totalAdvance,
+                'quantity' => 1,
+                'vat_inclusive' => false,
+                'entity_id' => $this->getCurrentEntity()->id,
+                'credited' => true,
+            ]);
+
+            // Mark allocations as applied to this invoice
+            foreach ($advanceAllocations as $alloc) {
+                $alloc->update(['invoice_id' => $invoice->id]);
+            }
+
+            DB::commit();
+            return $transaction;
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to apply advances to invoice', [
+                'invoice_id' => $invoice->id,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Get description for row ID
+     */
+    private function getDescriptionForRowId(string $rowId): string
+    {
+        $descriptions = [
+            'violation_guarantee' => __('words.qp_violation_guarantee'),
+            'prepayment' => __('words.qp_prepayment'),
+            'rental_income' => __('words.qp_rental_income'),
+            'additional_fees' => __('words.qp_additional_fees'),
+        ];
+
+        return $descriptions[$rowId] ?? $rowId;
+    }
+
+    /**
+     * Get payment account for method and branch
+     */
+    private function getPaymentAccountForMethod(string $paymentMethod, Branch $branch)
+    {
+        switch ($paymentMethod) {
+            case 'cash':
+                return $this->getBranchCashAccount($branch);
+            case 'card':
+            case 'bank_transfer':
+                return $this->getBranchBankAccount($branch);
+            default:
+                throw new \Exception("Unsupported payment method: {$paymentMethod}");
+        }
+    }
+
+    /**
+     * Get branch cash account
+     */
+    private function getBranchCashAccount(Branch $branch)
+    {
+        if (!$branch->ifrs_cash_account_id) {
+            throw new \Exception("Branch {$branch->name} does not have a cash account configured");
+        }
+
+        return Account::find($branch->ifrs_cash_account_id);
+    }
+
+    /**
+     * Get branch bank account
+     */
+    private function getBranchBankAccount(Branch $branch)
+    {
+        if (!$branch->ifrs_bank_account_id) {
+            throw new \Exception("Branch {$branch->name} does not have a bank account configured");
+        }
+
+        return Account::find($branch->ifrs_bank_account_id);
+    }
+
+    /**
+     * Get customer's accounts receivable account
+     */
+    private function getCustomerReceivableAccount(Customer $customer)
+    {
+        // First try to find a customer-specific receivable account
+        $customerReceivable = Account::where('name', 'like', '%' . $customer->name . '%')
+            ->where('account_type', Account::RECEIVABLE)
+            ->first();
+
+        if ($customerReceivable) {
+            return $customerReceivable;
+        }
+
+        // Fall back to general accounts receivable
+        $generalReceivable = Account::where('account_type', Account::RECEIVABLE)
+            ->where('name', 'Accounts Receivable')
+            ->first();
+
+        if (!$generalReceivable) {
+            throw new \Exception("No accounts receivable account found for customer {$customer->name}");
+        }
+
+        return $generalReceivable;
     }
 }

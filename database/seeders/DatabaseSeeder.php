@@ -18,6 +18,11 @@ class DatabaseSeeder extends Seeder
             TeamsSeeder::class,
         ]);
 
+        // Seed sources
+        $this->call([
+            SourceSeeder::class,
+        ]);
+
         // Initialize IFRS accounting system (must be done early for proper setup)
         $this->call([
             IFRSSeeder::class,

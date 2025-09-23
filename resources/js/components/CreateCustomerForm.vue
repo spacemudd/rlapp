@@ -8,10 +8,11 @@ import { DialogFooter } from '@/components/ui/dialog';
 import SearchableSelect from './ui/SearchableSelect.vue';
 import InputError from './InputError.vue';
 import { useForm } from '@inertiajs/vue3';
-import { watch, ref, computed } from 'vue';
+import { watch, ref, computed, onMounted } from 'vue';
 import { CreditCard, BookOpen, IdCard, User, Building, FileText, UserCheck, Shield } from 'lucide-vue-next';
 import { countryOptions, nationalityOptions } from '../lib/countries';
 import { useI18n } from 'vue-i18n';
+import axios from 'axios';
 
 interface Props {
     editingCustomer?: any;
@@ -29,8 +30,25 @@ const emit = defineEmits<Emits>();
 const { t, locale } = useI18n();
 const isRtl = computed(() => locale.value === 'ar');
 
+// Sources data
+const sources = ref([]);
+const loadingSources = ref(false);
+
 // Tab management
 const activeTab = ref('customer-type');
+
+// Load sources on component mount
+onMounted(async () => {
+    loadingSources.value = true;
+    try {
+        const response = await axios.get('/api/sources');
+        sources.value = response.data;
+    } catch (error) {
+        console.error('Failed to load sources:', error);
+    } finally {
+        loadingSources.value = false;
+    }
+});
 
 const tabs = [
     { value: 'customer-type', icon: Building, label: t('customer_type_tab') },
@@ -40,6 +58,8 @@ const tabs = [
 ];
 
 const form = useForm({
+    source_id: '',
+    custom_referral: '',
     business_type: 'individual' as 'individual' | 'business',
     business_name: '',
     driver_name: '',
@@ -95,6 +115,8 @@ watch(() => props.editingCustomer, (customer) => {
         }
     } else {
         form.reset();
+        form.source_id = '';
+        form.custom_referral = '';
         form.business_type = 'individual';
         form.business_name = '';
         form.driver_name = '';
@@ -173,7 +195,7 @@ const fieldToTab = (field: string): string => {
         'first_name','last_name','phone','email','date_of_birth','country','nationality','status'
     ]);
     const businessFields = new Set([
-        'business_type','business_name','driver_name','trade_license_number','trade_license_pdf'
+        'source_id', 'custom_referral', 'business_type','business_name','driver_name','trade_license_number','trade_license_pdf'
     ]);
     const additionalFields = new Set([
         'emergency_contact_name','emergency_contact_phone','notes'
@@ -337,6 +359,44 @@ const cancelForm = () => {
                             </div>
                         </div>
                         <InputError :message="form.errors.business_type" />
+                    </div>
+
+                    <!-- Source Selection -->
+                    <div class="space-y-4" :dir="isRtl ? 'rtl' : 'ltr'">
+                        <h4 class="font-medium text-gray-900" :class="{ 'text-right': isRtl }">{{ t('source') }} / المصدر</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-2">
+                                <Label for="source_id" :class="{ 'text-right': isRtl }">{{ t('select_source') }}</Label>
+                                <select
+                                    id="source_id"
+                                    v-model="form.source_id"
+                                    :disabled="loadingSources"
+                                    class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                    :dir="isRtl ? 'rtl' : 'ltr'"
+                                >
+                                    <option value="">{{ loadingSources ? 'Loading...' : t('select_source') }}</option>
+                                    <option 
+                                        v-for="source in sources" 
+                                        :key="source.id" 
+                                        :value="source.id"
+                                    >
+                                        {{ source.name }}
+                                    </option>
+                                </select>
+                                <InputError :message="form.errors.source_id" />
+                            </div>
+                            <div class="space-y-2">
+                                <Label for="custom_referral" :class="{ 'text-right': isRtl }">{{ t('custom_referral') }}</Label>
+                                <Input
+                                    id="custom_referral"
+                                    v-model="form.custom_referral"
+                                    type="text"
+                                    :placeholder="t('custom_referral_placeholder')"
+                                    :dir="isRtl ? 'rtl' : 'ltr'"
+                                />
+                                <InputError :message="form.errors.custom_referral" />
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Business Information (shown only for business customers) -->

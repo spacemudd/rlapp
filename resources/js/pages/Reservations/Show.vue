@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, Clock, User, Car, MapPin, DollarSign, Edit, ArrowLeft, Trash2 } from 'lucide-vue-next';
+import { useI18n } from 'vue-i18n';
 
 interface Reservation {
   id: string;
@@ -12,6 +13,8 @@ interface Reservation {
   customer: {
     id: number;
     name: string;
+    first_name: string;
+    last_name: string;
     email: string;
     phone: string;
   };
@@ -43,6 +46,7 @@ interface Reservation {
 
 const page = usePage();
 const reservation = page.props.reservation as Reservation;
+const { t } = useI18n();
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -77,7 +81,7 @@ const formatCurrency = (amount: number) => {
 };
 
 const deleteReservation = () => {
-  if (confirm('Are you sure you want to delete this reservation?')) {
+  if (confirm(t('delete_reservation_confirm'))) {
     router.delete(route('reservations.destroy', reservation.id));
   }
 };
@@ -85,7 +89,7 @@ const deleteReservation = () => {
 
 <template>
   <AppSidebarLayout :breadcrumbs="[
-    { title: 'Reservations', href: '/reservations' },
+    { title: t('reservations'), href: '/reservations' },
     { title: reservation.uid, href: `/reservations/${reservation.id}` }
   ]">
     <div class="p-6">
@@ -97,7 +101,7 @@ const deleteReservation = () => {
           </Button>
           <div>
             <h1 class="text-3xl font-bold text-gray-900">{{ reservation.uid }}</h1>
-            <p class="text-gray-600 mt-1">Reservation details</p>
+            <p class="text-gray-600 mt-1">{{ t('reservation_details_page') }}</p>
           </div>
         </div>
         <div class="flex items-center space-x-3">
@@ -106,11 +110,11 @@ const deleteReservation = () => {
           </Badge>
           <Button variant="outline" @click="router.visit(route('reservations.edit', reservation.id))">
             <Edit class="w-4 h-4 mr-2" />
-            Edit
+            {{ t('edit') }}
           </Button>
           <Button variant="destructive" @click="deleteReservation">
             <Trash2 class="w-4 h-4 mr-2" />
-            Delete
+            {{ t('delete') }}
           </Button>
         </div>
       </div>
@@ -121,20 +125,20 @@ const deleteReservation = () => {
           <CardHeader>
             <CardTitle class="flex items-center">
               <User class="w-5 h-5 mr-2" />
-              Customer Information
+              {{ t('customer_information') }}
             </CardTitle>
           </CardHeader>
           <CardContent class="space-y-4">
             <div>
-              <div class="text-sm font-medium text-gray-500">Name</div>
-              <div class="text-lg font-semibold">{{ reservation.customer.name }}</div>
+              <div class="text-sm font-medium text-gray-500">{{ t('name') }}</div>
+              <div class="text-lg font-semibold">{{ reservation.customer.first_name }} {{ reservation.customer.last_name }}</div>
             </div>
             <div>
-              <div class="text-sm font-medium text-gray-500">Email</div>
+              <div class="text-sm font-medium text-gray-500">{{ t('email') }}</div>
               <div>{{ reservation.customer.email }}</div>
             </div>
             <div>
-              <div class="text-sm font-medium text-gray-500">Phone</div>
+              <div class="text-sm font-medium text-gray-500">{{ t('phone') }}</div>
               <div>{{ reservation.customer.phone }}</div>
             </div>
           </CardContent>
@@ -145,24 +149,24 @@ const deleteReservation = () => {
           <CardHeader>
             <CardTitle class="flex items-center">
               <Car class="w-5 h-5 mr-2" />
-              Vehicle Information
+              {{ t('vehicle_information') }}
             </CardTitle>
           </CardHeader>
           <CardContent class="space-y-4">
             <div>
-              <div class="text-sm font-medium text-gray-500">Vehicle</div>
+              <div class="text-sm font-medium text-gray-500">{{ t('vehicle') }}</div>
               <div class="text-lg font-semibold">
                 {{ reservation.vehicle.year }} {{ reservation.vehicle.make }} {{ reservation.vehicle.model }}
               </div>
             </div>
             <div>
-              <div class="text-sm font-medium text-gray-500">Plate Number</div>
+              <div class="text-sm font-medium text-gray-500">{{ t('plate_number') }}</div>
               <div class="font-mono bg-gray-100 px-2 py-1 rounded">
                 {{ reservation.vehicle.plate_number }}
               </div>
             </div>
             <div v-if="reservation.vehicle.location">
-              <div class="text-sm font-medium text-gray-500">Current Location</div>
+              <div class="text-sm font-medium text-gray-500">{{ t('current_location') }}</div>
               <div>{{ reservation.vehicle.location.name }}</div>
             </div>
           </CardContent>
@@ -173,22 +177,22 @@ const deleteReservation = () => {
           <CardHeader>
             <CardTitle class="flex items-center">
               <Calendar class="w-5 h-5 mr-2" />
-              Reservation Details
+              {{ t('reservation_details_title') }}
             </CardTitle>
           </CardHeader>
           <CardContent class="space-y-4">
             <div>
-              <div class="text-sm font-medium text-gray-500">Reservation ID</div>
+              <div class="text-sm font-medium text-gray-500">{{ t('reservation_id') }}</div>
               <div class="font-mono text-sm">{{ reservation.uid }}</div>
             </div>
             <div>
-              <div class="text-sm font-medium text-gray-500">Status</div>
+              <div class="text-sm font-medium text-gray-500">{{ t('status') }}</div>
               <Badge :class="getStatusColor(reservation.status)" variant="outline" class="mt-1">
                 {{ reservation.status.charAt(0).toUpperCase() + reservation.status.slice(1) }}
               </Badge>
             </div>
             <div>
-              <div class="text-sm font-medium text-gray-500">Reservation Date</div>
+              <div class="text-sm font-medium text-gray-500">{{ t('reservation_date') }}</div>
               <div class="flex items-center">
                 <Clock class="w-4 h-4 text-gray-400 mr-2" />
                 {{ formatDate(reservation.reservation_date) }}
@@ -205,27 +209,27 @@ const deleteReservation = () => {
           <CardHeader>
             <CardTitle class="flex items-center">
               <Calendar class="w-5 h-5 mr-2" />
-              Rental Period
+              {{ t('rental_period') }}
             </CardTitle>
           </CardHeader>
           <CardContent class="space-y-4">
             <div>
-              <div class="text-sm font-medium text-gray-500">Pickup Date & Time</div>
+              <div class="text-sm font-medium text-gray-500">{{ t('pickup_date_time') }}</div>
               <div class="text-lg">{{ formatDate(reservation.pickup_date) }}</div>
             </div>
             <div>
-              <div class="text-sm font-medium text-gray-500">Return Date & Time</div>
+              <div class="text-sm font-medium text-gray-500">{{ t('return_date_time') }}</div>
               <div class="text-lg">{{ formatDate(reservation.return_date) }}</div>
             </div>
             <div>
-              <div class="text-sm font-medium text-gray-500">Pickup Location</div>
+              <div class="text-sm font-medium text-gray-500">{{ t('pickup_location') }}</div>
               <div class="flex items-center">
                 <MapPin class="w-4 h-4 text-red-500 mr-2" />
                 {{ reservation.pickup_location }}
               </div>
             </div>
             <div v-if="reservation.duration_days">
-              <div class="text-sm font-medium text-gray-500">Duration</div>
+              <div class="text-sm font-medium text-gray-500">{{ t('duration_days') }}</div>
               <div class="text-lg font-semibold">{{ reservation.duration_days }} day(s)</div>
             </div>
           </CardContent>
@@ -236,20 +240,20 @@ const deleteReservation = () => {
           <CardHeader>
             <CardTitle class="flex items-center">
               <DollarSign class="w-5 h-5 mr-2" />
-              Financial Details
+              {{ t('financial_details') }}
             </CardTitle>
           </CardHeader>
           <CardContent class="space-y-4">
             <div>
-              <div class="text-sm font-medium text-gray-500">Daily Rate</div>
+              <div class="text-sm font-medium text-gray-500">{{ t('daily_rate') }}</div>
               <div class="text-lg font-semibold">{{ formatCurrency(reservation.rate) }}/day</div>
             </div>
             <div v-if="reservation.duration_days">
-              <div class="text-sm font-medium text-gray-500">Duration</div>
+              <div class="text-sm font-medium text-gray-500">{{ t('duration_days') }}</div>
               <div>{{ reservation.duration_days }} day(s)</div>
             </div>
             <div v-if="reservation.total_amount" class="border-t pt-4">
-              <div class="text-sm font-medium text-gray-500">Total Amount</div>
+              <div class="text-sm font-medium text-gray-500">{{ t('total_amount') }}</div>
               <div class="text-2xl font-bold text-green-600">{{ formatCurrency(reservation.total_amount) }}</div>
             </div>
           </CardContent>
@@ -259,7 +263,7 @@ const deleteReservation = () => {
       <!-- Notes -->
       <Card v-if="reservation.notes" class="mt-6">
         <CardHeader>
-          <CardTitle>Notes</CardTitle>
+          <CardTitle>{{ t('notes') }}</CardTitle>
         </CardHeader>
         <CardContent>
           <p class="text-gray-700 whitespace-pre-wrap">{{ reservation.notes }}</p>
@@ -269,11 +273,11 @@ const deleteReservation = () => {
       <!-- Actions -->
       <div class="flex justify-end space-x-4 mt-6">
         <Button variant="outline" @click="router.visit('/reservations')">
-          Back to Reservations
+          {{ t('back_to_reservations') }}
         </Button>
         <Button @click="router.visit(route('reservations.edit', reservation.id))" class="bg-blue-600 hover:bg-blue-700">
           <Edit class="w-4 h-4 mr-2" />
-          Edit Reservation
+          {{ t('edit_reservation') }}
         </Button>
       </div>
     </div>

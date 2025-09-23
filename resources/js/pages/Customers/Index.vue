@@ -386,9 +386,11 @@ watch(searchQuery, (newValue, oldValue) => {
                                         >
                                             <td class="p-4 align-middle">
                                                 <div class="font-medium">
-                                                    {{ customer.business_type === 'business' && customer.business_name 
-                                                        ? customer.business_name 
-                                                        : getFullName(customer) }}
+                                                    <Link :href="`/customers/${customer.id}`" class="text-primary hover:text-primary/80 hover:underline transition-colors">
+                                                        {{ customer.business_type === 'business' && customer.business_name 
+                                                            ? customer.business_name 
+                                                            : getFullName(customer) }}
+                                                    </Link>
                                                 </div>
                                                 <div v-if="customer.business_type === 'business'" class="text-sm text-gray-600">
                                                     Owner: {{ getFullName(customer) }}

@@ -39,12 +39,23 @@ class ExpireReservationJob implements ShouldQueue
             return;
         }
 
-        // Only act on pending reservations
+        // Only act on pending web reservations
         if ($reservation->status !== Reservation::STATUS_PENDING) {
             Log::info('Reservation was not expired because status changed', [
                 'reservation_id' => $reservation->id,
                 'uid' => $reservation->uid,
                 'current_status' => $reservation->status,
+                'checked_at' => now(),
+            ]);
+            return;
+        }
+
+        // Only expire web reservations, not agent reservations
+        if ($reservation->reservation_source !== Reservation::SOURCE_WEB) {
+            Log::info('Reservation was not expired because it is not a web reservation', [
+                'reservation_id' => $reservation->id,
+                'uid' => $reservation->uid,
+                'reservation_source' => $reservation->reservation_source,
                 'checked_at' => now(),
             ]);
             return;
@@ -69,11 +80,12 @@ class ExpireReservationJob implements ShouldQueue
         // No activity for 5+ minutes while still pending → expire
         $reservation->update(['status' => Reservation::STATUS_EXPIRED]);
 
-        Log::info('Reservation has been expired after 5 minutes of inactivity', [
+        Log::info('Web reservation has been expired after 5 minutes of inactivity', [
             'reservation_id' => $reservation->id,
             'uid' => $reservation->uid,
             'customer_id' => $reservation->customer_id,
             'vehicle_id' => $reservation->vehicle_id,
+            'reservation_source' => $reservation->reservation_source,
             'original_status' => Reservation::STATUS_PENDING,
             'new_status' => Reservation::STATUS_EXPIRED,
             'expired_at' => now(),

@@ -29,7 +29,7 @@ const showAvatar = computed(() => props.user.avatar && props.user.avatar !== '')
         </AvatarFallback>
     </Avatar>
 
-    <div :class="[marginClasses.textLeft().value, 'grid flex-1 text-sm leading-tight']">
+    <div :class="[marginClasses.textLeft().value, 'grid flex-1 text-sm leading-tight group-data-[collapsible=icon]:hidden']">
         <span class="truncate font-medium">{{ user.name }}</span>
         <span v-if="showEmail" class="truncate text-xs text-muted-foreground">{{ user.email }}</span>
     </div>
