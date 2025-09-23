@@ -71,6 +71,18 @@ class InvoiceController extends Controller
     {
         $invoice = Invoice::with(['customer', 'vehicle', 'items', 'payments'])->findOrFail($id);
 
+        // Fetch applied advances (Quick Pay allocations applied to this invoice)
+        $appliedCredits = \App\Models\PaymentReceiptAllocation::query()
+            ->where('invoice_id', $invoice->id)
+            ->where(function ($q) {
+                $q->where('allocation_type', 'advance_payment')
+                  ->orWhere('row_id', 'prepayment');
+            })
+            ->get(['id', 'description', 'amount', 'memo', 'payment_receipt_id']);
+
+        $appliedCreditsTotal = (float) $appliedCredits->sum('amount');
+        $amountDue = (float) $invoice->total_amount - (float) $invoice->paid_amount - $appliedCreditsTotal;
+
         return Inertia::render('Invoices/Show', [
             'invoice' => [
                 'id' => $invoice->id,
@@ -86,6 +98,17 @@ class InvoiceController extends Controller
                 'total_amount' => (float) $invoice->total_amount,
                 'paid_amount' => (float) $invoice->paid_amount,
                 'remaining_amount' => (float) $invoice->remaining_amount,
+                'applied_credits_total' => $appliedCreditsTotal,
+                'applied_credits' => $appliedCredits->map(function ($c) {
+                    return [
+                        'id' => (string) $c->id,
+                        'description' => $c->description,
+                        'amount' => (float) $c->amount,
+                        'memo' => $c->memo,
+                        'payment_receipt_id' => $c->payment_receipt_id,
+                    ];
+                }),
+                'amount_due' => $amountDue,
                 'customer' => [
                     'id' => $invoice->customer->id,
                     'name' => $invoice->customer->first_name . ' ' . $invoice->customer->last_name,
@@ -268,13 +291,30 @@ class InvoiceController extends Controller
         $invoice = Invoice::with(['customer', 'vehicle', 'items'])->findOrFail($id);
         $customer = $invoice->customer;
         $vehicle = $invoice->vehicle;
+        // Applied credits for PDF
+        $appliedCredits = \App\Models\PaymentReceiptAllocation::query()
+            ->where('invoice_id', $invoice->id)
+            ->where(function ($q) {
+                $q->where('allocation_type', 'advance_payment')
+                  ->orWhere('row_id', 'prepayment');
+            })
+            ->get();
+        $appliedCreditsTotal = (float) $appliedCredits->sum('amount');
+        $amountDue = max(0, (float) $invoice->total_amount - (float) $invoice->paid_amount - $appliedCreditsTotal);
 
         // Format vehicle name
         if ($vehicle) {
             $vehicle->name = "{$vehicle->year} {$vehicle->make} {$vehicle->model} - {$vehicle->plate_number}";
         }
 
-        $pdf = Pdf::loadView('pdf.invoice', compact('invoice', 'customer', 'vehicle'));
+        $pdf = Pdf::loadView('pdf.invoice', [
+            'invoice' => $invoice,
+            'customer' => $customer,
+            'vehicle' => $vehicle,
+            'appliedCredits' => $appliedCredits,
+            'appliedCreditsTotal' => $appliedCreditsTotal,
+            'amountDue' => $amountDue,
+        ]);
         return $pdf->stream('invoice-' . $invoice->invoice_number . '.pdf');
     }
 
@@ -298,7 +338,23 @@ class InvoiceController extends Controller
         $email = $request->input('email', $customer->email);
 
         // Generate PDF
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.invoice', compact('invoice', 'customer', 'vehicle'));
+        $appliedCredits = \App\Models\PaymentReceiptAllocation::query()
+            ->where('invoice_id', $invoice->id)
+            ->where(function ($q) {
+                $q->where('allocation_type', 'advance_payment')
+                  ->orWhere('row_id', 'prepayment');
+            })
+            ->get();
+        $appliedCreditsTotal = (float) $appliedCredits->sum('amount');
+        $amountDue = max(0, (float) $invoice->total_amount - (float) $invoice->paid_amount - $appliedCreditsTotal);
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.invoice', [
+            'invoice' => $invoice,
+            'customer' => $customer,
+            'vehicle' => $vehicle,
+            'appliedCredits' => $appliedCredits,
+            'appliedCreditsTotal' => $appliedCreditsTotal,
+            'amountDue' => $amountDue,
+        ]);
         $pdfContent = $pdf->output();
 
         // Send email
@@ -318,7 +374,23 @@ class InvoiceController extends Controller
             $invoice->load(['customer', 'vehicle', 'items']);
             $customer = $invoice->customer;
             $vehicle = $invoice->vehicle;
-            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.invoice', compact('invoice', 'customer', 'vehicle'));
+            $appliedCredits = \App\Models\PaymentReceiptAllocation::query()
+                ->where('invoice_id', $invoice->id)
+                ->where(function ($q) {
+                    $q->where('allocation_type', 'advance_payment')
+                      ->orWhere('row_id', 'prepayment');
+                })
+                ->get();
+            $appliedCreditsTotal = (float) $appliedCredits->sum('amount');
+            $amountDue = max(0, (float) $invoice->total_amount - (float) $invoice->paid_amount - $appliedCreditsTotal);
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.invoice', [
+                'invoice' => $invoice,
+                'customer' => $customer,
+                'vehicle' => $vehicle,
+                'appliedCredits' => $appliedCredits,
+                'appliedCreditsTotal' => $appliedCreditsTotal,
+                'amountDue' => $amountDue,
+            ]);
             Storage::disk('public')->put($pdfPath, $pdf->output());
         }
         $url = Storage::disk('public')->url($pdfPath);

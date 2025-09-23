@@ -343,8 +343,11 @@ const formatDateTime = (date: string) => {
     });
 };
 
+import { router } from '@inertiajs/vue3';
+
 function goToCreateInvoice() {
-    window.location.href = route('invoices.create', { contract_id: props.contract.id });
+    // Redirect to invoice creation page with prefilled contract for editing before save
+    router.visit(route('contracts.create-invoice', props.contract.id), { method: 'post' });
 }
 
 // Quick Pay handlers
@@ -426,6 +429,14 @@ const toggleExpandAll = async () => {
                                 </DropdownMenuContent>
                             </DropdownMenu>
 
+                            <Button
+                                v-if="contract.status === 'active' || contract.status === 'completed'"
+                                variant="default"
+                                class="bg-indigo-600 text-white hover:bg-indigo-700"
+                                @click="goToCreateInvoice"
+                            >
+                                {{ t('create_invoice') }}
+                            </Button>
                             
                         </div>
                     </div>

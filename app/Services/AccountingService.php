@@ -1034,20 +1034,9 @@ class AccountingService
                 'credited' => false, // Debit
             ]);
 
-            // Get customer's accounts receivable account
-            $customerReceivableAccount = $this->getCustomerReceivableAccount($paymentReceipt->customer);
-
-            // Debit: Customer's Accounts Receivable (reduce what customer owes)
-            $receivableLineItem = LineItem::create([
-                'transaction_id' => $transaction->id,
-                'account_id' => $customerReceivableAccount->id,
-                'narration' => "Payment received from {$paymentReceipt->customer->name}",
-                'amount' => $paymentReceipt->total_amount,
-                'quantity' => 1,
-                'vat_inclusive' => false,
-                'entity_id' => $this->getCurrentEntity()->id,
-                'credited' => false, // Debit
-            ]);
+            // Note: Do NOT touch Accounts Receivable here.
+            // Quick Pay creates receipts for deposits/advances or miscellaneous allocations.
+            // AR settlement should be handled explicitly when applying payments to invoices.
 
             // Credit: Various GL accounts based on allocations
             foreach ($allocations as $allocation) {
@@ -1076,6 +1065,8 @@ class AccountingService
                         'gl_account_id' => $glAccountId,
                         'row_id' => $allocation['row_id'],
                         'description' => $this->getDescriptionForRowId($allocation['row_id']),
+                        'allocation_type' => $allocation['type'] ?? null,
+                        'invoice_id' => $allocation['invoice_id'] ?? null,
                         'amount' => $allocation['amount'],
                         'memo' => $allocation['memo'] ?? null,
                         'ifrs_line_item_id' => $lineItem->id,
@@ -1096,6 +1087,92 @@ class AccountingService
             DB::rollback();
             Log::error("Failed to record payment receipt in IFRS system", [
                 'receipt_id' => $paymentReceipt->id,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Apply available advances to an invoice by debiting deferred revenue and crediting AR.
+     * Marks applied allocations with the invoice_id for traceability.
+     */
+    public function applyAdvancesToInvoice(Invoice $invoice): ?Transaction
+    {
+        DB::beginTransaction();
+
+        try {
+            // Collect unapplied advance allocations for this contract/customer
+            $advanceAllocations = PaymentReceiptAllocation::query()
+                ->whereNull('invoice_id')
+                ->whereHas('paymentReceipt', function ($q) use ($invoice) {
+                    $q->where('contract_id', $invoice->contract_id)
+                      ->where('customer_id', $invoice->customer_id)
+                      ->where('status', 'completed');
+                })
+                ->where(function ($q) {
+                    $q->where('allocation_type', 'advance_payment')
+                      ->orWhere('row_id', 'prepayment');
+                })
+                ->get();
+
+            $totalAdvance = $advanceAllocations->sum('amount');
+            if ($totalAdvance <= 0) {
+                DB::rollBack();
+                return null;
+            }
+
+            // AR account (customer receivable)
+            $receivableAccount = $this->getCustomerReceivableAccount($invoice->customer);
+
+            // Create transaction to apply advances
+            $transaction = Transaction::create([
+                'transaction_type' => Transaction::JN,
+                'transaction_date' => $invoice->invoice_date ?? now()->toDateString(),
+                'narration' => "Apply advances to Invoice {$invoice->invoice_number}",
+                'entity_id' => $this->getCurrentEntity()->id,
+                'currency_id' => $this->getDefaultCurrency()->id,
+                'account_id' => $receivableAccount->id,
+            ]);
+
+            // Debit each deferred revenue account for its amount
+            foreach ($advanceAllocations as $alloc) {
+                LineItem::create([
+                    'transaction_id' => $transaction->id,
+                    'account_id' => $alloc->gl_account_id, // deferred revenue account mapped at receipt time
+                    'narration' => $alloc->description ?: 'Advance application',
+                    'amount' => $alloc->amount,
+                    'quantity' => 1,
+                    'vat_inclusive' => false,
+                    'entity_id' => $this->getCurrentEntity()->id,
+                    'credited' => false, // Debit deferred revenue
+                ]);
+            }
+
+            // Credit AR for total advances
+            LineItem::create([
+                'transaction_id' => $transaction->id,
+                'account_id' => $receivableAccount->id,
+                'narration' => "Advance applied to Invoice {$invoice->invoice_number}",
+                'amount' => $totalAdvance,
+                'quantity' => 1,
+                'vat_inclusive' => false,
+                'entity_id' => $this->getCurrentEntity()->id,
+                'credited' => true,
+            ]);
+
+            // Mark allocations as applied to this invoice
+            foreach ($advanceAllocations as $alloc) {
+                $alloc->update(['invoice_id' => $invoice->id]);
+            }
+
+            DB::commit();
+            return $transaction;
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to apply advances to invoice', [
+                'invoice_id' => $invoice->id,
                 'error' => $e->getMessage(),
             ]);
             throw $e;

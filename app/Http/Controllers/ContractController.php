@@ -652,36 +652,8 @@ class ContractController extends Controller
                 ->with('error', 'Cannot create invoice for voided contract.');
         }
 
-        // Create invoice with contract details
-        $invoice = Invoice::create([
-            'invoice_number' => Invoice::generateInvoiceNumber(),
-            'customer_id' => $contract->customer_id,
-            'vehicle_id' => $contract->vehicle_id,
-            'contract_id' => $contract->id,
-            'invoice_date' => now(),
-            'due_date' => now()->addDays(30),
-            'status' => 'unpaid',
-            'currency' => $contract->currency ?? 'AED',
-            'total_days' => $contract->total_days,
-            'start_datetime' => $contract->start_date,
-            'end_datetime' => $contract->end_date,
-            'sub_total' => $contract->total_amount,
-            'total_discount' => 0,
-            'total_amount' => $contract->total_amount,
-            // 'team_id' => $contract->team_id,
-        ]);
-
-        // Create invoice items
-        $invoice->items()->create([
-            'description' => "Car Rental - {$contract->total_days} days @ " . number_format($contract->daily_rate, 2) . " AED/day",
-            'amount' => $contract->total_amount,
-            'discount' => 0,
-        ]);
-
-        // Note: Deposit is now handled exclusively in the invoicing flow; no auto-adding here.
-
-        return redirect()->route('invoices.show', $invoice)
-            ->with('success', 'Invoice created successfully for the contract.');
+        // Redirect to invoice creation page prefilled with contract; do not persist yet
+        return redirect()->route('invoices.create', ['contract_id' => $contract->id]);
     }
 
     /**
@@ -890,6 +862,64 @@ class ContractController extends Controller
             ],
         ];
 
+        // Calculate consumed rental income to date (accrued)
+        try {
+            $tz = config('app.timezone', 'UTC');
+            $start = \Carbon\Carbon::parse($contract->start_date)->timezone($tz)->startOfDay();
+            $end = \Carbon\Carbon::parse($contract->end_date)->timezone($tz)->startOfDay();
+            $now = now()->timezone($tz)->startOfDay();
+
+            // Clamp now to contract period
+            $clampedNow = $now->lt($start) ? $start : ($now->gt($end) ? $end : $now);
+            $daysConsumed = 0;
+            if ($clampedNow->gte($start)) {
+                // +1 to include the start day itself
+                $daysConsumed = $start->diffInDays($clampedNow) + 1;
+            }
+            $totalDays = max(0, (int) $contract->total_days);
+            $daysConsumed = min($daysConsumed, $totalDays);
+
+            // Prefer per-day derived from total to avoid overridden VAT/rounding mismatches
+            $perDay = 0.0;
+            if ($totalDays > 0 && $contract->total_amount !== null) {
+                $perDay = round(((float) $contract->total_amount) / $totalDays, 2);
+            } else {
+                $perDay = round((float) ($contract->daily_rate ?? 0), 2);
+            }
+            $consumedAmount = round($perDay * $daysConsumed, 2);
+
+            // Sum of amounts allocated to rental_income via Quick Pay receipts
+            $paidToRental = (float) \App\Models\PaymentReceiptAllocation::query()
+                ->where('row_id', 'rental_income')
+                ->whereHas('paymentReceipt', function ($q) use ($contract) {
+                    $q->where('contract_id', $contract->id)
+                      ->where('status', 'completed');
+                })
+                ->sum('amount');
+
+            $remaining = max(0, $consumedAmount - $paidToRental);
+
+            // Inject values into the response for the rental_income row
+            foreach ($response['sections'] as &$section) {
+                if (($section['key'] ?? null) === 'income') {
+                    foreach ($section['rows'] as &$row) {
+                        if (($row['id'] ?? null) === 'rental_income') {
+                            $row['total'] = $consumedAmount;
+                            $row['paid'] = round($paidToRental, 2);
+                            $row['remaining'] = round($remaining, 2);
+                            break;
+                        }
+                    }
+                }
+            }
+            unset($section, $row);
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to compute consumed rental income for quick pay summary', [
+                'contract_id' => $contract->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         return response()->json($response);
     }
 
@@ -905,6 +935,8 @@ class ContractController extends Controller
             'allocations.*.row_id' => 'required|string',
             'allocations.*.amount' => 'required|numeric|min:0',
             'allocations.*.memo' => 'nullable|string',
+            'allocations.*.type' => 'nullable|in:security_deposit,advance_payment,invoice_settlement',
+            'allocations.*.invoice_id' => 'nullable|uuid|exists:invoices,id',
             'amount_total' => 'required|numeric|min:0',
         ]);
 

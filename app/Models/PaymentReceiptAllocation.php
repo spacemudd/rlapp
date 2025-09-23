@@ -20,6 +20,8 @@ class PaymentReceiptAllocation extends Model
         'gl_account_id',
         'row_id',
         'description',
+        'allocation_type',
+        'invoice_id',
         'amount',
         'memo',
         'ifrs_line_item_id',
@@ -42,6 +44,11 @@ class PaymentReceiptAllocation extends Model
     public function ifrsLineItem(): BelongsTo
     {
         return $this->belongsTo(IFRSLineItem::class, 'ifrs_line_item_id');
+    }
+
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
     }
 
     /**

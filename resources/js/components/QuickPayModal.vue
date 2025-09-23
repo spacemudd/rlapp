@@ -87,7 +87,12 @@ const fetchQuickPaySummary = async () => {
 const submitQuickPay = async () => {
     if (!quickPaySummary.value) return;
     
-    const allocations = [] as Array<{ row_id: string; amount: number; memo?: string }>;
+    const allocations = [] as Array<{ row_id: string; amount: number; memo?: string; type?: 'security_deposit' | 'advance_payment' | 'invoice_settlement'; }>;
+    const inferAllocationType = (rowId: string, sectionKey: string): 'security_deposit' | 'advance_payment' | 'invoice_settlement' => {
+        if (rowId === 'violation_guarantee') return 'security_deposit';
+        // For now, treat other quick pay rows as advances; invoice settlement should be a separate flow
+        return 'advance_payment';
+    };
     const collect = (sectionKey: string) => {
         const section = quickPaySummary.value?.sections?.find((s: any) => s.key === sectionKey);
         if (!section) return;
@@ -95,8 +100,9 @@ const submitQuickPay = async () => {
             const amount = Number(row.amount || 0);
             if (amount > 0) allocations.push({ 
                 row_id: row.id, 
-                amount, 
-                memo: row.memo || '' 
+                amount,
+                memo: row.memo || '',
+                type: inferAllocationType(row.id, sectionKey),
             });
         }
     };
@@ -140,6 +146,15 @@ const handleCancel = () => {
     // Reset form
     quickPayMethod.value = 'cash';
     quickPayRef.value = '';
+};
+
+// Grand total per row: [Total] - [Paid] + [Remaining] + [Amount]
+const computeGrandTotal = (row: { total?: number; paid?: number; remaining?: number; amount?: number }) => {
+    const total = Number(row.total || 0);
+    const paid = Number(row.paid || 0);
+    const remaining = Number(row.remaining || 0);
+    const amount = Number(row.amount || 0);
+    return (total - paid) + remaining + amount;
 };
 
 // Map specific backend labels to desired UI labels
@@ -215,7 +230,7 @@ watch(() => props.isOpen, async (isOpen) => {
                                 <td class="px-2 py-1 text-end">
                                     <Input type="number" class="h-7" v-model.number="row.amount" :max="row.remaining" min="0" />
                                 </td>
-                                <td class="px-2 py-1 text-end" dir="ltr">{{ formatCurrency(row.amount ?? 0, quickPaySummary.currency) }}</td>
+                                <td class="px-2 py-1 text-end" dir="ltr">{{ formatCurrency(computeGrandTotal(row), quickPaySummary.currency) }}</td>
                             </tr>
 
                             <!-- Income section header -->
@@ -240,7 +255,7 @@ watch(() => props.isOpen, async (isOpen) => {
                                 <td class="px-2 py-1 text-end">
                                     <Input type="number" class="h-7" v-model.number="row.amount" :max="row.remaining" min="0" />
                                 </td>
-                                <td class="px-2 py-1 text-end" dir="ltr">{{ formatCurrency(row.amount ?? 0, quickPaySummary.currency) }}</td>
+                                <td class="px-2 py-1 text-end" dir="ltr">{{ formatCurrency(computeGrandTotal(row), quickPaySummary.currency) }}</td>
                             </tr>
                         </tbody>
                     </table>
