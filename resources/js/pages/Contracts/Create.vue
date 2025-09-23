@@ -134,8 +134,28 @@ const canSubmit = computed(() => {
            form.vehicle_id && 
            form.customer_id &&
            form.branch_id &&
+           form.daily_rate > 0 &&
            !form.processing;
 });
+
+// Custom form validation function
+const validateForm = () => {
+    const errors = [];
+    
+    if (!form.customer_id) errors.push('Customer is required');
+    if (!form.vehicle_id) errors.push('Vehicle is required');
+    if (!form.branch_id) errors.push('Branch is required');
+    if (!form.start_date) errors.push('Start date is required');
+    if (!form.end_date) errors.push('End date is required');
+    if (!form.daily_rate || form.daily_rate <= 0) errors.push('Daily rate must be greater than 0');
+    if (hasConflict.value) errors.push('Selected vehicle has scheduling conflicts');
+    if (selectedBlockedCustomer.value) errors.push('Cannot create contract for blocked customer');
+    
+    return {
+        isValid: errors.length === 0,
+        errors
+    };
+};
 
 // Reactive refs for pricing
 const totalAmount = ref(0);
@@ -556,17 +576,16 @@ const viewCustomerDetails = () => {
 };
 
 const submit = () => {
-    if (selectedBlockedCustomer.value) {
-        alert('Cannot create contract for blocked customer. Please select a different customer.');
+    // Ensure we're on the final step before submitting
+    if (activeStep.value !== 3) {
+        alert('Please complete all steps before submitting.');
         return;
     }
 
-    if (!canSubmit.value) {
-        if (hasConflict.value) {
-            alert('Cannot create contract with vehicle conflicts. Please select an available vehicle.');
-            return;
-        }
-        alert('Please fill in all required fields.');
+    // Validate form using custom validation
+    const validation = validateForm();
+    if (!validation.isValid) {
+        alert('Please fix the following errors:\n• ' + validation.errors.join('\n• '));
         return;
     }
 
@@ -927,7 +946,7 @@ watch(() => props.newCustomer, (customer) => {
                                     v-model="form.branch_id"
                                     class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                                     :class="{ 'border-red-500': form.errors.branch_id }"
-                                    required
+                                    :required="activeStep === 1"
                                 >
                                     <option value="">{{ t('select') || 'Select' }}</option>
                                     <option v-for="b in (props.branches || [])" :key="b.id" :value="b.id">
@@ -940,22 +959,22 @@ watch(() => props.newCustomer, (customer) => {
                             </div>
                         </div>
                         <div class="grid gap-4 md:grid-cols-2">
-                                                            <div class="space-y-2">
-                                    <Label for="start_date">{{ t('start_date_time') }} * <span class="text-xs text-gray-500">{{ t('dubai_time_gmt4') }}</span></Label>
-                                    <Input
-                                        id="start_date"
-                                        type="datetime-local"
-                                        v-model="form.start_date"
-                                        required
-                                        dir="ltr"
-                                    />
-                                    <div v-if="form.errors.start_date" class="text-sm text-red-600">
-                                        {{ form.errors.start_date }}
-                                    </div>
-                                    <p class="text-xs text-gray-500">
-                                        {{ t('times_displayed_dubai_timezone') }}
-                                    </p>
+                            <div class="space-y-2">
+                                <Label for="start_date">{{ t('start_date_time') }} * <span class="text-xs text-gray-500">{{ t('dubai_time_gmt4') }}</span></Label>
+                                <Input
+                                    id="start_date"
+                                    type="datetime-local"
+                                    v-model="form.start_date"
+                                    :required="activeStep === 1"
+                                    dir="ltr"
+                                />
+                                <div v-if="form.errors.start_date" class="text-sm text-red-600">
+                                    {{ form.errors.start_date }}
                                 </div>
+                                <p class="text-xs text-gray-500">
+                                    {{ t('times_displayed_dubai_timezone') }}
+                                </p>
+                            </div>
 
                             <div class="space-y-2">
                                 <Label for="end_date">{{ t('end_date_time') }} * <span class="text-xs text-gray-500">{{ t('dubai_time_gmt4') }}</span></Label>
@@ -964,7 +983,7 @@ watch(() => props.newCustomer, (customer) => {
                                     type="datetime-local"
                                     v-model="form.end_date"
                                     :min="form.start_date"
-                                    required
+                                    :required="activeStep === 1"
                                     dir="ltr"
                                 />
                                 <div v-if="form.errors.end_date" class="text-sm text-red-600">
@@ -989,7 +1008,7 @@ watch(() => props.newCustomer, (customer) => {
                                         v-model.number="durationDays"
                                         @focus="initializeStartDate"
                                         :placeholder="t('enter_number_of_days')"
-                                        required
+                                        :required="activeStep === 1"
                                     />
                                     <p class="text-xs text-gray-500">
                                         {{ t('enter_rental_days_minimum') }}
@@ -1038,8 +1057,9 @@ watch(() => props.newCustomer, (customer) => {
                         <CardDescription class="text-xs">{{ t('set_rates_deposit_requirements') }}</CardDescription>
                     </CardHeader>
                     <CardContent class="text-xs">
-                        <table class="w-full border-collapse">
-                            <tbody class="divide-y">
+                        <div class="overflow-x-auto">
+                            <table class="w-full border-collapse min-w-[600px]">
+                                <tbody class="divide-y">
                                 <tr v-if="isCalculatingPricing">
                                     <td colspan="2" class="py-2">
                                         <div class="p-3 bg-blue-50 border border-blue-200 rounded-md text-center text-blue-800">
@@ -1058,7 +1078,7 @@ watch(() => props.newCustomer, (customer) => {
                                                 step="0.01"
                                                 min="0"
                                                 v-model="form.daily_rate"
-                                                required
+                                                :required="activeStep === 2"
                                                 class="h-9 text-sm"
                                             />
                                             <div class="flex items-center gap-2">
@@ -1227,7 +1247,8 @@ watch(() => props.newCustomer, (customer) => {
                                     </td>
                                 </tr>
                             </tbody>
-                        </table>
+                            </table>
+                        </div>
                     </CardContent>
                 </Card>
 

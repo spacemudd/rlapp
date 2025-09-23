@@ -12,6 +12,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { ref, watch, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
+import QuickPayModal from '@/components/QuickPayModal.vue';
+import PaymentReceiptDetailsModal from '@/components/PaymentReceiptDetailsModal.vue';
 
 interface Contract {
     id: string;
@@ -70,6 +72,41 @@ interface Contract {
         paid_amount: number;
         remaining_amount: number;
     }>;
+    payment_receipts?: Array<{
+        id: string;
+        receipt_number: string;
+        total_amount: number;
+        payment_date: string;
+        payment_method: string;
+        reference_number?: string;
+        status: string;
+        created_at: string;
+        created_by?: string;
+        customer?: {
+            id: string;
+            name: string;
+        };
+        vehicle?: {
+            id: string;
+            make: string;
+            model: string;
+            plate_number: string;
+        };
+        contract?: {
+            contract_number: string;
+        };
+        ifrs_transaction?: {
+            transaction_no: string;
+            transaction_type: string;
+            narration: string;
+        };
+        allocations?: Array<{
+            id: string;
+            description: string;
+            amount: number;
+            memo?: string;
+        }>;
+    }>;
     extensions?: Array<{
         id: string;
         extension_number: number;
@@ -118,6 +155,9 @@ const extensionForm = useForm({
 const showVoidDialog = ref(false);
 const showExtendDialog = ref(false);
 const showActivateDialog = ref(false);
+const showQuickPayDialog = ref(false);
+const showReceiptDetailsDialog = ref(false);
+const selectedReceipt = ref<any>(null);
 const extensionPricing = ref<any>(null);
 
 // Expand/collapse state
@@ -127,6 +167,11 @@ const allExpanded = ref(false);
 // Action handlers
 const activateContract = () => {
     showActivateDialog.value = true;
+};
+
+const showReceiptDetails = (receipt: any) => {
+    selectedReceipt.value = receipt;
+    showReceiptDetailsDialog.value = true;
 };
 
 const confirmActivation = () => {
@@ -302,6 +347,17 @@ function goToCreateInvoice() {
     window.location.href = route('invoices.create', { contract_id: props.contract.id });
 }
 
+// Quick Pay handlers
+const openQuickPay = () => {
+    showQuickPayDialog.value = true;
+};
+
+const handleQuickPaySubmitted = (data: any) => {
+    // Handle successful payment submission
+    console.log('Payment submitted:', data);
+    // Optionally refresh the page or update contract data
+};
+
 // Collapsible sections (accordion-like) structure
 const sectionIds = [
     'section-information',
@@ -333,7 +389,7 @@ const toggleExpandAll = async () => {
                     <div class="flex justify-between">
                         <div>
                             <h1 class="text-2xl font-semibold text-gray-900">{{ contract.contract_number }}</h1>
-                            <div class="flex items-center gap-3 mt-1">
+                            <div class="flex gap-3 mt-1">
                                 <Badge :class="getStatusColor(contract.status)" class="text-xs">
                                     {{ t(contract.status) }}
                                 </Badge>
@@ -341,7 +397,7 @@ const toggleExpandAll = async () => {
                             </div>
                         </div>
 
-                        <div class="flex items-center gap-2">
+                        <div class="flex gap-2">
                             <Link v-if="contract.status === 'draft'" :href="route('contracts.edit', contract.id)">
                                 <Button variant="outline">
                                     <Edit class="w-4 h-4 mr-2" />
@@ -374,13 +430,13 @@ const toggleExpandAll = async () => {
                         </div>
                     </div>
                     <!-- Compact controls bar -->
-                    <div class="flex items-center gap-2 text-sm">
+                    <div class="flex gap-2 text-sm">
                         <Button size="sm" class="h-7 px-2 py-1 text-xs" variant="outline" @click="toggleExpandAll">
                             {{ allExpanded ? t('collapse_all') : t('expand_all') }}
                         </Button>
                         <div class="text-gray-400">|</div>
                         <div class="flex flex-wrap gap-2">
-                            <Button size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700">
+                            <Button size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="openQuickPay">
                                 {{ t('quick_pay') }}
                             </Button>
                             <Button size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700">
@@ -419,6 +475,7 @@ const toggleExpandAll = async () => {
                             <a class="underline text-blue-600 hover:text-blue-800" :href="'#section-vehicle'">{{ t('vehicle') }}</a>
                             <a class="underline text-blue-600 hover:text-blue-800" :href="'#section-financial'">{{ t('financial_details') }}</a>
                             <a v-if="contract.invoices?.length" class="underline text-blue-600 hover:text-blue-800" :href="'#section-invoices'">{{ t('invoices') }}</a>
+                            <a v-if="contract.payment_receipts?.length" class="underline text-blue-600 hover:text-blue-800" :href="'#section-receipts'">{{ t('receipts') }} - سندات قبض</a>
                             <a v-if="contract.extensions?.length" class="underline text-blue-600 hover:text-blue-800" :href="'#section-extensions'">{{ t('extensions') }}</a>
                             <a v-if="contract.status === 'void' && contract.void_reason" class="underline text-blue-600 hover:text-blue-800" :href="'#section-void'">{{ t('void_reason') }}</a>
                         </div>
@@ -427,7 +484,7 @@ const toggleExpandAll = async () => {
 
                 <!-- Customer & Vehicle -->
                 <details id="section-customer" data-collapsible class="mt-3" open>
-                    <summary class="flex items-center justify-between cursor-pointer rounded-md bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 text-sm font-medium transition-colors">
+                    <summary class="flex justify-between cursor-pointer rounded-md bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 text-sm font-medium transition-colors">
                         <span>{{ t('customer_information') }} / {{ t('vehicle_information') }}</span>
                         <span class="text-gray-300">{{ t('click_to_toggle') }}</span>
                     </summary>
@@ -435,7 +492,7 @@ const toggleExpandAll = async () => {
                     <!-- Customer Information -->
                     <Card>
                         <CardHeader class="py-3">
-                            <CardTitle class="flex items-center gap-2 text-base">
+                            <CardTitle class="flex gap-2 text-base">
                                 <User class="w-4 h-4" />
                                 {{ t('customer_information') }}
                             </CardTitle>
@@ -472,7 +529,7 @@ const toggleExpandAll = async () => {
                     <!-- Vehicle Information -->
                     <Card>
                     <CardHeader class="py-3">
-                        <CardTitle class="flex items-center gap-2 text-base">
+                        <CardTitle class="flex gap-2 text-base">
                             <Car class="w-4 h-4" />
                             {{ t('vehicle_information') }}
                         </CardTitle>
@@ -502,7 +559,7 @@ const toggleExpandAll = async () => {
 
                 <!-- Contract Details -->
                 <details id="section-information" data-collapsible class="mt-3">
-                    <summary class="flex items-center justify-between cursor-pointer rounded-md bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 text-sm font-medium transition-colors">
+                    <summary class="flex justify-between cursor-pointer rounded-md bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 text-sm font-medium transition-colors">
                         <span>{{ t('contract_details') }}</span>
                         <span class="text-gray-300">{{ t('click_to_toggle') }}</span>
                     </summary>
@@ -536,7 +593,7 @@ const toggleExpandAll = async () => {
 
                 <!-- Financial Details -->
                 <details id="section-financial" data-collapsible class="mt-3">
-                    <summary class="flex items-center justify-between cursor-pointer rounded-md bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 text-sm font-medium transition-colors">
+                    <summary class="flex justify-between cursor-pointer rounded-md bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 text-sm font-medium transition-colors">
                         <span>{{ t('financial_details') }}</span>
                         <span class="text-gray-300">{{ t('click_to_toggle') }}</span>
                     </summary>
@@ -559,7 +616,7 @@ const toggleExpandAll = async () => {
                         </div>
 
                         <div class="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
-                            <div class="flex justify-between items-center">
+                            <div class="flex justify-between">
                                 <span class="text-green-800 font-medium">{{ t('total_contract_amount') }}</span>
                                 <span class="text-2xl font-bold text-green-900">{{ formatCurrency(contract.total_amount, contract.currency) }}</span>
                             </div>
@@ -569,7 +626,7 @@ const toggleExpandAll = async () => {
 
                             <!-- Override information -->
                             <div v-if="contract.override_daily_rate || contract.override_final_price" class="mt-3 pt-3 border-t border-green-200">
-                                <div class="flex items-center gap-2 text-sm">
+                                <div class="flex gap-2 text-sm">
                                      <span class="font-medium text-orange-700">⚠️ {{ t('pricing_override_applied') }}</span>
                                      <span v-if="contract.override_daily_rate" class="text-orange-600">({{ t('daily_rate_override') }})</span>
                                      <span v-else-if="contract.override_final_price" class="text-orange-600">({{ t('final_price_override') }})</span>
@@ -591,14 +648,14 @@ const toggleExpandAll = async () => {
 
                 <!-- Terms and Notes -->
                 <details data-collapsible class="mt-3">
-                    <summary class="flex items-center justify-between cursor-pointer rounded-md bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 text-sm font-medium transition-colors">
+                    <summary class="flex justify-between cursor-pointer rounded-md bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 text-sm font-medium transition-colors">
                         <span>{{ t('terms_and_conditions') }} / {{ t('internal_notes') }}</span>
                         <span class="text-gray-300">{{ t('click_to_toggle') }}</span>
                     </summary>
                     <div class="mt-3 grid gap-4 lg:grid-cols-2">
                     <Card v-if="contract.terms_and_conditions">
                         <CardHeader>
-                            <CardTitle class="flex items-center gap-2">
+                            <CardTitle class="flex gap-2">
                                 <FileText class="w-5 h-5" />
                             {{ t('terms_and_conditions') }}
                             </CardTitle>
@@ -610,7 +667,7 @@ const toggleExpandAll = async () => {
 
                     <Card v-if="contract.notes">
                         <CardHeader>
-                            <CardTitle class="flex items-center gap-2">
+                            <CardTitle class="flex gap-2">
                                 <FileText class="w-5 h-5" />
                             {{ t('internal_notes') }}
                             </CardTitle>
@@ -624,7 +681,7 @@ const toggleExpandAll = async () => {
 
                 <!-- Associated Invoices -->
                 <details id="section-invoices" v-if="contract.invoices && contract.invoices.length > 0" data-collapsible class="mt-3">
-                    <summary class="flex items-center justify-between cursor-pointer rounded-md bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 text-sm font-medium transition-colors">
+                    <summary class="flex justify-between cursor-pointer rounded-md bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 text-sm font-medium transition-colors">
                         <span>{{ t('associated_invoices') }} ({{ contract.invoices.length }})</span>
                         <span class="text-gray-300">{{ t('click_to_toggle') }}</span>
                     </summary>
@@ -634,10 +691,10 @@ const toggleExpandAll = async () => {
                             <div
                                 v-for="invoice in contract.invoices"
                                 :key="invoice.id"
-                                class="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                                class="flex justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
                                 @click="$inertia.visit(route('invoices.show', invoice.id))"
                             >
-                                <div class="flex items-center gap-3">
+                                <div class="flex gap-3">
                                     <Receipt class="w-4 h-4 text-gray-500" />
                                     <div>
                                         <p class="font-medium">{{ invoice.invoice_number }}</p>
@@ -656,9 +713,45 @@ const toggleExpandAll = async () => {
                     </Card>
                 </details>
 
+                <!-- Payment Receipts -->
+                <details id="section-receipts" v-if="contract.payment_receipts && contract.payment_receipts.length > 0" data-collapsible class="mt-3">
+                    <summary class="flex justify-between cursor-pointer rounded-md bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 text-sm font-medium transition-colors">
+                        <span>{{ t('payment_receipts') }} - سندات قبض ({{ contract.payment_receipts.length }})</span>
+                        <span class="text-gray-300">{{ t('click_to_toggle') }}</span>
+                    </summary>
+                    <Card class="mt-3">
+                        <CardContent class="pt-4">
+                            <div class="space-y-3">
+                                <div
+                                    v-for="receipt in contract.payment_receipts"
+                                    :key="receipt.id"
+                                    class="flex justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                                    @click="showReceiptDetails(receipt)"
+                                >
+                                    <div class="flex gap-3">
+                                        <Receipt class="w-4 h-4 text-gray-500" />
+                                        <div>
+                                            <p class="font-medium">{{ receipt.receipt_number }}</p>
+                                            <p class="text-sm text-gray-500">{{ formatDate(receipt.payment_date) }}</p>
+                                            <p class="text-sm text-gray-600">{{ t(receipt.payment_method) }}</p>
+                                            <p v-if="receipt.reference_number" class="text-xs text-gray-500">{{ t('reference') }}: {{ receipt.reference_number }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="font-medium" dir="ltr">{{ formatCurrency(receipt.total_amount) }}</p>
+                                        <Badge :class="receipt.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'" class="text-xs">
+                                            {{ t(receipt.status) }}
+                                        </Badge>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </details>
+
                 <!-- Contract Extensions -->
                 <details id="section-extensions" v-if="contract.extensions && contract.extensions.length > 0" data-collapsible class="mt-3">
-                    <summary class="flex items-center justify-between cursor-pointer rounded-md bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 text-sm font-medium transition-colors">
+                    <summary class="flex justify-between cursor-pointer rounded-md bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 text-sm font-medium transition-colors">
                         <span>Contract Extensions ({{ contract.extensions.length }})</span>
                         <span class="text-gray-300">{{ t('click_to_toggle') }}</span>
                     </summary>
@@ -668,10 +761,10 @@ const toggleExpandAll = async () => {
                             <div
                                 v-for="extension in contract.extensions"
                                 :key="extension.id"
-                                class="flex items-center justify-between p-3 border rounded-lg"
+                                class="flex justify-between p-3 border rounded-lg"
                                 :class="extension.status === 'approved' ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'"
                             >
-                                <div class="flex items-center gap-3">
+                                <div class="flex gap-3">
                                     <Calendar class="w-4 h-4" :class="extension.status === 'approved' ? 'text-green-600' : 'text-yellow-600'" />
                                     <div>
                                         <p class="font-medium">Extension #{{ extension.extension_number }}</p>
@@ -697,7 +790,7 @@ const toggleExpandAll = async () => {
 
                 <!-- Void Reason (if applicable) -->
                 <details id="section-void" v-if="contract.status === 'void' && contract.void_reason" data-collapsible class="mt-3">
-                    <summary class="flex items-center justify-between cursor-pointer rounded-md bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 text-sm font-medium transition-colors">
+                    <summary class="flex justify-between cursor-pointer rounded-md bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 text-sm font-medium transition-colors">
                         <span>{{ t('void_reason') }}</span>
                         <span class="text-gray-300">{{ t('click_to_toggle') }}</span>
                     </summary>
@@ -708,6 +801,14 @@ const toggleExpandAll = async () => {
                     </Card>
                 </details>
         </div>
+
+        <!-- Void Contract Dialog -->
+        <!-- Quick Pay Modal Component -->
+        <QuickPayModal
+            :contract-id="contract.id"
+            v-model:is-open="showQuickPayDialog"
+            @payment-submitted="handleQuickPaySubmitted"
+        />
 
         <!-- Void Contract Dialog -->
         <Dialog v-model:open="showVoidDialog">
@@ -821,7 +922,7 @@ const toggleExpandAll = async () => {
         <Dialog v-model:open="showActivateDialog">
             <DialogContent class="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle class="flex items-center gap-2">
+                    <DialogTitle class="flex gap-2">
                         <Play class="w-5 h-5 text-green-600" />
                         {{ t('activate_contract_confirmation') }}
                     </DialogTitle>
@@ -858,5 +959,13 @@ const toggleExpandAll = async () => {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+
+        <!-- Payment Receipt Details Modal -->
+        <PaymentReceiptDetailsModal 
+            :is-open="showReceiptDetailsDialog" 
+            :receipt="selectedReceipt"
+            :contract="contract"
+            @update:open="showReceiptDetailsDialog = $event"
+        />
     </AppLayout>
 </template>

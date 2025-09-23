@@ -135,6 +135,14 @@ class Contract extends Model
     }
 
     /**
+     * Get the payment receipts associated with the contract.
+     */
+    public function paymentReceipts()
+    {
+        return $this->hasMany(PaymentReceipt::class);
+    }
+
+    /**
      * Scope a query to only include active contracts.
      */
     public function scopeActive($query)

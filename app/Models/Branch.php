@@ -24,6 +24,15 @@ class Branch extends Model
         'country',
         'description',
         'status',
+        'ifrs_vat_account_id',
+        'quick_pay_accounts',
+    ];
+
+    /**
+     * Casts
+     */
+    protected $casts = [
+        'quick_pay_accounts' => 'array',
     ];
 
     /**

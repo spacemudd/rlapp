@@ -94,6 +94,11 @@ if (!form.license_expiry_date) {
 if (!form.insurance_expiry_date) {
     form.insurance_expiry_date = defaultDate;
 }
+
+// Set default branch if available and not set
+if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
+    form.branch_id = branches[0].id;
+}
 </script>
 
 <template>

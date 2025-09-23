@@ -3,10 +3,13 @@
 namespace App\Services;
 
 use App\Models\Bank;
+use App\Models\Branch;
 use App\Models\CashAccount;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Models\PaymentReceipt;
+use App\Models\PaymentReceiptAllocation;
 use App\Models\Vehicle;
 use IFRS\Models\Account;
 use IFRS\Models\Transaction;
@@ -476,6 +479,23 @@ class AccountingService
         }
 
         return $account;
+    }
+
+    /**
+     * Resolve VAT account for a specific branch; fallback to global VAT account.
+     */
+    public function getVatAccountForBranch(?string $branchId): Account
+    {
+        if ($branchId) {
+            $branch = \App\Models\Branch::find($branchId);
+            if ($branch && $branch->ifrs_vat_account_id) {
+                $acc = Account::find($branch->ifrs_vat_account_id);
+                if ($acc) {
+                    return $acc;
+                }
+            }
+        }
+        return $this->getOrCreateVatAccount();
     }
 
     /**
@@ -979,5 +999,187 @@ class AccountingService
 
             throw $e;
         }
+    }
+
+    /**
+     * Record payment receipt in the IFRS system.
+     */
+    public function recordPaymentReceipt(PaymentReceipt $paymentReceipt, array $allocations, array $accountMappings): Transaction
+    {
+        DB::beginTransaction();
+
+        try {
+            // Determine the cash/bank account to debit
+            $cashAccount = $this->getPaymentAccountForMethod($paymentReceipt->payment_method, $paymentReceipt->branch);
+
+            // Create the main IFRS transaction
+            $transaction = Transaction::create([
+                'transaction_type' => Transaction::JN, // Journal Entry
+                'transaction_date' => $paymentReceipt->payment_date,
+                'narration' => "Payment Receipt {$paymentReceipt->receipt_number} for Contract {$paymentReceipt->contract->contract_number}",
+                'entity_id' => $this->getCurrentEntity()->id,
+                'currency_id' => $this->getDefaultCurrency()->id,
+                'account_id' => $cashAccount->id, // Main account for the transaction
+            ]);
+
+            // Debit: Cash/Bank Account (total amount)
+            $cashLineItem = LineItem::create([
+                'transaction_id' => $transaction->id,
+                'account_id' => $cashAccount->id,
+                'narration' => "Payment received via {$paymentReceipt->payment_method}",
+                'amount' => $paymentReceipt->total_amount,
+                'quantity' => 1,
+                'vat_inclusive' => false,
+                'entity_id' => $this->getCurrentEntity()->id,
+                'credited' => false, // Debit
+            ]);
+
+            // Get customer's accounts receivable account
+            $customerReceivableAccount = $this->getCustomerReceivableAccount($paymentReceipt->customer);
+
+            // Debit: Customer's Accounts Receivable (reduce what customer owes)
+            $receivableLineItem = LineItem::create([
+                'transaction_id' => $transaction->id,
+                'account_id' => $customerReceivableAccount->id,
+                'narration' => "Payment received from {$paymentReceipt->customer->name}",
+                'amount' => $paymentReceipt->total_amount,
+                'quantity' => 1,
+                'vat_inclusive' => false,
+                'entity_id' => $this->getCurrentEntity()->id,
+                'credited' => false, // Debit
+            ]);
+
+            // Credit: Various GL accounts based on allocations
+            foreach ($allocations as $allocation) {
+                if ($allocation['amount'] > 0) {
+                    $glAccountId = $accountMappings[$allocation['row_id']] ?? null;
+                    
+                    if (!$glAccountId) {
+                        throw new \Exception("No GL account mapping found for row_id: {$allocation['row_id']}");
+                    }
+
+                    // Create IFRS line item
+                    $lineItem = LineItem::create([
+                        'transaction_id' => $transaction->id,
+                        'account_id' => $glAccountId,
+                        'narration' => $allocation['memo'] ?? $allocation['row_id'],
+                        'amount' => $allocation['amount'],
+                        'quantity' => 1,
+                        'vat_inclusive' => false,
+                        'entity_id' => $this->getCurrentEntity()->id,
+                        'credited' => true, // Credit
+                    ]);
+
+                    // Create payment receipt allocation record
+                    PaymentReceiptAllocation::create([
+                        'payment_receipt_id' => $paymentReceipt->id,
+                        'gl_account_id' => $glAccountId,
+                        'row_id' => $allocation['row_id'],
+                        'description' => $this->getDescriptionForRowId($allocation['row_id']),
+                        'amount' => $allocation['amount'],
+                        'memo' => $allocation['memo'] ?? null,
+                        'ifrs_line_item_id' => $lineItem->id,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            Log::info("Payment receipt recorded in IFRS system", [
+                'receipt_id' => $paymentReceipt->id,
+                'transaction_id' => $transaction->id,
+            ]);
+
+            return $transaction;
+
+        } catch (Exception $e) {
+            DB::rollback();
+            Log::error("Failed to record payment receipt in IFRS system", [
+                'receipt_id' => $paymentReceipt->id,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Get description for row ID
+     */
+    private function getDescriptionForRowId(string $rowId): string
+    {
+        $descriptions = [
+            'violation_guarantee' => __('words.qp_violation_guarantee'),
+            'prepayment' => __('words.qp_prepayment'),
+            'rental_income' => __('words.qp_rental_income'),
+            'additional_fees' => __('words.qp_additional_fees'),
+        ];
+
+        return $descriptions[$rowId] ?? $rowId;
+    }
+
+    /**
+     * Get payment account for method and branch
+     */
+    private function getPaymentAccountForMethod(string $paymentMethod, Branch $branch)
+    {
+        switch ($paymentMethod) {
+            case 'cash':
+                return $this->getBranchCashAccount($branch);
+            case 'card':
+            case 'bank_transfer':
+                return $this->getBranchBankAccount($branch);
+            default:
+                throw new \Exception("Unsupported payment method: {$paymentMethod}");
+        }
+    }
+
+    /**
+     * Get branch cash account
+     */
+    private function getBranchCashAccount(Branch $branch)
+    {
+        if (!$branch->ifrs_cash_account_id) {
+            throw new \Exception("Branch {$branch->name} does not have a cash account configured");
+        }
+
+        return Account::find($branch->ifrs_cash_account_id);
+    }
+
+    /**
+     * Get branch bank account
+     */
+    private function getBranchBankAccount(Branch $branch)
+    {
+        if (!$branch->ifrs_bank_account_id) {
+            throw new \Exception("Branch {$branch->name} does not have a bank account configured");
+        }
+
+        return Account::find($branch->ifrs_bank_account_id);
+    }
+
+    /**
+     * Get customer's accounts receivable account
+     */
+    private function getCustomerReceivableAccount(Customer $customer)
+    {
+        // First try to find a customer-specific receivable account
+        $customerReceivable = Account::where('name', 'like', '%' . $customer->name . '%')
+            ->where('account_type', Account::RECEIVABLE)
+            ->first();
+
+        if ($customerReceivable) {
+            return $customerReceivable;
+        }
+
+        // Fall back to general accounts receivable
+        $generalReceivable = Account::where('account_type', Account::RECEIVABLE)
+            ->where('name', 'Accounts Receivable')
+            ->first();
+
+        if (!$generalReceivable) {
+            throw new \Exception("No accounts receivable account found for customer {$customer->name}");
+        }
+
+        return $generalReceivable;
     }
 }

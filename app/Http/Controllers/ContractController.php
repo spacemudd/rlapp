@@ -7,8 +7,11 @@ use App\Models\Customer;
 use App\Models\Vehicle;
 use App\Models\Invoice;
 use App\Models\Branch;
+use App\Models\PaymentReceipt;
+use App\Services\AccountingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -368,7 +371,7 @@ class ContractController extends Controller
      */
     public function show(Contract $contract): Response
     {
-        $contract->load(['customer', 'vehicle.branch', 'branch', 'invoices', 'extensions']);
+        $contract->load(['customer', 'vehicle.branch', 'branch', 'invoices', 'extensions', 'paymentReceipts.allocations.glAccount']);
 
         $breadcrumbs = [
             [
@@ -768,6 +771,201 @@ class ContractController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => 'Error calculating pricing: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Quick Pay: return a grouped summary of open balances for allocation.
+     */
+    public function quickPaySummary(Request $request, Contract $contract)
+    {
+        $contract->load(['vehicle.branch', 'customer']);
+
+        // Get branch quick pay account mappings
+        $branchQp = $contract->vehicle?->branch?->quick_pay_accounts ?? [];
+        $liabilityMap = $branchQp['liability'] ?? [];
+        $incomeMap = $branchQp['income'] ?? [];
+
+        // Get GL account details for the mapped accounts
+        $glAccountIds = array_merge(array_values($liabilityMap), array_values($incomeMap));
+        $glAccounts = \IFRS\Models\Account::whereIn('id', $glAccountIds)->get()->keyBy('id');
+
+        $response = [
+            'contract_id' => (string) $contract->id,
+            'currency' => $contract->currency ?? 'AED',
+            'sections' => [
+                [
+                    'key' => 'liability',
+                    'rows' => [
+                        [
+                            'id' => 'violation_guarantee',
+                            'description' => __('words.qp_violation_guarantee'),
+                            'gl_account_id' => $liabilityMap['violation_guarantee'] ?? '',
+                            'gl_account' => $glAccounts->get($liabilityMap['violation_guarantee'] ?? '')?->name ?? __('words.qp_violation_guarantee'),
+                            'total' => 0,
+                            'paid' => 0,
+                            'remaining' => 0,
+                            'amount' => 0,
+                            'editable' => true,
+                        ],
+                        [
+                            'id' => 'prepayment',
+                            'description' => __('words.qp_prepayment'),
+                            'gl_account_id' => $liabilityMap['prepayment'] ?? '',
+                            'gl_account' => $glAccounts->get($liabilityMap['prepayment'] ?? '')?->name ?? __('words.qp_prepayment'),
+                            'total' => 0,
+                            'paid' => 0,
+                            'remaining' => 0,
+                            'amount' => 0,
+                            'editable' => true,
+                        ],
+                    ],
+                ],
+                [
+                    'key' => 'income',
+                    'rows' => [
+                        [
+                            'id' => 'rental_income',
+                            'description' => __('words.qp_rental_income'),
+                            'gl_account_id' => $incomeMap['rental_income'] ?? '',
+                            'gl_account' => $glAccounts->get($incomeMap['rental_income'] ?? '')?->name ?? __('words.qp_rental_income'),
+                            'total' => 0,
+                            'paid' => 0,
+                            'remaining' => 0,
+                            'amount' => 0,
+                            'editable' => true,
+                        ],
+                        [
+                            'id' => 'vat_collection',
+                            'description' => __('words.qp_vat_collection'),
+                            'gl_account_id' => $incomeMap['vat_collection'] ?? '',
+                            'gl_account' => $glAccounts->get($incomeMap['vat_collection'] ?? '')?->name ?? __('words.qp_vat_collection'),
+                            'total' => 0,
+                            'paid' => 0,
+                            'remaining' => 0,
+                            'amount' => 0,
+                            'editable' => true,
+                        ],
+                        [
+                            'id' => 'insurance_fee',
+                            'description' => __('words.qp_insurance_fee'),
+                            'gl_account_id' => $incomeMap['insurance_fee'] ?? '',
+                            'gl_account' => $glAccounts->get($incomeMap['insurance_fee'] ?? '')?->name ?? __('words.qp_insurance_fee'),
+                            'total' => 0,
+                            'paid' => 0,
+                            'remaining' => 0,
+                            'amount' => 0,
+                            'editable' => true,
+                        ],
+                        [
+                            'id' => 'fines',
+                            'description' => __('words.qp_fines'),
+                            'gl_account_id' => $incomeMap['fines'] ?? '',
+                            'gl_account' => $glAccounts->get($incomeMap['fines'] ?? '')?->name ?? __('words.qp_fines'),
+                            'total' => 0,
+                            'paid' => 0,
+                            'remaining' => 0,
+                            'amount' => 0,
+                            'editable' => true,
+                        ],
+                        [
+                            'id' => 'salik_fees',
+                            'description' => __('words.qp_salik_fees'),
+                            'gl_account_id' => $incomeMap['salik_fees'] ?? '',
+                            'gl_account' => $glAccounts->get($incomeMap['salik_fees'] ?? '')?->name ?? __('words.qp_salik_fees'),
+                            'total' => 0,
+                            'paid' => 0,
+                            'remaining' => 0,
+                            'amount' => 0,
+                            'editable' => true,
+                        ],
+                    ],
+                ],
+            ],
+            'totals' => [
+                'payable_now' => 0,
+                'allocated' => 0,
+                'remaining_to_allocate' => 0,
+            ],
+        ];
+
+        return response()->json($response);
+    }
+
+    /**
+     * Quick Pay: accept allocations and record a receipt.
+     */
+    public function quickPay(Request $request, Contract $contract)
+    {
+        $validated = $request->validate([
+            'payment_method' => 'required|in:cash,card,bank_transfer',
+            'reference' => 'nullable|string|max:255',
+            'allocations' => 'required|array|min:1',
+            'allocations.*.row_id' => 'required|string',
+            'allocations.*.amount' => 'required|numeric|min:0',
+            'allocations.*.memo' => 'nullable|string',
+            'amount_total' => 'required|numeric|min:0',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            // Load contract relationships
+            $contract->load(['customer', 'vehicle.branch', 'branch']);
+
+            // Create payment receipt
+            $paymentReceipt = PaymentReceipt::create([
+                'receipt_number' => PaymentReceipt::generateReceiptNumber(),
+                'contract_id' => $contract->id,
+                'customer_id' => $contract->customer_id,
+                'branch_id' => $contract->branch_id ?? $contract->vehicle->branch_id,
+                'total_amount' => $validated['amount_total'],
+                'payment_method' => $validated['payment_method'],
+                'reference_number' => $validated['reference'] ?? null,
+                'payment_date' => now()->toDateString(),
+                'status' => 'completed',
+                'created_by' => auth()->user()->name ?? 'System',
+            ]);
+
+            // Get branch quick pay account mappings
+            $branch = $contract->branch ?? $contract->vehicle->branch;
+            $branchQp = $branch?->quick_pay_accounts ?? [];
+            $liabilityMap = $branchQp['liability'] ?? [];
+            $incomeMap = $branchQp['income'] ?? [];
+            $allMappings = array_merge($liabilityMap, $incomeMap);
+
+            // Create allocations and IFRS transaction
+            $accountingService = app(AccountingService::class);
+            $ifrsTransaction = $accountingService->recordPaymentReceipt($paymentReceipt, $validated['allocations'], $allMappings);
+
+            // Update payment receipt with IFRS transaction ID
+            $paymentReceipt->update(['ifrs_transaction_id' => $ifrsTransaction->id]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => __('words.payment_receipt_created_successfully'),
+                'receipt' => [
+                    'id' => $paymentReceipt->id,
+                    'receipt_number' => $paymentReceipt->receipt_number,
+                    'total_amount' => $paymentReceipt->total_amount,
+                ],
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Quick pay failed', [
+                'contract_id' => $contract->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => __('words.payment_receipt_creation_failed'),
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

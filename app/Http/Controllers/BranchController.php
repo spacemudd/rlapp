@@ -7,6 +7,8 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use IFRS\Models\Account;
+use App\Services\AccountingService;
 
 class BranchController extends Controller
 {
@@ -76,8 +78,21 @@ class BranchController extends Controller
      */
     public function show(Branch $branch)
     {
+        $account = null;
+        if ($branch->ifrs_vat_account_id) {
+            $acc = Account::find($branch->ifrs_vat_account_id);
+            if ($acc) {
+                $account = [
+                    'id' => (string) $acc->id,
+                    'name' => $acc->name,
+                    'code' => (string) $acc->code,
+                ];
+            }
+        }
+
         return Inertia::render('Branches/Show', [
             'branch' => $branch,
+            'vatAccount' => $account,
         ]);
     }
 
@@ -86,8 +101,39 @@ class BranchController extends Controller
      */
     public function edit(Branch $branch)
     {
+        $entity = app(AccountingService::class)->getCurrentEntity();
+        $types = config('ifrs.accounts');
+
+        $accounts = Account::query()
+            ->where('entity_id', $entity->id)
+            ->orderBy('code')
+            ->get(['id', 'name', 'code', 'account_type'])
+            ->map(function ($a) use ($types) {
+                return [
+                    'id' => (string) $a->id,
+                    'name' => $a->name,
+                    'code' => (string) $a->code,
+                    'account_type' => $a->account_type,
+                    'account_type_label' => $types[$a->account_type] ?? $a->account_type,
+                ];
+            });
+
         return Inertia::render('Branches/Edit', [
             'branch' => $branch,
+            'ifrsAccounts' => $accounts,
+            'quickPayLines' => [
+                'liability' => [
+                    ['key' => 'violation_guarantee', 'label' => __('words.qp_violation_guarantee')],
+                    ['key' => 'prepayment', 'label' => __('words.qp_prepayment')],
+                ],
+                'income' => [
+                    ['key' => 'rental_income', 'label' => __('words.qp_rental_income')],
+                    ['key' => 'vat_collection', 'label' => __('words.qp_vat_collection')],
+                    ['key' => 'insurance_fee', 'label' => __('words.qp_insurance_fee')],
+                    ['key' => 'fines', 'label' => __('words.qp_fines')],
+                    ['key' => 'salik_fees', 'label' => __('words.qp_salik_fees')],
+                ],
+            ],
         ]);
     }
 
@@ -103,7 +149,27 @@ class BranchController extends Controller
             'country' => 'required|string|max:255',
             'description' => 'nullable|string',
             'status' => 'required|in:active,inactive',
+            'ifrs_vat_account_id' => 'nullable|exists:ifrs_accounts,id',
+            'quick_pay_accounts' => 'nullable|array',
+            'quick_pay_accounts.liability' => 'nullable|array',
+            'quick_pay_accounts.income' => 'nullable|array',
+            'quick_pay_accounts.*.*' => 'nullable|exists:ifrs_accounts,id',
         ]);
+
+        // Normalize quick pay accounts: drop empty strings
+        if (isset($validated['quick_pay_accounts'])) {
+            $qpa = $validated['quick_pay_accounts'];
+            foreach (['liability', 'income'] as $section) {
+                if (isset($qpa[$section]) && is_array($qpa[$section])) {
+                    foreach ($qpa[$section] as $key => $val) {
+                        if ($val === '' || $val === null) {
+                            unset($qpa[$section][$key]);
+                        }
+                    }
+                }
+            }
+            $validated['quick_pay_accounts'] = $qpa;
+        }
 
         $branch->update($validated);
 
