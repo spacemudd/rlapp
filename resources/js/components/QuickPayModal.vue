@@ -270,8 +270,8 @@ const showVATOptionsForRow = (row: any, sectionKey: string) => {
 const applyVAT = (row: any, sectionKey: string) => {
     const amount = Number(row.amount || 0);
     if (amount > 0) {
-        const vatAmount = amount * 0.05;
-        const netAmount = amount - vatAmount;
+        const vatAmount = Math.round((amount * 0.05) * 100) / 100; // Round to 2 decimal places
+        const netAmount = Math.round((amount - vatAmount) * 100) / 100; // Round to 2 decimal places
         
         // Find the VAT row
         const section = quickPaySummary.value?.sections?.find((s: any) => s.key === sectionKey);
@@ -487,14 +487,14 @@ watch(() => props.isOpen, async (isOpen) => {
                                                 @keydown.enter="applyVAT(row, 'income')"
                                                 class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 border border-green-300 rounded-full hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 transition-all duration-200 transform hover:scale-105"
                                             >
-                                                {{ formatNumber(originalAmounts[row.id] * 0.95) }} + {{ formatNumber(originalAmounts[row.id] * 0.05) }} VAT
+                                                {{ formatNumber(Math.round((originalAmounts[row.id] * 0.95) * 100) / 100) }} + {{ formatNumber(Math.round((originalAmounts[row.id] * 0.05) * 100) / 100) }} VAT
                                             </button>
                                             <button 
                                                 @click="applyWithoutVAT(row, 'income')"
                                                 @keydown.enter="applyWithoutVAT(row, 'income')"
                                                 class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 border border-blue-300 rounded-full hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-all duration-200 transform hover:scale-105"
                                             >
-                                                {{ formatNumber(originalAmounts[row.id]) }} (No VAT)
+                                                {{ formatNumber(Math.round(originalAmounts[row.id] * 100) / 100) }} (No VAT)
                                             </button>
                                         </div>
                                     </div>
