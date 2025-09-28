@@ -14,6 +14,7 @@ import { ref, watch, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 import QuickPayModal from '@/components/QuickPayModal.vue';
 import PaymentReceiptDetailsModal from '@/components/PaymentReceiptDetailsModal.vue';
+import RefundModal from '@/components/RefundModal.vue';
 
 interface Contract {
     id: string;
@@ -156,6 +157,7 @@ const showVoidDialog = ref(false);
 const showExtendDialog = ref(false);
 const showActivateDialog = ref(false);
 const showQuickPayDialog = ref(false);
+const showRefundDialog = ref(false);
 const showReceiptDetailsDialog = ref(false);
 const selectedReceipt = ref<any>(null);
 const extensionPricing = ref<any>(null);
@@ -355,6 +357,16 @@ const openQuickPay = () => {
     showQuickPayDialog.value = true;
 };
 
+// Refund handlers
+const openRefund = () => {
+    showRefundDialog.value = true;
+};
+
+const handleRefundProcessed = () => {
+    // Refresh the page or update the contract data
+    window.location.reload();
+};
+
 const handleQuickPaySubmitted = (data: any) => {
     // Handle successful payment submission
     console.log('Payment submitted:', data);
@@ -449,6 +461,9 @@ const toggleExpandAll = async () => {
                         <div class="flex flex-wrap gap-2">
                             <Button size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="openQuickPay">
                                 {{ t('quick_pay') }}
+                            </Button>
+                            <Button size="sm" class="h-7 px-2 py-1 text-xs bg-orange-600 text-white hover:bg-orange-700" @click="openRefund">
+                                {{ t('refund') }}
                             </Button>
                             <Button size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700">
                                 {{ t('additional_fees') }}
@@ -977,6 +992,14 @@ const toggleExpandAll = async () => {
             :receipt="selectedReceipt"
             :contract="contract"
             @update:open="showReceiptDetailsDialog = $event"
+        />
+
+        <!-- Refund Modal -->
+        <RefundModal 
+            :open="showRefundDialog" 
+            :contract="contract"
+            @update:open="showRefundDialog = $event"
+            @refund-processed="handleRefundProcessed"
         />
     </AppLayout>
 </template>

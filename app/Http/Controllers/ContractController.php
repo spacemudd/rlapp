@@ -920,6 +920,46 @@ class ContractController extends Controller
             ]);
         }
 
+        // Calculate paid amounts for ALL rows from PaymentReceiptAllocation
+        try {
+            $paidAmounts = \App\Models\PaymentReceiptAllocation::query()
+                ->whereHas('paymentReceipt', function ($q) use ($contract) {
+                    $q->where('contract_id', $contract->id)
+                      ->where('status', 'completed');
+                })
+                ->selectRaw('row_id, SUM(amount) as total_paid')
+                ->groupBy('row_id')
+                ->pluck('total_paid', 'row_id')
+                ->toArray();
+
+            // Update all rows with their paid amounts
+            foreach ($response['sections'] as &$section) {
+                foreach ($section['rows'] as &$row) {
+                    $rowId = $row['id'] ?? '';
+                    $paidAmount = (float) ($paidAmounts[$rowId] ?? 0);
+                    
+                    // For rental_income, we already calculated this above, so skip
+                    if ($rowId === 'rental_income') {
+                        continue;
+                    }
+                    
+                    // Update paid amount
+                    $row['paid'] = round($paidAmount, 2);
+                    
+                    // Calculate remaining (total - paid)
+                    $total = (float) ($row['total'] ?? 0);
+                    $remaining = max(0, $total - $paidAmount);
+                    $row['remaining'] = round($remaining, 2);
+                }
+            }
+            unset($section, $row);
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to compute paid amounts for quick pay summary', [
+                'contract_id' => $contract->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         return response()->json($response);
     }
 
@@ -997,6 +1037,66 @@ class ContractController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => __('words.payment_receipt_creation_failed'),
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Process a refund for a contract
+     */
+    public function refund(Request $request, Contract $contract)
+    {
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'payment_method' => 'required|in:cash,card,bank_transfer',
+            'reference_number' => 'nullable|string|max:255',
+            'reason' => 'required|string|max:1000',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            // Load contract relationships
+            $contract->load(['customer', 'vehicle.branch', 'branch']);
+
+            // Get branch for account mappings
+            $branch = $contract->branch ?? $contract->vehicle->branch;
+            if (!$branch) {
+                throw new \Exception('No branch found for contract');
+            }
+
+            // Get the accounting service
+            $accountingService = app(\App\Services\AccountingService::class);
+
+            // Process the refund
+            $transaction = $accountingService->processRefund(
+                $contract,
+                $validated['amount'],
+                $validated['payment_method'],
+                $validated['reference_number'] ?? null,
+                $validated['reason']
+            );
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => __('words.refund_processed_successfully'),
+                'transaction_id' => $transaction->id,
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            \Log::error('Refund processing failed', [
+                'contract_id' => $contract->id,
+                'amount' => $validated['amount'],
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
                 'error' => $e->getMessage(),
             ], 500);
         }

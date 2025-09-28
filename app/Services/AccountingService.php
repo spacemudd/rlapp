@@ -524,6 +524,101 @@ class AccountingService
     }
 
     /**
+     * Get the default bank account.
+     */
+    private function getDefaultBankAccount(): Account
+    {
+        $entity = $this->getCurrentEntity();
+
+        $account = Account::where('entity_id', $entity->id)
+            ->where('account_type', Account::CURRENT_ASSET)
+            ->where('name', 'LIKE', '%Bank%')
+            ->first();
+
+        if (!$account) {
+            $account = Account::create([
+                'name' => 'Bank Account',
+                'account_type' => Account::CURRENT_ASSET,
+                'code' => $this->generateAccountCode(Account::CURRENT_ASSET),
+                'currency_id' => $this->getDefaultCurrency()->id,
+                'entity_id' => $entity->id,
+            ]);
+        }
+
+        return $account;
+    }
+
+    /**
+     * Get default GL account for a specific row_id
+     */
+    private function getDefaultGlAccountForRowId(string $rowId): Account
+    {
+        $entity = $this->getCurrentEntity();
+        
+        // Define default account types and names for each row_id
+        $defaultAccounts = [
+            'rental_income' => [
+                'name' => 'Rental Income',
+                'account_type' => Account::OPERATING_REVENUE,
+                'code' => '4000',
+            ],
+            'vat_collection' => [
+                'name' => 'VAT Collection',
+                'account_type' => Account::CURRENT_LIABILITY,
+                'code' => '2201',
+            ],
+            'additional_fees' => [
+                'name' => 'Additional Fees',
+                'account_type' => Account::OPERATING_REVENUE,
+                'code' => '4001',
+            ],
+            'insurance_fee' => [
+                'name' => 'Insurance Fee',
+                'account_type' => Account::OPERATING_REVENUE,
+                'code' => '4002',
+            ],
+            'fines' => [
+                'name' => 'Fines',
+                'account_type' => Account::OPERATING_REVENUE,
+                'code' => '4003',
+            ],
+            'salik_fees' => [
+                'name' => 'Salik Fees',
+                'account_type' => Account::OPERATING_REVENUE,
+                'code' => '4004',
+            ],
+            'prepayment' => [
+                'name' => 'Prepayment',
+                'account_type' => Account::CURRENT_LIABILITY,
+                'code' => '2100',
+            ],
+        ];
+
+        $accountConfig = $defaultAccounts[$rowId] ?? [
+            'name' => ucfirst(str_replace('_', ' ', $rowId)),
+            'account_type' => Account::OPERATING_REVENUE,
+            'code' => '4999',
+        ];
+
+        // Try to find existing account
+        $account = Account::where('entity_id', $entity->id)
+            ->where('name', $accountConfig['name'])
+            ->first();
+
+        if (!$account) {
+            $account = Account::create([
+                'name' => $accountConfig['name'],
+                'account_type' => $accountConfig['account_type'],
+                'code' => $accountConfig['code'],
+                'currency_id' => $this->getDefaultCurrency()->id,
+                'entity_id' => $entity->id,
+            ]);
+        }
+
+        return $account;
+    }
+
+    /**
      * Get the current entity.
      */
     public function getCurrentEntity(): Entity
@@ -1041,10 +1136,16 @@ class AccountingService
             // Credit: Various GL accounts based on allocations
             foreach ($allocations as $allocation) {
                 if ($allocation['amount'] > 0) {
-                    $glAccountId = $accountMappings[$allocation['row_id']] ?? null;
-                    
-                    if (!$glAccountId) {
-                        throw new \Exception("No GL account mapping found for row_id: {$allocation['row_id']}");
+                    // For security deposits, use customer-specific account
+                    if ($allocation['row_id'] === 'violation_guarantee') {
+                        $glAccountId = $this->getCustomerSecurityDepositAccount($paymentReceipt->customer)->id;
+                    } else {
+                        $glAccountId = $accountMappings[$allocation['row_id']] ?? null;
+                        
+                        if (!$glAccountId) {
+                            // Fallback to default GL account for this row_id
+                            $glAccountId = $this->getDefaultGlAccountForRowId($allocation['row_id'])->id;
+                        }
                     }
 
                     // Create IFRS line item
@@ -1189,6 +1290,7 @@ class AccountingService
             'prepayment' => __('words.qp_prepayment'),
             'rental_income' => __('words.qp_rental_income'),
             'additional_fees' => __('words.qp_additional_fees'),
+            'vat_collection' => __('words.qp_vat_collection'),
         ];
 
         return $descriptions[$rowId] ?? $rowId;
@@ -1215,11 +1317,15 @@ class AccountingService
      */
     private function getBranchCashAccount(Branch $branch)
     {
-        if (!$branch->ifrs_cash_account_id) {
-            throw new \Exception("Branch {$branch->name} does not have a cash account configured");
+        if ($branch->ifrs_cash_account_id) {
+            $account = Account::find($branch->ifrs_cash_account_id);
+            if ($account) {
+                return $account;
+            }
         }
 
-        return Account::find($branch->ifrs_cash_account_id);
+        // Fallback to default cash account if branch doesn't have one configured
+        return $this->getDefaultCashAccount();
     }
 
     /**
@@ -1227,11 +1333,15 @@ class AccountingService
      */
     private function getBranchBankAccount(Branch $branch)
     {
-        if (!$branch->ifrs_bank_account_id) {
-            throw new \Exception("Branch {$branch->name} does not have a bank account configured");
+        if ($branch->ifrs_bank_account_id) {
+            $account = Account::find($branch->ifrs_bank_account_id);
+            if ($account) {
+                return $account;
+            }
         }
 
-        return Account::find($branch->ifrs_bank_account_id);
+        // Fallback to default bank account if branch doesn't have one configured
+        return $this->getDefaultBankAccount();
     }
 
     /**
@@ -1258,5 +1368,159 @@ class AccountingService
         }
 
         return $generalReceivable;
+    }
+
+    /**
+     * Process a refund for a contract
+     */
+    public function processRefund(Contract $contract, float $amount, string $paymentMethod, ?string $referenceNumber, string $reason): Transaction
+    {
+        DB::beginTransaction();
+
+        try {
+            // Get branch for account mappings
+            $branch = $contract->branch ?? $contract->vehicle->branch;
+            if (!$branch) {
+                throw new \Exception('No branch found for contract');
+            }
+
+            // Get the cash/bank account to credit (money goes out)
+            $cashAccount = $this->getPaymentAccountForMethod($paymentMethod, $branch);
+
+            // Get the customer's specific security deposit liability account
+            $customerSecurityDepositAccount = $this->getCustomerSecurityDepositAccount($contract->customer);
+
+            // Verify the customer has sufficient deposit balance
+            $currentBalance = $this->getCustomerSecurityDepositBalance($customerSecurityDepositAccount);
+            if ($currentBalance < $amount) {
+                throw new \Exception("Insufficient security deposit balance. Available: {$currentBalance}, Requested: {$amount}");
+            }
+
+            // Create the main IFRS transaction
+            $transaction = Transaction::create([
+                'transaction_type' => Transaction::JN, // Journal Entry
+                'transaction_date' => now()->toDateString(),
+                'narration' => "Security Deposit Refund for Contract {$contract->contract_number}: {$reason}",
+                'entity_id' => $this->getCurrentEntity()->id,
+                'currency_id' => $this->getDefaultCurrency()->id,
+                'account_id' => $cashAccount->id, // Main account for the transaction
+            ]);
+
+            // Debit: Customer's Security Deposit Liability (reduces what we owe the customer)
+            LineItem::create([
+                'transaction_id' => $transaction->id,
+                'account_id' => $customerSecurityDepositAccount->id,
+                'narration' => "Security deposit refund to {$contract->customer->first_name} {$contract->customer->last_name} - {$reason}",
+                'amount' => $amount,
+                'quantity' => 1,
+                'vat_inclusive' => false,
+                'entity_id' => $this->getCurrentEntity()->id,
+                'credited' => false, // Debit
+            ]);
+
+            // Credit: Cash/Bank Account (money goes out)
+            LineItem::create([
+                'transaction_id' => $transaction->id,
+                'account_id' => $cashAccount->id,
+                'narration' => "Security deposit refund via {$paymentMethod}" . ($referenceNumber ? " - Ref: {$referenceNumber}" : ''),
+                'amount' => $amount,
+                'quantity' => 1,
+                'vat_inclusive' => false,
+                'entity_id' => $this->getCurrentEntity()->id,
+                'credited' => true, // Credit
+            ]);
+
+            DB::commit();
+
+            Log::info("Security deposit refund processed in IFRS system", [
+                'contract_id' => $contract->id,
+                'customer_id' => $contract->customer_id,
+                'transaction_id' => $transaction->id,
+                'amount' => $amount,
+                'reason' => $reason,
+                'customer_account_id' => $customerSecurityDepositAccount->id,
+            ]);
+
+            return $transaction;
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Get customer-specific security deposit liability account
+     */
+    private function getCustomerSecurityDepositAccount(Customer $customer)
+    {
+        // Try to find existing customer-specific security deposit account
+        $customerAccount = Account::where('entity_id', $this->getCurrentEntity()->id)
+            ->where('name', 'LIKE', "%Security Deposit - {$customer->first_name} {$customer->last_name}%")
+            ->where('account_type', Account::CURRENT_LIABILITY)
+            ->first();
+
+        if (!$customerAccount) {
+            // Create a customer-specific security deposit liability account
+            $customerAccount = Account::create([
+                'name' => "Security Deposit - {$customer->first_name} {$customer->last_name}",
+                'code' => $this->generateAccountCode(Account::CURRENT_LIABILITY, $customer->id),
+                'account_type' => Account::CURRENT_LIABILITY,
+                'entity_id' => $this->getCurrentEntity()->id,
+                'currency_id' => $this->getDefaultCurrency()->id,
+            ]);
+        }
+
+        return $customerAccount;
+    }
+
+    /**
+     * Get customer's current security deposit balance
+     */
+    private function getCustomerSecurityDepositBalance(Account $customerAccount): float
+    {
+        // Calculate balance: Credits (deposits received) - Debits (refunds given)
+        $credits = LineItem::where('account_id', $customerAccount->id)
+            ->where('credited', true)
+            ->sum('amount');
+
+        $debits = LineItem::where('account_id', $customerAccount->id)
+            ->where('credited', false)
+            ->sum('amount');
+
+        return $credits - $debits;
+    }
+
+    /**
+     * Get general security deposit liability account for a branch (for deposits)
+     */
+    private function getSecurityDepositLiabilityAccount(Branch $branch)
+    {
+        // Try to get from branch settings first
+        if ($branch->ifrs_security_deposit_account_id) {
+            $account = Account::find($branch->ifrs_security_deposit_account_id);
+            if ($account) {
+                return $account;
+            }
+        }
+
+        // Fallback to finding by name
+        $securityDepositAccount = Account::where('entity_id', $this->getCurrentEntity()->id)
+            ->where('name', 'LIKE', '%Security Deposit Liability%')
+            ->where('account_type', Account::CURRENT_LIABILITY)
+            ->first();
+
+        if (!$securityDepositAccount) {
+            // Create a default security deposit liability account
+            $securityDepositAccount = Account::create([
+                'name' => 'Security Deposit Liability',
+                'code' => $this->generateAccountCode(Account::CURRENT_LIABILITY),
+                'account_type' => Account::CURRENT_LIABILITY,
+                'entity_id' => $this->getCurrentEntity()->id,
+                'currency_id' => $this->getDefaultCurrency()->id,
+            ]);
+        }
+
+        return $securityDepositAccount;
     }
 }
