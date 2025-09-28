@@ -62,6 +62,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Quick Pay endpoints
     Route::get('/contracts/{contract}/quick-pay-summary', [App\Http\Controllers\ContractController::class, 'quickPaySummary'])->name('contracts.quick-pay-summary');
     Route::post('/contracts/{contract}/quick-pay', [App\Http\Controllers\ContractController::class, 'quickPay'])->name('contracts.quick-pay');
+    
+    // Refund endpoints
+    Route::post('/contracts/{contract}/refund', [App\Http\Controllers\ContractController::class, 'refund'])->name('contracts.refund');
 
     // Test routes
     Route::get('/test-arabic', function() {
