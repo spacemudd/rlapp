@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -77,6 +78,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const { t } = useI18n();
 
 // Delete confirmation dialog
 const showDeleteDialog = ref(false);
@@ -157,8 +159,8 @@ const isExpired = (dateString: string) => {
                     <div class="flex items-center space-x-4 mb-4">
                         <Link :href="route('vehicles.index')">
                             <Button variant="outline" size="sm">
-                                <ArrowLeft class="w-4 h-4 mr-2" />
-                                Back to Vehicles
+                                <ArrowLeft class="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                                {{ t('back_to_vehicles') }}
                             </Button>
                         </Link>
                     </div>
@@ -188,19 +190,19 @@ const isExpired = (dateString: string) => {
                         </div>
                         <div class="mt-4 flex space-x-3 md:mt-0 md:ml-4">
                             <Button @click="toggleVehicleStatus" variant="outline">
-                                <Power v-if="vehicle.status === 'out_of_service'" class="w-4 h-4 mr-2" />
-                                <PowerOff v-else class="w-4 h-4 mr-2" />
-                                {{ vehicle.status === 'out_of_service' ? 'Enable' : 'Disable' }}
+                                <Power v-if="vehicle.status === 'out_of_service'" class="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                                <PowerOff v-else class="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                                {{ vehicle.status === 'out_of_service' ? t('enable') : t('disable') }}
                             </Button>
                             <Link :href="`/vehicles/${vehicle.id}/edit`">
                                 <Button>
-                                    <Edit class="w-4 h-4 mr-2" />
-                                    Edit
+                                    <Edit class="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                                    {{ t('edit') }}
                                 </Button>
                             </Link>
                             <Button @click="confirmDelete" variant="destructive">
-                                <Trash2 class="w-4 h-4 mr-2" />
-                                Delete
+                                <Trash2 class="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                                {{ t('delete') }}
                             </Button>
                         </div>
                     </div>
@@ -213,59 +215,59 @@ const isExpired = (dateString: string) => {
                         <Card>
                             <CardHeader>
                                 <CardTitle class="flex items-center">
-                                    <Car class="w-5 h-5 mr-2" />
-                                    Vehicle Details
+                                    <Car class="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2" />
+                                    {{ t('vehicle_details') }}
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
-                                        <dt class="text-sm font-medium text-gray-500">Make</dt>
+                                        <dt class="text-sm font-medium text-gray-500">{{ t('make') }}</dt>
                                         <dd class="mt-1 text-sm text-gray-900">{{ vehicle.make }}</dd>
                                     </div>
                                     <div>
-                                        <dt class="text-sm font-medium text-gray-500">Model</dt>
+                                        <dt class="text-sm font-medium text-gray-500">{{ t('model') }}</dt>
                                         <dd class="mt-1 text-sm text-gray-900">{{ vehicle.model }}</dd>
                                     </div>
                                     <div>
-                                        <dt class="text-sm font-medium text-gray-500">Year</dt>
+                                        <dt class="text-sm font-medium text-gray-500">{{ t('year') }}</dt>
                                         <dd class="mt-1 text-sm text-gray-900">{{ vehicle.year }}</dd>
                                     </div>
                                     <div>
-                                        <dt class="text-sm font-medium text-gray-500">Color</dt>
+                                        <dt class="text-sm font-medium text-gray-500">{{ t('color') }}</dt>
                                         <dd class="mt-1 text-sm text-gray-900">{{ vehicle.color }}</dd>
                                     </div>
                                     <div>
-                                        <dt class="text-sm font-medium text-gray-500">Category</dt>
+                                        <dt class="text-sm font-medium text-gray-500">{{ t('category') }}</dt>
                                         <dd class="mt-1 text-sm text-gray-900">{{ vehicle.category }}</dd>
                                     </div>
                                     <div>
-                                        <dt class="text-sm font-medium text-gray-500">Chassis Number</dt>
-                                        <dd class="mt-1 text-sm text-gray-900 font-mono">{{ vehicle.chassis_number }}</dd>
+                                        <dt class="text-sm font-medium text-gray-500">{{ t('chassis_number') }}</dt>
+                                        <dd class="mt-1 text-sm text-gray-900 font-mono" dir="ltr">{{ vehicle.chassis_number }}</dd>
                                     </div>
                                     <div v-if="vehicle.seats">
-                                        <dt class="text-sm font-medium text-gray-500">Seats</dt>
+                                        <dt class="text-sm font-medium text-gray-500">{{ t('seats') }}</dt>
                                         <dd class="mt-1 text-sm text-gray-900">{{ vehicle.seats }}</dd>
                                     </div>
                                     <div v-if="vehicle.doors">
-                                        <dt class="text-sm font-medium text-gray-500">Doors</dt>
+                                        <dt class="text-sm font-medium text-gray-500">{{ t('doors') }}</dt>
                                         <dd class="mt-1 text-sm text-gray-900">{{ vehicle.doors }}</dd>
                                     </div>
                                     <div>
-                                        <dt class="text-sm font-medium text-gray-500">Odometer</dt>
-                                        <dd class="mt-1 text-sm text-gray-900">{{ vehicle.odometer.toLocaleString() }} km</dd>
+                                        <dt class="text-sm font-medium text-gray-500">{{ t('odometer') }}</dt>
+                                        <dd class="mt-1 text-sm text-gray-900" dir="ltr">{{ vehicle.odometer.toLocaleString() }} km</dd>
                                     </div>
                                     <div v-if="vehicle.location">
-                                        <dt class="text-sm font-medium text-gray-500">Current Location</dt>
+                                        <dt class="text-sm font-medium text-gray-500">{{ t('current_location') }}</dt>
                                         <dd class="mt-1 text-sm text-gray-900 flex items-center">
-                                            <MapPin class="w-4 h-4 mr-1 text-gray-400" />
+                                            <MapPin class="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1 text-gray-400" />
                                             {{ vehicle.location.name }}{{ vehicle.location.city ? ', ' + vehicle.location.city : '' }}
                                         </dd>
                                     </div>
                                     <div v-if="vehicle.branch">
-                                        <dt class="text-sm font-medium text-gray-500">Branch</dt>
+                                        <dt class="text-sm font-medium text-gray-500">{{ t('branch') }}</dt>
                                         <dd class="mt-1 text-sm text-gray-900 flex items-center">
-                                            <Building2 class="w-4 h-4 mr-1 text-gray-400" />
+                                            <Building2 class="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1 text-gray-400" />
                                             {{ vehicle.branch.name }}{{ vehicle.branch.city ? ', ' + vehicle.branch.city : '' }}
                                         </dd>
                                     </div>
@@ -277,25 +279,25 @@ const isExpired = (dateString: string) => {
                         <Card v-if="vehicle.ownership_status === 'borrowed'">
                             <CardHeader>
                                 <CardTitle class="flex items-center">
-                                    <Building2 class="w-5 h-5 mr-2 text-orange-600" />
-                                    Borrowing Information
+                                    <Building2 class="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2 text-orange-600" />
+                                    {{ t('borrowing_information') }}
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div v-if="vehicle.borrowed_from_office">
-                                        <dt class="text-sm font-medium text-gray-500">Borrowed From</dt>
+                                        <dt class="text-sm font-medium text-gray-500">{{ t('borrowed_from') }}</dt>
                                         <dd class="mt-1 text-sm text-gray-900 flex items-center">
-                                            <Building2 class="w-4 h-4 mr-2 text-orange-500" />
+                                            <Building2 class="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 text-orange-500" />
                                             {{ vehicle.borrowed_from_office }}
                                         </dd>
                                     </div>
                                     <div v-if="vehicle.borrowing_start_date">
-                                        <dt class="text-sm font-medium text-gray-500">Borrowing Start Date</dt>
+                                        <dt class="text-sm font-medium text-gray-500">{{ t('borrowing_start_date') }}</dt>
                                         <dd class="mt-1 text-sm text-gray-900">{{ formatDate(vehicle.borrowing_start_date) }}</dd>
                                     </div>
                                     <div v-if="vehicle.borrowing_end_date" class="md:col-span-2">
-                                        <dt class="text-sm font-medium text-gray-500">Borrowing End Date</dt>
+                                        <dt class="text-sm font-medium text-gray-500">{{ t('borrowing_end_date') }}</dt>
                                         <dd class="mt-1 text-sm flex items-center">
                                             <span :class="[
                                                 isExpired(vehicle.borrowing_end_date) ? 'text-red-600' :
@@ -315,14 +317,14 @@ const isExpired = (dateString: string) => {
                                 
                                 <div v-if="vehicle.borrowing_terms" class="mt-4">
                                     <dt class="text-sm font-medium text-gray-500 mb-2 flex items-center">
-                                        <FileText class="w-4 h-4 mr-1" />
-                                        Terms & Conditions
+                                        <FileText class="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+                                        {{ t('terms_conditions') }}
                                     </dt>
                                     <dd class="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg whitespace-pre-wrap">{{ vehicle.borrowing_terms }}</dd>
                                 </div>
                                 
                                 <div v-if="vehicle.borrowing_notes" class="mt-4">
-                                    <dt class="text-sm font-medium text-gray-500 mb-2">Additional Notes</dt>
+                                    <dt class="text-sm font-medium text-gray-500 mb-2">{{ t('additional_notes') }}</dt>
                                     <dd class="text-sm text-gray-900 bg-orange-50 p-3 rounded-lg whitespace-pre-wrap border border-orange-200">{{ vehicle.borrowing_notes }}</dd>
                                 </div>
                             </CardContent>
@@ -332,23 +334,23 @@ const isExpired = (dateString: string) => {
                         <Card>
                             <CardHeader>
                                 <CardTitle class="flex items-center">
-                                    <DollarSign class="w-5 h-5 mr-2" />
-                                    Pricing
+                                    <DollarSign class="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2" />
+                                    {{ t('pricing') }}
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div class="text-center">
-                                        <dt class="text-sm font-medium text-gray-500">Daily Rate</dt>
-                                        <dd class="mt-1 text-lg font-semibold text-gray-900">{{ formatCurrency(vehicle.price_daily) }}</dd>
+                                        <dt class="text-sm font-medium text-gray-500">{{ t('daily_rate') }}</dt>
+                                        <dd class="mt-1 text-lg font-semibold text-gray-900" dir="ltr">{{ formatCurrency(vehicle.price_daily) }}</dd>
                                     </div>
                                     <div class="text-center">
-                                        <dt class="text-sm font-medium text-gray-500">Weekly Rate</dt>
-                                        <dd class="mt-1 text-lg font-semibold text-gray-900">{{ formatCurrency(vehicle.price_weekly) }}</dd>
+                                        <dt class="text-sm font-medium text-gray-500">{{ t('weekly_rate') }}</dt>
+                                        <dd class="mt-1 text-lg font-semibold text-gray-900" dir="ltr">{{ formatCurrency(vehicle.price_weekly) }}</dd>
                                     </div>
                                     <div class="text-center">
-                                        <dt class="text-sm font-medium text-gray-500">Monthly Rate</dt>
-                                        <dd class="mt-1 text-lg font-semibold text-gray-900">{{ formatCurrency(vehicle.price_monthly) }}</dd>
+                                        <dt class="text-sm font-medium text-gray-500">{{ t('monthly_rate') }}</dt>
+                                        <dd class="mt-1 text-lg font-semibold text-gray-900" dir="ltr">{{ formatCurrency(vehicle.price_monthly) }}</dd>
                                     </div>
                                 </div>
                             </CardContent>
@@ -357,7 +359,7 @@ const isExpired = (dateString: string) => {
                         <!-- Notes -->
                         <Card v-if="vehicle.recent_note">
                             <CardHeader>
-                                <CardTitle>Notes</CardTitle>
+                                <CardTitle>{{ t('notes') }}</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <p class="text-gray-700 whitespace-pre-wrap">{{ vehicle.recent_note }}</p>
@@ -371,13 +373,13 @@ const isExpired = (dateString: string) => {
                         <Card>
                             <CardHeader>
                                 <CardTitle class="flex items-center">
-                                    <Calendar class="w-5 h-5 mr-2" />
-                                    Legal & Insurance
+                                    <Calendar class="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2" />
+                                    {{ t('legal_insurance') }}
                                 </CardTitle>
                             </CardHeader>
                             <CardContent class="space-y-4">
                                 <div>
-                                    <dt class="text-sm font-medium text-gray-500">License Expiry</dt>
+                                    <dt class="text-sm font-medium text-gray-500">{{ t('license_expiry_date') }}</dt>
                                     <dd class="mt-1 text-sm flex items-center">
                                         <span :class="[
                                             isExpired(vehicle.license_expiry_date) ? 'text-red-600' :
@@ -394,7 +396,7 @@ const isExpired = (dateString: string) => {
                                     </dd>
                                 </div>
                                 <div>
-                                    <dt class="text-sm font-medium text-gray-500">Insurance Expiry</dt>
+                                    <dt class="text-sm font-medium text-gray-500">{{ t('insurance_expiry_date') }}</dt>
                                     <dd class="mt-1 text-sm flex items-center">
                                         <span :class="[
                                             isExpired(vehicle.insurance_expiry_date) ? 'text-red-600' :
@@ -416,20 +418,20 @@ const isExpired = (dateString: string) => {
                         <!-- System Information -->
                         <Card>
                             <CardHeader>
-                                <CardTitle>System Information</CardTitle>
+                                <CardTitle>{{ t('system_information') }}</CardTitle>
                             </CardHeader>
                             <CardContent class="space-y-3">
                                 <div>
-                                    <dt class="text-sm font-medium text-gray-500">Added</dt>
+                                    <dt class="text-sm font-medium text-gray-500">{{ t('added') }}</dt>
                                     <dd class="mt-1 text-sm text-gray-900">{{ formatDate(vehicle.created_at) }}</dd>
                                 </div>
                                 <div>
-                                    <dt class="text-sm font-medium text-gray-500">Last Updated</dt>
+                                    <dt class="text-sm font-medium text-gray-500">{{ t('last_updated') }}</dt>
                                     <dd class="mt-1 text-sm text-gray-900">{{ formatDate(vehicle.updated_at) }}</dd>
                                 </div>
                                 <div>
-                                    <dt class="text-sm font-medium text-gray-500">Vehicle ID</dt>
-                                    <dd class="mt-1 text-sm text-gray-900 font-mono">{{ vehicle.id }}</dd>
+                                    <dt class="text-sm font-medium text-gray-500">{{ t('vehicle_id') }}</dt>
+                                    <dd class="mt-1 text-sm text-gray-900 font-mono" dir="ltr">{{ vehicle.id }}</dd>
                                 </div>
                             </CardContent>
                         </Card>
@@ -440,18 +442,18 @@ const isExpired = (dateString: string) => {
                 <Dialog v-model:open="showDeleteDialog">
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Delete Vehicle</DialogTitle>
+                            <DialogTitle>{{ t('delete_vehicle') }}</DialogTitle>
                             <DialogDescription>
-                                Are you sure you want to delete {{ vehicle.make }} {{ vehicle.model }} 
-                                ({{ vehicle.plate_number }})? This action cannot be undone.
+                                {{ t('delete_vehicle_confirm') }} {{ vehicle.make }} {{ vehicle.model }} 
+                                ({{ vehicle.plate_number }})? {{ t('this_action_cannot_be_undone') }}.
                             </DialogDescription>
                         </DialogHeader>
                         <DialogFooter>
                             <Button variant="outline" @click="showDeleteDialog = false">
-                                Cancel
+                                {{ t('cancel') }}
                             </Button>
                             <Button variant="destructive" @click="deleteVehicle">
-                                Delete Vehicle
+                                {{ t('delete_vehicle') }}
                             </Button>
                         </DialogFooter>
                     </DialogContent>

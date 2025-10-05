@@ -187,16 +187,28 @@ class ContractController extends Controller
     {
         $query = $request->get('query', '');
 
-        $vehicles = Vehicle::with(['contracts' => function ($q) {
-                $q->whereIn('status', ['draft', 'active'])->latest()->limit(1);
-            }])
+        $vehicles = Vehicle::with([
+                'contracts' => function ($q) {
+                    $q->whereIn('status', ['draft', 'active'])->latest()->limit(1);
+                },
+                'vehicleMake',
+                'vehicleModel'
+            ])
             ->where('status', 'available')
             ->where('is_active', true)
             ->where(function ($q) use ($query) {
                 $q->where('make', 'like', "%{$query}%")
                     ->orWhere('model', 'like', "%{$query}%")
                     ->orWhere('plate_number', 'like', "%{$query}%")
-                    ->orWhere('chassis_number', 'like', "%{$query}%");
+                    ->orWhere('chassis_number', 'like', "%{$query}%")
+                    ->orWhereHas('vehicleMake', function ($makeQuery) use ($query) {
+                        $makeQuery->where('name_en', 'like', "%{$query}%")
+                                 ->orWhere('name_ar', 'like', "%{$query}%");
+                    })
+                    ->orWhereHas('vehicleModel', function ($modelQuery) use ($query) {
+                        $modelQuery->where('name_en', 'like', "%{$query}%")
+                                  ->orWhere('name_ar', 'like', "%{$query}%");
+                    });
             })
             ->orderBy('make')
             ->orderBy('model')
@@ -208,10 +220,10 @@ class ContractController extends Controller
                 
                 return [
                     'id' => $vehicle->id,
-                    'label' => $vehicle->year . ' ' . $vehicle->make . ' ' . $vehicle->model . ' - ' . $vehicle->plate_number,
+                    'label' => $vehicle->full_name_localized . ' - ' . $vehicle->plate_number,
                     'value' => $vehicle->id,
-                    'make' => $vehicle->make,
-                    'model' => $vehicle->model,
+                    'make' => $vehicle->make_name,
+                    'model' => $vehicle->model_name,
                     'year' => $vehicle->year,
                     'plate_number' => $vehicle->plate_number,
                     'price_daily' => $vehicle->price_daily,

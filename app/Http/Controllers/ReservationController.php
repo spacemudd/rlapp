@@ -301,17 +301,27 @@ class ReservationController extends Controller
         $pickupDate = \Carbon\Carbon::parse($validated['pickup_date']);
         $returnDate = \Carbon\Carbon::parse($validated['return_date']);
 
-        $vehicles = Vehicle::with(['contracts' => function ($q) {
+        $vehicles = Vehicle::with([
+            'vehicleMake',
+            'vehicleModel',
+            'contracts' => function ($q) {
                 $q->where('status', 'active')->latest();
-            }, 'reservations' => function ($q) {
+            }, 
+            'reservations' => function ($q) {
                 $q->where('status', 'confirmed')->latest();
             }])
             ->where('is_active', true)
             ->where(function ($q) use ($query) {
                 if ($query) {
-                    $q->where('make', 'like', "%{$query}%")
-                        ->orWhere('model', 'like', "%{$query}%")
-                        ->orWhere('plate_number', 'like', "%{$query}%");
+                    $q->where('plate_number', 'like', "%{$query}%")
+                        ->orWhereHas('vehicleMake', function ($q) use ($query) {
+                            $q->where('name_en', 'like', "%{$query}%")
+                              ->orWhere('name_ar', 'like', "%{$query}%");
+                        })
+                        ->orWhereHas('vehicleModel', function ($q) use ($query) {
+                            $q->where('name_en', 'like', "%{$query}%")
+                              ->orWhere('name_ar', 'like', "%{$query}%");
+                        });
                 }
             })
             ->orderBy('make')
@@ -344,10 +354,10 @@ class ReservationController extends Controller
 
                 return [
                     'id' => $vehicle->id,
-                    'label' => $vehicle->year . ' ' . $vehicle->make . ' ' . $vehicle->model . ' - ' . $vehicle->plate_number,
+                    'label' => $vehicle->year . ' ' . $vehicle->make_name . ' ' . $vehicle->model_name . ' - ' . $vehicle->plate_number,
                     'value' => $vehicle->id,
-                    'make' => $vehicle->make,
-                    'model' => $vehicle->model,
+                    'make' => $vehicle->make_name,
+                    'model' => $vehicle->model_name,
                     'year' => $vehicle->year,
                     'plate_number' => $vehicle->plate_number,
                     'price_daily' => $vehicle->price_daily,

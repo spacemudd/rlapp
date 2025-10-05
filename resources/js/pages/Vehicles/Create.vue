@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { Head, Link, useForm } from '@inertiajs/vue3';
+import { computed, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,17 +23,35 @@ interface Branch {
     country: string;
 }
 
+interface VehicleMake {
+    id: string;
+    name_en: string;
+    name_ar: string;
+}
+
+interface VehicleModel {
+    id: string;
+    vehicle_make_id: string;
+    name_en: string;
+    name_ar: string;
+}
+
 interface Props {
     locations: Location[];
     branches: Branch[];
+    makes: VehicleMake[];
+    models: VehicleModel[];
 }
 
-const { locations, branches } = defineProps<Props>();
+const { locations, branches, makes, models } = defineProps<Props>();
+const { t } = useI18n();
 
 const form = useForm({
     plate_number: '',
     make: '',
     model: '',
+    vehicle_make_id: '',
+    vehicle_model_id: '',
     year: new Date().getFullYear(),
     color: '',
     seats: undefined as number | undefined,
@@ -57,11 +76,22 @@ const form = useForm({
     recent_note: '',
 });
 
+// Computed property to filter models based on selected make
+const filteredModels = computed(() => {
+    if (!form.vehicle_make_id) return [];
+    return models.filter(model => model.vehicle_make_id === form.vehicle_make_id);
+});
+
+// Watch for make changes to reset model
+watch(() => form.vehicle_make_id, () => {
+    form.vehicle_model_id = '';
+});
+
 const statuses = [
-    { value: 'available', label: 'Available' },
-    { value: 'rented', label: 'Rented' },
-    { value: 'maintenance', label: 'Maintenance' },
-    { value: 'out_of_service', label: 'Out of Service' },
+    { value: 'available', label: t('available') },
+    { value: 'rented', label: t('rented') },
+    { value: 'maintenance', label: t('maintenance') },
+    { value: 'out_of_service', label: t('out_of_service') },
 ];
 
 const categories = [
@@ -102,7 +132,7 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
 </script>
 
 <template>
-    <Head title="Add Vehicle" />
+    <Head :title="t('add_vehicle')" />
     
     <AppLayout>
         <div class="p-6">
@@ -111,16 +141,16 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                     <div class="flex items-center space-x-4 mb-4">
                         <Link :href="route('vehicles.index')">
                             <Button variant="outline" size="sm">
-                                <ArrowLeft class="w-4 h-4 mr-2" />
-                                Back to Vehicles
+                                <ArrowLeft class="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                                {{ t('back_to_vehicles') }}
                             </Button>
                         </Link>
                     </div>
                     <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl">
-                        Add New Vehicle
+                        {{ t('add_new_vehicle') }}
                     </h2>
                     <p class="mt-1 text-sm text-gray-500">
-                        Enter the details for the new vehicle in your fleet
+                        {{ t('enter_details_new_vehicle') }}
                     </p>
                 </div>
 
@@ -129,12 +159,12 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                         <!-- Basic Information -->
                         <Card>
                             <CardHeader>
-                                <CardTitle>Basic Information</CardTitle>
+                                <CardTitle>{{ t('vehicle_information') }}</CardTitle>
                             </CardHeader>
                             <CardContent class="space-y-4">
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <Label for="plate_number">Plate Number *</Label>
+                                        <Label for="plate_number">{{ t('plate_number') }} *</Label>
                                         <Input
                                             id="plate_number"
                                             v-model="form.plate_number"
@@ -147,7 +177,7 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                                         </div>
                                     </div>
                                     <div>
-                                        <Label for="chassis_number">Chassis Number (VIN) *</Label>
+                                        <Label for="chassis_number">{{ t('chassis_number') }} (VIN) *</Label>
                                         <Input
                                             id="chassis_number"
                                             v-model="form.chassis_number"
@@ -163,33 +193,48 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
 
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
-                                        <Label for="make">Make *</Label>
-                                        <Input
-                                            id="make"
-                                            v-model="form.make"
-                                            :class="{ 'border-red-500': form.errors.make }"
-                                            placeholder="e.g. Toyota"
+                                        <Label for="vehicle_make_id">{{ t('make') }} *</Label>
+                                        <select
+                                            id="vehicle_make_id"
+                                            v-model="form.vehicle_make_id"
+                                            :class="[
+                                                'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+                                                { 'border-red-500': form.errors.vehicle_make_id }
+                                            ]"
                                             required
-                                        />
-                                        <div v-if="form.errors.make" class="text-red-500 text-sm mt-1">
-                                            {{ form.errors.make }}
+                                        >
+                                            <option value="">{{ t('select_make') }}</option>
+                                            <option v-for="make in makes" :key="make.id" :value="make.id">
+                                                {{ make.name_en }}
+                                            </option>
+                                        </select>
+                                        <div v-if="form.errors.vehicle_make_id" class="text-red-500 text-sm mt-1">
+                                            {{ form.errors.vehicle_make_id }}
                                         </div>
                                     </div>
                                     <div>
-                                        <Label for="model">Model *</Label>
-                                        <Input
-                                            id="model"
-                                            v-model="form.model"
-                                            :class="{ 'border-red-500': form.errors.model }"
-                                            placeholder="e.g. Camry"
+                                        <Label for="vehicle_model_id">{{ t('model') }} *</Label>
+                                        <select
+                                            id="vehicle_model_id"
+                                            v-model="form.vehicle_model_id"
+                                            :class="[
+                                                'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+                                                { 'border-red-500': form.errors.vehicle_model_id }
+                                            ]"
+                                            :disabled="!form.vehicle_make_id"
                                             required
-                                        />
-                                        <div v-if="form.errors.model" class="text-red-500 text-sm mt-1">
-                                            {{ form.errors.model }}
+                                        >
+                                            <option value="">{{ t('select_model') }}</option>
+                                            <option v-for="model in filteredModels" :key="model.id" :value="model.id">
+                                                {{ model.name_en }}
+                                            </option>
+                                        </select>
+                                        <div v-if="form.errors.vehicle_model_id" class="text-red-500 text-sm mt-1">
+                                            {{ form.errors.vehicle_model_id }}
                                         </div>
                                     </div>
                                     <div>
-                                        <Label for="year">Year *</Label>
+                                        <Label for="year">{{ t('year') }} *</Label>
                                         <Input
                                             id="year"
                                             v-model.number="form.year"
@@ -207,7 +252,7 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
 
                                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                                     <div>
-                                        <Label for="color">Color *</Label>
+                                        <Label for="color">{{ t('color') }} *</Label>
                                         <Input
                                             id="color"
                                             v-model="form.color"
@@ -220,7 +265,7 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                                         </div>
                                     </div>
                                     <div>
-                                        <Label for="seats">Seats</Label>
+                                        <Label for="seats">{{ t('seats') }}</Label>
                                         <Input
                                             id="seats"
                                             v-model="form.seats"
@@ -235,7 +280,7 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                                         </div>
                                     </div>
                                     <div>
-                                        <Label for="doors">Doors</Label>
+                                        <Label for="doors">{{ t('doors') }}</Label>
                                         <Input
                                             id="doors"
                                             v-model.number="form.doors"
@@ -250,7 +295,7 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                                         </div>
                                     </div>
                                     <div>
-                                        <Label for="odometer">Odometer (km) *</Label>
+                                        <Label for="odometer">{{ t('odometer') }} (km) *</Label>
                                         <Input
                                             id="odometer"
                                             v-model.number="form.odometer"
@@ -271,12 +316,12 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                         <!-- Category and Status -->
                         <Card>
                             <CardHeader>
-                                <CardTitle>Category & Status</CardTitle>
+                                <CardTitle>{{ t('category') }} & {{ t('status') }}</CardTitle>
                             </CardHeader>
                             <CardContent class="space-y-4">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
-                                        <Label for="category">Category *</Label>
+                                        <Label for="category">{{ t('category') }} *</Label>
                                         <select
                                             id="category"
                                             v-model="form.category"
@@ -286,7 +331,7 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                                             ]"
                                             required
                                         >
-                                            <option value="">Select Category</option>
+                                            <option value="">{{ t('select_category') }}</option>
                                             <option v-for="category in categories" :key="category" :value="category">
                                                 {{ category }}
                                             </option>
@@ -296,7 +341,7 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                                         </div>
                                     </div>
                         <div>
-                                        <Label for="status">Status *</Label>
+                                        <Label for="status">{{ t('status') }} *</Label>
                                         <select
                                             id="status"
                                             v-model="form.status"
@@ -315,7 +360,7 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                                         </div>
                                     </div>
                         <div>
-                                        <Label for="location_id">Current Location</Label>
+                                        <Label for="location_id">{{ t('current_location') }}</Label>
                                         <select
                                             id="location_id"
                                             v-model="form.location_id"
@@ -324,7 +369,7 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                                                 { 'border-red-500': form.errors.location_id }
                                             ]"
                                         >
-                                            <option value="">Select Location</option>
+                                            <option value="">{{ t('select_location') }}</option>
                                             <option v-for="location in locations" :key="location.id" :value="location.id">
                                                 {{ location.name }}{{ location.city ? ', ' + location.city : '' }}
                                             </option>
@@ -334,7 +379,7 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                                         </div>
                                     </div>
                         <div>
-                            <Label for="branch_id">Branch</Label>
+                            <Label for="branch_id">{{ t('branch') }}</Label>
                             <select
                                 id="branch_id"
                                 v-model="form.branch_id"
@@ -343,7 +388,7 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                                     { 'border-red-500': form.errors.branch_id }
                                 ]"
                             >
-                                <option value="">Select Branch</option>
+                                <option value="">{{ t('select_branch') }}</option>
                                 <option v-for="branch in branches" :key="branch.id" :value="branch.id">
                                     {{ branch.name }}{{ branch.city ? ', ' + branch.city : '' }}
                                 </option>
@@ -359,11 +404,11 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                         <!-- Ownership & Borrowing -->
                         <Card>
                             <CardHeader>
-                                <CardTitle>Ownership & Borrowing</CardTitle>
+                                <CardTitle>{{ t('ownership_status') }} & {{ t('borrowing_information') }}</CardTitle>
                             </CardHeader>
                             <CardContent class="space-y-4">
                                 <div>
-                                    <Label for="ownership_status">Ownership Status *</Label>
+                                    <Label for="ownership_status">{{ t('ownership_status') }} *</Label>
                                     <select
                                         id="ownership_status"
                                         v-model="form.ownership_status"
@@ -373,8 +418,8 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                                         ]"
                                         required
                                     >
-                                        <option value="owned">Owned</option>
-                                        <option value="borrowed">Borrowed</option>
+                                        <option value="owned">{{ t('owned') }}</option>
+                                        <option value="borrowed">{{ t('borrowed') }}</option>
                                     </select>
                                     <div v-if="form.errors.ownership_status" class="text-red-500 text-sm mt-1">
                                         {{ form.errors.ownership_status }}
@@ -383,11 +428,11 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
 
                                 <!-- Borrowing Details (show only when borrowed) -->
                                 <div v-if="form.ownership_status === 'borrowed'" class="space-y-4 p-4 bg-orange-50 rounded-lg border border-orange-200">
-                                    <h4 class="font-medium text-orange-900">Borrowing Details</h4>
+                                    <h4 class="font-medium text-orange-900">{{ t('borrowing_information') }}</h4>
                                     
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
-                                            <Label for="borrowed_from_office">Borrowed From Office *</Label>
+                                            <Label for="borrowed_from_office">{{ t('borrowed_from') }} *</Label>
                                             <Input
                                                 id="borrowed_from_office"
                                                 v-model="form.borrowed_from_office"
@@ -400,7 +445,7 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                                             </div>
                                         </div>
                                         <div>
-                                            <Label for="borrowing_start_date">Borrowing Start Date *</Label>
+                                            <Label for="borrowing_start_date">{{ t('borrowing_start_date') }} *</Label>
                                             <Input
                                                 id="borrowing_start_date"
                                                 v-model="form.borrowing_start_date"
@@ -415,7 +460,7 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                                     </div>
                                     
                                     <div>
-                                        <Label for="borrowing_end_date">Borrowing End Date</Label>
+                                        <Label for="borrowing_end_date">{{ t('borrowing_end_date') }}</Label>
                                         <Input
                                             id="borrowing_end_date"
                                             v-model="form.borrowing_end_date"
@@ -428,7 +473,7 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                                     </div>
                                     
                                     <div>
-                                        <Label for="borrowing_terms">Borrowing Terms & Conditions</Label>
+                                        <Label for="borrowing_terms">{{ t('borrowing_terms') }}</Label>
                                         <textarea
                                             id="borrowing_terms"
                                             v-model="form.borrowing_terms"
@@ -445,7 +490,7 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                                     </div>
                                     
                                     <div>
-                                        <Label for="borrowing_notes">Borrowing Notes</Label>
+                                        <Label for="borrowing_notes">{{ t('borrowing_notes') }}</Label>
                                         <textarea
                                             id="borrowing_notes"
                                             v-model="form.borrowing_notes"
@@ -467,12 +512,12 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                         <!-- Pricing -->
                         <Card>
                             <CardHeader>
-                                <CardTitle>Pricing</CardTitle>
+                                <CardTitle>{{ t('pricing') }}</CardTitle>
                             </CardHeader>
                             <CardContent class="space-y-4">
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
-                                        <Label for="price_daily">Daily Rate (AED)</Label>
+                                        <Label for="price_daily">{{ t('daily_rate') }} (AED)</Label>
                                         <Input
                                             id="price_daily"
                                             v-model.number="form.price_daily"
@@ -487,7 +532,7 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                                         </div>
                                     </div>
                                     <div>
-                                        <Label for="price_weekly">Weekly Rate (AED)</Label>
+                                        <Label for="price_weekly">{{ t('weekly_rate') }} (AED)</Label>
                                         <Input
                                             id="price_weekly"
                                             v-model.number="form.price_weekly"
@@ -502,7 +547,7 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                                         </div>
                                     </div>
                                     <div>
-                                        <Label for="price_monthly">Monthly Rate (AED)</Label>
+                                        <Label for="price_monthly">{{ t('monthly_rate') }} (AED)</Label>
                                         <Input
                                             id="price_monthly"
                                             v-model.number="form.price_monthly"
@@ -523,12 +568,12 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                         <!-- Legal Documents -->
                         <Card>
                             <CardHeader>
-                                <CardTitle>Legal & Insurance</CardTitle>
+                                <CardTitle>{{ t('legal_insurance') }}</CardTitle>
                             </CardHeader>
                             <CardContent class="space-y-4">
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <Label for="license_expiry_date">License Expiry Date *</Label>
+                                        <Label for="license_expiry_date">{{ t('license_expiry_date') }} *</Label>
                                         <Input
                                             id="license_expiry_date"
                                             v-model="form.license_expiry_date"
@@ -541,7 +586,7 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                                         </div>
                                     </div>
                                     <div>
-                                        <Label for="insurance_expiry_date">Insurance Expiry Date *</Label>
+                                        <Label for="insurance_expiry_date">{{ t('insurance_expiry_date') }} *</Label>
                                         <Input
                                             id="insurance_expiry_date"
                                             v-model="form.insurance_expiry_date"
@@ -560,11 +605,11 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                         <!-- Notes -->
                         <Card>
                             <CardHeader>
-                                <CardTitle>Additional Notes</CardTitle>
+                                <CardTitle>{{ t('additional_notes') }}</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div>
-                                    <Label for="recent_note">Notes</Label>
+                                    <Label for="recent_note">{{ t('notes') }}</Label>
                                     <textarea
                                         id="recent_note"
                                         v-model="form.recent_note"
@@ -586,12 +631,12 @@ if (!form.branch_id && Array.isArray(branches) && branches.length > 0) {
                         <div class="flex justify-end space-x-4">
                             <Link :href="route('vehicles.index')">
                                 <Button variant="outline">
-                                    Cancel
+                                    {{ t('cancel') }}
                                 </Button>
                             </Link>
                             <Button type="submit" :disabled="form.processing">
-                                <Save class="w-4 h-4 mr-2" />
-                                {{ form.processing ? 'Creating...' : 'Create Vehicle' }}
+                                <Save class="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                                {{ form.processing ? t('creating') : t('create_vehicle') }}
                             </Button>
                         </div>
                     </div>

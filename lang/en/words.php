@@ -1092,4 +1092,8 @@ return [
     'contract_number' => 'Contract Number',
     'copy_error' => 'Copy Error',
     'quick_pay_processing_failed' => 'Quick pay processing failed',
+    
+    // Vehicle Make/Model
+    'vehicle_make' => 'Vehicle Make',
+    'vehicle_model' => 'Vehicle Model',
 ];

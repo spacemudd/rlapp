@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Vehicle;
+use App\Models\VehicleMake;
+use App\Models\VehicleModel;
 use App\Models\Location;
 use App\Models\Branch;
 use Illuminate\Http\Request;
@@ -28,6 +30,14 @@ class VehicleController extends Controller
                   ->orWhere('chassis_number', 'like', "%$search%")
                   ->orWhere('color', 'like', "%$search%")
                   ->orWhere('category', 'like', "%$search%")
+                  ->orWhereHas('vehicleMake', function ($makeQuery) use ($search) {
+                      $makeQuery->where('name_en', 'like', "%$search%")
+                               ->orWhere('name_ar', 'like', "%$search%");
+                  })
+                  ->orWhereHas('vehicleModel', function ($modelQuery) use ($search) {
+                      $modelQuery->where('name_en', 'like', "%$search%")
+                                ->orWhere('name_ar', 'like', "%$search%");
+                  })
                   ->orWhereHas('location', function ($locationQuery) use ($search) {
                       $locationQuery->where('name', 'like', "%$search%");
                   })
@@ -49,7 +59,7 @@ class VehicleController extends Controller
 
         // Filter by make
         if ($request->has('make') && $request->make) {
-            $query->where('make', $request->make);
+            $query->where('vehicle_make_id', $request->make);
         }
 
         // Filter by ownership status
@@ -57,7 +67,7 @@ class VehicleController extends Controller
             $query->where('ownership_status', $request->ownership);
         }
 
-        $vehicles = $query->with(['location', 'branch'])
+        $vehicles = $query->with(['location', 'branch', 'vehicleMake', 'vehicleModel'])
                          ->orderBy('created_at', 'desc')
                          ->paginate(15);
 
@@ -72,7 +82,7 @@ class VehicleController extends Controller
             ],
             'statuses' => ['available', 'rented', 'maintenance', 'out_of_service'],
             'categories' => Vehicle::distinct()->pluck('category')->filter()->values(),
-            'makes' => Vehicle::distinct()->pluck('make')->filter()->values(),
+            'makes' => VehicleMake::select('id', 'name_en', 'name_ar')->orderBy('name_en')->get(),
             'ownershipStatuses' => ['owned', 'borrowed'],
         ]);
     }
@@ -85,6 +95,8 @@ class VehicleController extends Controller
         return Inertia::render('Vehicles/Create', [
             'locations' => Location::active()->orderBy('name')->get(['id', 'name', 'city', 'country']),
             'branches' => Branch::active()->orderBy('name')->get(['id', 'name', 'city', 'country']),
+            'makes' => VehicleMake::select('id', 'name_en', 'name_ar')->orderBy('name_en')->get(),
+            'models' => VehicleModel::select('id', 'vehicle_make_id', 'name_en', 'name_ar')->orderBy('name_en')->get(),
         ]);
     }
 
@@ -95,8 +107,10 @@ class VehicleController extends Controller
     {
         $validated = $request->validate([
             'plate_number' => 'required|string|max:255|unique:vehicles',
-            'make' => 'required|string|max:255',
-            'model' => 'required|string|max:255',
+            'make' => 'nullable|string|max:255',
+            'model' => 'nullable|string|max:255',
+            'vehicle_make_id' => 'required|uuid|exists:vehicle_makes,id',
+            'vehicle_model_id' => 'required|uuid|exists:vehicle_models,id',
             'year' => 'required|integer|min:1900|max:' . (date('Y') + 1),
             'color' => 'required|string|max:255',
             'seats' => 'nullable|integer|min:1|max:50',
@@ -121,6 +135,13 @@ class VehicleController extends Controller
             'recent_note' => 'nullable|string',
         ]);
 
+        // Populate legacy make/model fields for backward compatibility
+        $vehicleMake = VehicleMake::find($validated['vehicle_make_id']);
+        $vehicleModel = VehicleModel::find($validated['vehicle_model_id']);
+        
+        $validated['make'] = $vehicleMake->name_en ?? '';
+        $validated['model'] = $vehicleModel->name_en ?? '';
+
         Vehicle::create($validated);
 
         return redirect()->route('vehicles.index')
@@ -132,7 +153,7 @@ class VehicleController extends Controller
      */
     public function show(Vehicle $vehicle)
     {
-        $vehicle->load(['location', 'branch']);
+        $vehicle->load(['location', 'branch', 'vehicleMake', 'vehicleModel']);
         
         return Inertia::render('Vehicles/Show', [
             'vehicle' => $vehicle,
@@ -148,6 +169,8 @@ class VehicleController extends Controller
             'vehicle' => $vehicle,
             'locations' => Location::active()->orderBy('name')->get(['id', 'name', 'city', 'country']),
             'branches' => Branch::active()->orderBy('name')->get(['id', 'name', 'city', 'country']),
+            'makes' => VehicleMake::select('id', 'name_en', 'name_ar')->orderBy('name_en')->get(),
+            'models' => VehicleModel::select('id', 'vehicle_make_id', 'name_en', 'name_ar')->orderBy('name_en')->get(),
         ]);
     }
 
@@ -158,8 +181,10 @@ class VehicleController extends Controller
     {
         $validated = $request->validate([
             'plate_number' => 'required|string|max:255|unique:vehicles,plate_number,' . $vehicle->id,
-            'make' => 'required|string|max:255',
-            'model' => 'required|string|max:255',
+            'make' => 'nullable|string|max:255',
+            'model' => 'nullable|string|max:255',
+            'vehicle_make_id' => 'required|uuid|exists:vehicle_makes,id',
+            'vehicle_model_id' => 'required|uuid|exists:vehicle_models,id',
             'year' => 'required|integer|min:1900|max:' . (date('Y') + 1),
             'color' => 'required|string|max:255',
             'seats' => 'nullable|integer|min:1|max:50',
@@ -183,6 +208,13 @@ class VehicleController extends Controller
             'insurance_expiry_date' => 'required|date',
             'recent_note' => 'nullable|string',
         ]);
+
+        // Populate legacy make/model fields for backward compatibility
+        $vehicleMake = VehicleMake::find($validated['vehicle_make_id']);
+        $vehicleModel = VehicleModel::find($validated['vehicle_model_id']);
+        
+        $validated['make'] = $vehicleMake->name_en ?? '';
+        $validated['model'] = $vehicleModel->name_en ?? '';
 
         $vehicle->update($validated);
 

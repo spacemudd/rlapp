@@ -1065,4 +1065,8 @@ return [
     'contract_number' => 'رقم العقد',
     'copy_error' => 'نسخ الخطأ',
     'quick_pay_processing_failed' => 'فشل في معالجة الدفع السريع',
+    
+    // Vehicle Make/Model
+    'vehicle_make' => 'نوع المركبة',
+    'vehicle_model' => 'طراز المركبة',
 ];
