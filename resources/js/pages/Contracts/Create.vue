@@ -1199,6 +1199,45 @@ watch(() => props.newCustomer, (customer) => {
                                 </tr>
 
                                 <tr>
+                                    <th class="text-muted-foreground font-medium text-start align-top w-56 py-2 pr-3">{{ t('pickup_fuel_level') }}</th>
+                                    <td class="py-2">
+                                        <select 
+                                            id="fuel_level"
+                                            v-model="form.fuel_level" 
+                                            class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            <option value="">{{ t('select_fuel_level') }}</option>
+                                            <option value="full">{{ t('full') }}</option>
+                                            <option value="3/4">3/4</option>
+                                            <option value="1/2">1/2</option>
+                                            <option value="1/4">1/4</option>
+                                            <option value="low">{{ t('low') }}</option>
+                                            <option value="empty">{{ t('empty') }}</option>
+                                        </select>
+                                        <div v-if="form.errors.fuel_level" class="text-xs text-red-600 mt-1">
+                                            {{ form.errors.fuel_level }}
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <th class="text-muted-foreground font-medium text-start align-top w-56 py-2 pr-3">{{ t('current_vehicle_mileage') }}</th>
+                                    <td class="py-2">
+                                        <Input
+                                            id="current_mileage"
+                                            type="number"
+                                            min="0"
+                                            v-model="form.current_mileage"
+                                            :placeholder="t('enter_current_odometer_reading')"
+                                            class="h-9 text-sm"
+                                        />
+                                        <div v-if="form.errors.current_mileage" class="text-xs text-red-600 mt-1">
+                                            {{ form.errors.current_mileage }}
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr>
                                     <th class="text-muted-foreground font-medium text-start align-top w-56 py-2 pr-3">{{ t('mileage_limit_km') }}</th>
                                     <td class="py-2">
                                         <Input

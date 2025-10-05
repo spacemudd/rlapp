@@ -1113,4 +1113,40 @@ class ContractController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Close a contract by recording vehicle return and updating status.
+     */
+    public function close(Request $request, Contract $contract)
+    {
+        // Validate request
+        $validated = $request->validate([
+            'return_mileage' => 'required|integer|min:0',
+            'return_fuel_level' => 'required|string|in:full,3/4,1/2,1/4,low,empty',
+            'return_condition_photos' => 'nullable|array',
+            'fuel_charge' => 'nullable|numeric|min:0',
+        ]);
+        
+        // Ensure contract is active
+        if ($contract->status !== 'active') {
+            return back()->withErrors(['error' => 'Only active contracts can be closed.']);
+        }
+        
+        // Record vehicle return using existing model method
+        $contract->recordVehicleReturn(
+            returnMileage: $validated['return_mileage'],
+            returnFuelLevel: $validated['return_fuel_level'],
+            returnPhotos: $validated['return_condition_photos'] ?? []
+        );
+        
+        // Update contract with manual fuel charge if provided
+        $contract->update([
+            'status' => 'completed',
+            'completed_at' => now(),
+            'fuel_charge' => $validated['fuel_charge'] ?? 0,
+        ]);
+        
+        return redirect()->route('contracts.show', $contract)
+            ->with('success', 'Contract closed successfully');
+    }
 }

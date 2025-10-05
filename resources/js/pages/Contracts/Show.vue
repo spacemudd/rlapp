@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { ref, watch, nextTick } from 'vue';
+import { ref, watch, nextTick, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import QuickPayModal from '@/components/QuickPayModal.vue';
 import PaymentReceiptDetailsModal from '@/components/PaymentReceiptDetailsModal.vue';
@@ -152,6 +152,14 @@ const extensionForm = useForm({
     reason: '',
 });
 
+// Form for close contract action
+const closeForm = useForm({
+    return_mileage: '',
+    return_fuel_level: '',
+    return_condition_photos: [] as any[],
+    fuel_charge: 0,
+});
+
 // Dialog state
 const showVoidDialog = ref(false);
 const showExtendDialog = ref(false);
@@ -159,6 +167,7 @@ const showActivateDialog = ref(false);
 const showQuickPayDialog = ref(false);
 const showRefundDialog = ref(false);
 const showReceiptDetailsDialog = ref(false);
+const showCloseDialog = ref(false);
 const selectedReceipt = ref<any>(null);
 const extensionPricing = ref<any>(null);
 
@@ -290,6 +299,32 @@ const getInvoicePaymentStatus = (invoice: any) => {
     } else {
         return 'unpaid';
     }
+};
+
+// Computed properties for close contract calculations
+const actualMileageDriven = computed(() => {
+    if (!closeForm.return_mileage || !props.contract.pickup_mileage) return 0;
+    return Math.max(0, Number(closeForm.return_mileage) - Number(props.contract.pickup_mileage));
+});
+
+const excessMileage = computed(() => {
+    if (!props.contract.mileage_limit) return 0;
+    return Math.max(0, actualMileageDriven.value - Number(props.contract.mileage_limit));
+});
+
+const excessMileageCharge = computed(() => {
+    if (!props.contract.excess_mileage_rate) return 0;
+    return excessMileage.value * Number(props.contract.excess_mileage_rate);
+});
+
+// Handler function for closing contract
+const submitCloseContract = () => {
+    closeForm.post(route('contracts.close', props.contract.id), {
+        onSuccess: () => {
+            showCloseDialog.value = false;
+            closeForm.reset();
+        }
+    });
 };
 
 const getInvoiceStatusColor = (status: string) => {
@@ -478,8 +513,8 @@ const toggleExpandAll = async () => {
                             <Button v-if="contract.status === 'draft'" size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="activateContract">
                                 {{ t('activate_contract') }}
                             </Button>
-                            <Button v-if="contract.status === 'active'" size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="completeContract">
-                                {{ t('finalize_complete_contract') }}
+                            <Button v-if="contract.status === 'active'" size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="showCloseDialog = true">
+                                {{ t('close_contract') }}
                             </Button>
                             <Button v-if="contract.status !== 'void'" size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="goToCreateInvoice">
                                 {{ t('create_invoice') }}
@@ -504,6 +539,7 @@ const toggleExpandAll = async () => {
                             <a v-if="contract.payment_receipts?.length" class="underline text-blue-600 hover:text-blue-800" :href="'#section-receipts'">{{ t('receipts') }} - سندات قبض</a>
                             <a v-if="contract.extensions?.length" class="underline text-blue-600 hover:text-blue-800" :href="'#section-extensions'">{{ t('extensions') }}</a>
                             <a v-if="contract.status === 'void' && contract.void_reason" class="underline text-blue-600 hover:text-blue-800" :href="'#section-void'">{{ t('void_reason') }}</a>
+                            <a v-if="contract.status === 'completed' && contract.return_mileage" class="underline text-blue-600 hover:text-blue-800" :href="'#section-return'">{{ t('return_information') }}</a>
                         </div>
                     </div>
                 </div>
@@ -826,6 +862,87 @@ const toggleExpandAll = async () => {
                         </CardContent>
                     </Card>
                 </details>
+
+                <!-- Return Information (if contract is completed) -->
+                <details id="section-return" v-if="contract.status === 'completed' && contract.return_mileage" data-collapsible class="mt-3">
+                    <summary class="flex justify-between cursor-pointer rounded-md bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 text-sm font-medium transition-colors">
+                        <span>{{ t('return_information') }}</span>
+                        <span class="text-gray-300">{{ t('click_to_toggle') }}</span>
+                    </summary>
+                    <Card class="mt-3">
+                        <CardContent class="space-y-6">
+                            <!-- Mileage Information -->
+                            <div class="grid gap-4 lg:grid-cols-2">
+                                <div class="space-y-3">
+                                    <h4 class="font-medium text-gray-900">{{ t('mileage_information') }}</h4>
+                                    <div class="space-y-2 text-sm">
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">{{ t('pickup_mileage') }}:</span>
+                                            <span dir="ltr" class="font-medium">{{ contract.pickup_mileage }} km</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">{{ t('return_mileage') }}:</span>
+                                            <span dir="ltr" class="font-medium">{{ contract.return_mileage }} km</span>
+                                        </div>
+                                        <div class="flex justify-between border-t border-gray-200 pt-2">
+                                            <span class="text-gray-600">{{ t('actual_mileage_driven') }}:</span>
+                                            <span dir="ltr" class="font-bold text-blue-600">{{ contract.return_mileage - contract.pickup_mileage }} km</span>
+                                        </div>
+                                        <div v-if="contract.mileage_limit" class="flex justify-between">
+                                            <span class="text-gray-600">{{ t('mileage_limit') }}:</span>
+                                            <span dir="ltr">{{ contract.mileage_limit }} km</span>
+                                        </div>
+                                        <div v-if="contract.mileage_limit && (contract.return_mileage - contract.pickup_mileage) > contract.mileage_limit" class="flex justify-between">
+                                            <span class="text-gray-600">{{ t('excess_mileage') }}:</span>
+                                            <span dir="ltr" class="font-bold text-red-600">+{{ (contract.return_mileage - contract.pickup_mileage) - contract.mileage_limit }} km</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-3">
+                                    <h4 class="font-medium text-gray-900">{{ t('fuel_information') }}</h4>
+                                    <div class="space-y-2 text-sm">
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">{{ t('pickup_fuel_level') }}:</span>
+                                            <span class="font-medium">{{ contract.pickup_fuel_level }}</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">{{ t('return_fuel_level') }}:</span>
+                                            <span class="font-medium">{{ contract.return_fuel_level }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Charges Summary -->
+                            <div v-if="(contract.excess_mileage_charge && Number(contract.excess_mileage_charge) > 0) || (contract.fuel_charge && Number(contract.fuel_charge) > 0)" class="space-y-3">
+                                <h4 class="font-medium text-gray-900">{{ t('additional_charges') }}</h4>
+                                <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                                    <div class="space-y-2 text-sm">
+                                        <div v-if="contract.excess_mileage_charge && Number(contract.excess_mileage_charge) > 0" class="flex justify-between">
+                                            <span class="text-red-800">{{ t('excess_mileage_charge') }}:</span>
+                                            <span dir="ltr" class="font-bold text-red-600">{{ formatCurrency(Number(contract.excess_mileage_charge)) }}</span>
+                                        </div>
+                                        <div v-if="contract.fuel_charge && Number(contract.fuel_charge) > 0" class="flex justify-between">
+                                            <span class="text-red-800">{{ t('fuel_charge') }}:</span>
+                                            <span dir="ltr" class="font-bold text-red-600">{{ formatCurrency(Number(contract.fuel_charge)) }}</span>
+                                        </div>
+                                        <div v-if="(contract.excess_mileage_charge && Number(contract.excess_mileage_charge) > 0) || (contract.fuel_charge && Number(contract.fuel_charge) > 0)" class="flex justify-between border-t border-red-300 pt-2 mt-2">
+                                            <span class="text-red-800 font-medium">{{ t('total_additional_charges') }}:</span>
+                                            <span dir="ltr" class="font-bold text-red-600">{{ formatCurrency((Number(contract.excess_mileage_charge) || 0) + (Number(contract.fuel_charge) || 0)) }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Return Date -->
+                            <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+                                <span class="text-sm text-gray-600">{{ t('contract_completed_at') }}:</span>
+                                <span dir="ltr" class="text-sm font-medium">{{ formatDate(contract.completed_at) }}</span>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </details>
         </div>
 
         <!-- Void Contract Dialog -->
@@ -938,6 +1055,144 @@ const toggleExpandAll = async () => {
                         <Button type="button" variant="outline" @click="showExtendDialog = false">{{ t('cancel') }}</Button>
                         <Button type="submit" :disabled="extensionForm.processing || !extensionPricing">
                             {{ extensionForm.processing ? t('extending') : t('extend_contract') }}
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+
+        <!-- Close Contract Dialog -->
+        <Dialog v-model:open="showCloseDialog">
+            <DialogContent class="sm:max-w-lg">
+                <DialogHeader>
+                    <DialogTitle>{{ t('close_contract') }}</DialogTitle>
+                    <DialogDescription>
+                        {{ t('close_contract_description') }}
+                    </DialogDescription>
+                </DialogHeader>
+
+                <form @submit.prevent="submitCloseContract" class="space-y-6">
+                    <!-- Pickup Information Reference -->
+                    <div class="p-4 bg-blue-50 border border-blue-200 rounded-md">
+                        <h4 class="font-medium text-blue-900 mb-3">{{ t('pickup_information') }}</h4>
+                        <div class="space-y-2 text-sm text-blue-800">
+                            <div class="flex justify-between">
+                                <span>{{ t('pickup_mileage') }}:</span>
+                                <span dir="ltr">{{ contract.pickup_mileage || 'N/A' }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>{{ t('pickup_fuel_level') }}:</span>
+                                <span>{{ contract.pickup_fuel_level || 'N/A' }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Return Information Form -->
+                    <div class="space-y-4">
+                        <div class="space-y-2">
+                            <Label for="return_mileage">{{ t('return_mileage') }} *</Label>
+                            <Input
+                                id="return_mileage"
+                                v-model.number="closeForm.return_mileage"
+                                type="number"
+                                min="0"
+                                required
+                                :placeholder="t('enter_return_mileage')"
+                            />
+                            <div v-if="closeForm.errors.return_mileage" class="text-sm text-red-600">
+                                {{ closeForm.errors.return_mileage }}
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <Label for="return_fuel_level">{{ t('return_fuel_level') }} *</Label>
+                            <select 
+                                id="return_fuel_level"
+                                v-model="closeForm.return_fuel_level" 
+                                required
+                                class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <option value="" disabled>{{ t('select_fuel_level') }}</option>
+                                <option value="full">{{ t('full') }}</option>
+                                <option value="3/4">3/4</option>
+                                <option value="1/2">1/2</option>
+                                <option value="1/4">1/4</option>
+                                <option value="low">{{ t('low') }}</option>
+                                <option value="empty">{{ t('empty') }}</option>
+                            </select>
+                            <div v-if="closeForm.errors.return_fuel_level" class="text-sm text-red-600">
+                                {{ closeForm.errors.return_fuel_level }}
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <Label for="fuel_charge">{{ t('fuel_charge') }} ({{ t('manual_entry') }})</Label>
+                            <Input
+                                id="fuel_charge"
+                                v-model.number="closeForm.fuel_charge"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                :placeholder="t('enter_fuel_charge_if_applicable')"
+                                class="h-9 text-sm"
+                            />
+                            <div v-if="closeForm.errors.fuel_charge" class="text-sm text-red-600">
+                                {{ closeForm.errors.fuel_charge }}
+                            </div>
+                            <p class="text-xs text-gray-500">
+                                {{ t('enter_fuel_charge_manually_if_customer_returned_with_less_fuel') }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Live Calculations -->
+                    <div v-if="closeForm.return_mileage && contract.pickup_mileage" class="space-y-4">
+                        <div class="p-4 bg-gray-50 border border-gray-200 rounded-md">
+                            <h4 class="font-medium text-gray-900 mb-3">{{ t('excess_mileage_calculation') }}</h4>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span>{{ t('actual_mileage_driven') }}:</span>
+                                    <span dir="ltr" class="font-medium">{{ actualMileageDriven }} km</span>
+                                </div>
+                                <div v-if="contract.mileage_limit" class="flex justify-between">
+                                    <span>{{ t('mileage_limit') }}:</span>
+                                    <span dir="ltr">{{ contract.mileage_limit }} km</span>
+                                </div>
+                                <div v-if="contract.mileage_limit" class="flex justify-between">
+                                    <span>{{ excessMileage > 0 ? t('exceeded_by') : t('within_limit') }}:</span>
+                                    <span dir="ltr" :class="excessMileage > 0 ? 'text-red-600 font-bold' : 'text-green-600 font-medium'">
+                                        {{ excessMileage > 0 ? `+${excessMileage} km` : t('within_limit') }}
+                                    </span>
+                                </div>
+                                <div v-if="excessMileage > 0 && contract.excess_mileage_rate" class="flex justify-between border-t border-gray-300 pt-2 mt-2">
+                                    <span>{{ t('excess_mileage_charge') }}:</span>
+                                    <span dir="ltr" class="font-bold text-red-600">
+                                        {{ formatCurrency(excessMileageCharge) }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Fuel Level Comparison -->
+                        <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                            <h4 class="font-medium text-yellow-900 mb-2">{{ t('fuel_level_comparison') }}</h4>
+                            <div class="space-y-1 text-sm text-yellow-800">
+                                <div class="flex justify-between">
+                                    <span>{{ t('pickup') }}:</span>
+                                    <span>{{ contract.pickup_fuel_level || 'N/A' }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>{{ t('return') }}:</span>
+                                    <span>{{ closeForm.return_fuel_level || t('not_selected') }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button type="button" variant="outline" @click="showCloseDialog = false">{{ t('cancel') }}</Button>
+                        <Button type="submit" :disabled="closeForm.processing">
+                            {{ closeForm.processing ? t('closing') : t('close_contract') }}
                         </Button>
                     </DialogFooter>
                 </form>
