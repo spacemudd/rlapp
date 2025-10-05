@@ -58,6 +58,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/contracts/{contract}/extension-pricing', [App\Http\Controllers\ContractController::class, 'calculateExtensionPricing'])->name('contracts.extension-pricing');
     Route::get('/contracts/{contract}/finalize', [App\Http\Controllers\ContractController::class, 'showFinalize'])->name('contracts.finalize');
     Route::post('/contracts/{contract}/finalize', [App\Http\Controllers\ContractController::class, 'finalize'])->name('contracts.finalize');
+    Route::post('/contracts/{contract}/close', [App\Http\Controllers\ContractController::class, 'close'])->name('contracts.close');
 
     // Quick Pay endpoints
     Route::get('/contracts/{contract}/quick-pay-summary', [App\Http\Controllers\ContractController::class, 'quickPaySummary'])->name('contracts.quick-pay-summary');
