@@ -21,6 +21,8 @@ class Vehicle extends Model
         'plate_number',
         'make',
         'model',
+        'vehicle_make_id',
+        'vehicle_model_id',
         'year',
         'color',
         'seats',
@@ -477,5 +479,53 @@ class Vehicle extends Model
     public function branch()
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    /**
+     * Get the vehicle make for this vehicle.
+     */
+    public function vehicleMake(): BelongsTo
+    {
+        return $this->belongsTo(VehicleMake::class);
+    }
+
+    /**
+     * Get the vehicle model for this vehicle.
+     */
+    public function vehicleModel(): BelongsTo
+    {
+        return $this->belongsTo(VehicleModel::class);
+    }
+
+    /**
+     * Get the make name (from relationship or fallback to string).
+     */
+    public function getMakeNameAttribute(): string
+    {
+        if ($this->vehicleMake) {
+            return app()->getLocale() === 'ar' ? $this->vehicleMake->name_ar : $this->vehicleMake->name_en;
+        }
+        
+        return $this->make ?? '';
+    }
+
+    /**
+     * Get the model name (from relationship or fallback to string).
+     */
+    public function getModelNameAttribute(): string
+    {
+        if ($this->vehicleModel) {
+            return app()->getLocale() === 'ar' ? $this->vehicleModel->name_ar : $this->vehicleModel->name_en;
+        }
+        
+        return $this->model ?? '';
+    }
+
+    /**
+     * Get the vehicle's full name with localized make and model.
+     */
+    public function getFullNameLocalizedAttribute(): string
+    {
+        return "{$this->year} {$this->make_name} {$this->model_name}";
     }
 }

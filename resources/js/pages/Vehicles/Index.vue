@@ -7,7 +7,7 @@ import { useI18n } from 'vue-i18n';
 const { t } = useI18n();
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import Badge from '@/components/ui/badge/Badge.vue';
 import {
     DropdownMenu,
@@ -23,7 +23,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Car, Plus, Search, MoreVertical, Edit, Trash2, Power, PowerOff, Building2, Home } from 'lucide-vue-next';
+import { Car, Plus, Search, MoreVertical, Edit, Trash2, Power, PowerOff, Building2 } from 'lucide-vue-next';
 
 interface Vehicle {
     id: string;
@@ -64,6 +64,12 @@ interface Vehicle {
     recent_note?: string;
 }
 
+interface VehicleMake {
+    id: string;
+    name_en: string;
+    name_ar: string;
+}
+
 interface Props {
     vehicles: {
         data: Vehicle[];
@@ -79,12 +85,11 @@ interface Props {
     };
     statuses: string[];
     categories: string[];
-    makes: string[];
+    makes: VehicleMake[];
     ownershipStatuses: string[];
 }
 
 const props = defineProps<Props>();
-const page = usePage();
 
 // Reactive search and filters
 const search = ref(props.filters.search || '');
@@ -211,8 +216,8 @@ const formatCurrency = (amount?: number) => {
                                 class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                             >
                                 <option value="">All Makes</option>
-                                <option v-for="make in makes" :key="make" :value="make">
-                                    {{ make }}
+                                <option v-for="make in makes" :key="make.id" :value="make.id">
+                                    {{ make.name_en }}
                                 </option>
                             </select>
                             <select

@@ -9,6 +9,8 @@ use App\Models\Customer;
 use App\Models\Contract;
 use App\Models\Reservation;
 use App\Models\Team;
+use App\Models\VehicleMake;
+use App\Models\VehicleModel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Carbon\Carbon;
 
@@ -22,6 +24,12 @@ class VehicleAvailabilityTest extends TestCase
     protected $vehicle1;
     protected $vehicle2;
     protected $vehicle3;
+    protected $bmwMake;
+    protected $mercedesMake;
+    protected $audiMake;
+    protected $bmwX5Model;
+    protected $mercedesCClassModel;
+    protected $audiA4Model;
 
     protected function setUp(): void
     {
@@ -42,10 +50,41 @@ class VehicleAvailabilityTest extends TestCase
             'last_name' => 'Al-Rashid'
         ]);
 
+        // Create vehicle makes
+        $this->bmwMake = VehicleMake::factory()->bmw()->create([
+            'team_id' => $this->team->id
+        ]);
+
+        $this->mercedesMake = VehicleMake::factory()->mercedes()->create([
+            'team_id' => $this->team->id
+        ]);
+
+        $this->audiMake = VehicleMake::factory()->audi()->create([
+            'team_id' => $this->team->id
+        ]);
+
+        // Create vehicle models
+        $this->bmwX5Model = VehicleModel::factory()->bmwX5()->create([
+            'vehicle_make_id' => $this->bmwMake->id,
+            'team_id' => $this->team->id
+        ]);
+
+        $this->mercedesCClassModel = VehicleModel::factory()->mercedesCClass()->create([
+            'vehicle_make_id' => $this->mercedesMake->id,
+            'team_id' => $this->team->id
+        ]);
+
+        $this->audiA4Model = VehicleModel::factory()->audiA4()->create([
+            'vehicle_make_id' => $this->audiMake->id,
+            'team_id' => $this->team->id
+        ]);
+
         // Create test vehicles
         $this->vehicle1 = Vehicle::factory()->create([
             'make' => 'BMW',
             'model' => 'X5',
+            'vehicle_make_id' => $this->bmwMake->id,
+            'vehicle_model_id' => $this->bmwX5Model->id,
             'year' => 2023,
             'plate_number' => 'ABC-123',
             'price_daily' => 500.00,
@@ -57,6 +96,8 @@ class VehicleAvailabilityTest extends TestCase
         $this->vehicle2 = Vehicle::factory()->create([
             'make' => 'Mercedes',
             'model' => 'C-Class',
+            'vehicle_make_id' => $this->mercedesMake->id,
+            'vehicle_model_id' => $this->mercedesCClassModel->id,
             'year' => 2023,
             'plate_number' => 'DEF-456',
             'price_daily' => 400.00,
@@ -68,6 +109,8 @@ class VehicleAvailabilityTest extends TestCase
         $this->vehicle3 = Vehicle::factory()->create([
             'make' => 'Audi',
             'model' => 'A4',
+            'vehicle_make_id' => $this->audiMake->id,
+            'vehicle_model_id' => $this->audiA4Model->id,
             'year' => 2023,
             'plate_number' => 'GHI-789',
             'price_daily' => 350.00,
@@ -395,5 +438,192 @@ class VehicleAvailabilityTest extends TestCase
             'available' => true,
             'conflicts' => []
         ]);
+    }
+
+    /** @test */
+    public function it_can_search_vehicles_by_arabic_make_name()
+    {
+        $this->actingAs($this->user);
+
+        $pickupDate = Carbon::now()->addDays(1)->format('Y-m-d H:i:s');
+        $returnDate = Carbon::now()->addDays(5)->format('Y-m-d H:i:s');
+
+        // Test searching for BMW using Arabic name "بي ام"
+        $response = $this->postJson('/vehicle-availability/search', [
+            'pickup_date' => $pickupDate,
+            'return_date' => $returnDate,
+            'query' => 'بي ام'
+        ]);
+
+        $response->assertStatus(200);
+        $vehicles = $response->json();
+        $this->assertCount(1, $vehicles);
+        $this->assertEquals('BMW', $vehicles[0]['make']);
+        $this->assertEquals('X5', $vehicles[0]['model']);
+        $this->assertEquals('available', $vehicles[0]['availability']);
+    }
+
+    /** @test */
+    public function it_can_search_vehicles_by_arabic_make_name_full()
+    {
+        $this->actingAs($this->user);
+
+        $pickupDate = Carbon::now()->addDays(1)->format('Y-m-d H:i:s');
+        $returnDate = Carbon::now()->addDays(5)->format('Y-m-d H:i:s');
+
+        // Test searching for BMW using full Arabic name "بي ام دبليو"
+        $response = $this->postJson('/vehicle-availability/search', [
+            'pickup_date' => $pickupDate,
+            'return_date' => $returnDate,
+            'query' => 'بي ام دبليو'
+        ]);
+
+        $response->assertStatus(200);
+        $vehicles = $response->json();
+        $this->assertCount(1, $vehicles);
+        $this->assertEquals('BMW', $vehicles[0]['make']);
+        $this->assertEquals('X5', $vehicles[0]['model']);
+        $this->assertEquals('available', $vehicles[0]['availability']);
+    }
+
+    /** @test */
+    public function it_can_search_vehicles_by_arabic_model_name()
+    {
+        $this->actingAs($this->user);
+
+        $pickupDate = Carbon::now()->addDays(1)->format('Y-m-d H:i:s');
+        $returnDate = Carbon::now()->addDays(5)->format('Y-m-d H:i:s');
+
+        // Test searching for X5 using Arabic model name "اكس 5"
+        $response = $this->postJson('/vehicle-availability/search', [
+            'pickup_date' => $pickupDate,
+            'return_date' => $returnDate,
+            'query' => 'اكس 5'
+        ]);
+
+        $response->assertStatus(200);
+        $vehicles = $response->json();
+        $this->assertCount(1, $vehicles);
+        $this->assertEquals('BMW', $vehicles[0]['make']);
+        $this->assertEquals('X5', $vehicles[0]['model']);
+        $this->assertEquals('available', $vehicles[0]['availability']);
+    }
+
+    /** @test */
+    public function it_can_search_vehicles_by_mercedes_arabic_name()
+    {
+        $this->actingAs($this->user);
+
+        $pickupDate = Carbon::now()->addDays(1)->format('Y-m-d H:i:s');
+        $returnDate = Carbon::now()->addDays(5)->format('Y-m-d H:i:s');
+
+        // Test searching for Mercedes using Arabic name "مرسيدس"
+        $response = $this->postJson('/vehicle-availability/search', [
+            'pickup_date' => $pickupDate,
+            'return_date' => $returnDate,
+            'query' => 'مرسيدس'
+        ]);
+
+        $response->assertStatus(200);
+        $vehicles = $response->json();
+        $this->assertCount(1, $vehicles);
+        $this->assertEquals('Mercedes-Benz', $vehicles[0]['make']);
+        $this->assertEquals('C-Class', $vehicles[0]['model']);
+        $this->assertEquals('available', $vehicles[0]['availability']);
+    }
+
+    /** @test */
+    public function it_can_search_vehicles_by_audi_arabic_name()
+    {
+        $this->actingAs($this->user);
+
+        $pickupDate = Carbon::now()->addDays(1)->format('Y-m-d H:i:s');
+        $returnDate = Carbon::now()->addDays(5)->format('Y-m-d H:i:s');
+
+        // Test searching for Audi using Arabic name "أودي"
+        $response = $this->postJson('/vehicle-availability/search', [
+            'pickup_date' => $pickupDate,
+            'return_date' => $returnDate,
+            'query' => 'أودي'
+        ]);
+
+        $response->assertStatus(200);
+        $vehicles = $response->json();
+        $this->assertCount(1, $vehicles);
+        $this->assertEquals('Audi', $vehicles[0]['make']);
+        $this->assertEquals('A4', $vehicles[0]['model']);
+        $this->assertEquals('available', $vehicles[0]['availability']);
+    }
+
+    /** @test */
+    public function it_returns_localized_names_based_on_app_locale()
+    {
+        $this->actingAs($this->user);
+
+        // Set app locale to Arabic
+        app()->setLocale('ar');
+
+        $pickupDate = Carbon::now()->addDays(1)->format('Y-m-d H:i:s');
+        $returnDate = Carbon::now()->addDays(5)->format('Y-m-d H:i:s');
+
+        $response = $this->postJson('/vehicle-availability/search', [
+            'pickup_date' => $pickupDate,
+            'return_date' => $returnDate,
+            'query' => 'BMW'
+        ]);
+
+        $response->assertStatus(200);
+        $vehicles = $response->json();
+        $this->assertCount(1, $vehicles);
+        
+        // Should return Arabic names when locale is Arabic
+        $this->assertEquals('بي ام دبليو', $vehicles[0]['make']);
+        $this->assertEquals('اكس 5', $vehicles[0]['model']);
+        $this->assertStringContainsString('بي ام دبليو', $vehicles[0]['label']);
+        $this->assertStringContainsString('اكس 5', $vehicles[0]['label']);
+
+        // Reset locale to English
+        app()->setLocale('en');
+    }
+
+    /** @test */
+    public function it_handles_partial_arabic_search_correctly()
+    {
+        $this->actingAs($this->user);
+
+        $pickupDate = Carbon::now()->addDays(1)->format('Y-m-d H:i:s');
+        $returnDate = Carbon::now()->addDays(5)->format('Y-m-d H:i:s');
+
+        // Test partial Arabic search for BMW "بي"
+        $response = $this->postJson('/vehicle-availability/search', [
+            'pickup_date' => $pickupDate,
+            'return_date' => $returnDate,
+            'query' => 'بي'
+        ]);
+
+        $response->assertStatus(200);
+        $vehicles = $response->json();
+        $this->assertCount(1, $vehicles);
+        $this->assertEquals('BMW', $vehicles[0]['make']);
+    }
+
+    /** @test */
+    public function it_returns_empty_results_for_non_existent_arabic_search()
+    {
+        $this->actingAs($this->user);
+
+        $pickupDate = Carbon::now()->addDays(1)->format('Y-m-d H:i:s');
+        $returnDate = Carbon::now()->addDays(5)->format('Y-m-d H:i:s');
+
+        // Test searching for non-existent Arabic term
+        $response = $this->postJson('/vehicle-availability/search', [
+            'pickup_date' => $pickupDate,
+            'return_date' => $returnDate,
+            'query' => 'سيارة غير موجودة'
+        ]);
+
+        $response->assertStatus(200);
+        $vehicles = $response->json();
+        $this->assertCount(0, $vehicles);
     }
 }

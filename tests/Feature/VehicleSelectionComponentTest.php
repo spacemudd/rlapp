@@ -8,6 +8,8 @@ use App\Models\Vehicle;
 use App\Models\Customer;
 use App\Models\Contract;
 use App\Models\Team;
+use App\Models\VehicleMake;
+use App\Models\VehicleModel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Carbon\Carbon;
 
@@ -20,6 +22,10 @@ class VehicleSelectionComponentTest extends TestCase
     protected $customer;
     protected $vehicle1;
     protected $vehicle2;
+    protected $bmwMake;
+    protected $mercedesMake;
+    protected $bmwX5Model;
+    protected $mercedesCClassModel;
 
     protected function setUp(): void
     {
@@ -40,10 +46,32 @@ class VehicleSelectionComponentTest extends TestCase
             'last_name' => 'Al-Rashid'
         ]);
 
+        // Create vehicle makes
+        $this->bmwMake = VehicleMake::factory()->bmw()->create([
+            'team_id' => $this->team->id
+        ]);
+
+        $this->mercedesMake = VehicleMake::factory()->mercedes()->create([
+            'team_id' => $this->team->id
+        ]);
+
+        // Create vehicle models
+        $this->bmwX5Model = VehicleModel::factory()->bmwX5()->create([
+            'vehicle_make_id' => $this->bmwMake->id,
+            'team_id' => $this->team->id
+        ]);
+
+        $this->mercedesCClassModel = VehicleModel::factory()->mercedesCClass()->create([
+            'vehicle_make_id' => $this->mercedesMake->id,
+            'team_id' => $this->team->id
+        ]);
+
         // Create test vehicles
         $this->vehicle1 = Vehicle::factory()->create([
             'make' => 'BMW',
             'model' => 'X5',
+            'vehicle_make_id' => $this->bmwMake->id,
+            'vehicle_model_id' => $this->bmwX5Model->id,
             'year' => 2023,
             'plate_number' => 'ABC-123',
             'price_daily' => 500.00,
@@ -55,6 +83,8 @@ class VehicleSelectionComponentTest extends TestCase
         $this->vehicle2 = Vehicle::factory()->create([
             'make' => 'Mercedes',
             'model' => 'C-Class',
+            'vehicle_make_id' => $this->mercedesMake->id,
+            'vehicle_model_id' => $this->mercedesCClassModel->id,
             'year' => 2023,
             'plate_number' => 'DEF-456',
             'price_daily' => 400.00,
