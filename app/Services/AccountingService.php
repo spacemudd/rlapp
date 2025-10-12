@@ -558,12 +558,12 @@ class AccountingService
         // Define default account types and names for each row_id
         $defaultAccounts = [
             'rental_income' => [
-                'name' => 'Rental Income',
-                'account_type' => Account::OPERATING_REVENUE,
-                'code' => '4000',
+                'name' => 'Rental Income Advance',
+                'account_type' => Account::CURRENT_LIABILITY,
+                'code' => '2101',
             ],
             'vat_collection' => [
-                'name' => 'VAT Collection',
+                'name' => 'VAT Collection Advance',
                 'account_type' => Account::CURRENT_LIABILITY,
                 'code' => '2201',
             ],
@@ -583,9 +583,9 @@ class AccountingService
                 'code' => '4003',
             ],
             'salik_fees' => [
-                'name' => 'Salik Fees',
-                'account_type' => Account::OPERATING_REVENUE,
-                'code' => '4004',
+                'name' => 'Salik Fees Advance',
+                'account_type' => Account::CURRENT_LIABILITY,
+                'code' => '2103',
             ],
             'prepayment' => [
                 'name' => 'Prepayment',
