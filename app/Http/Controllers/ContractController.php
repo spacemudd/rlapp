@@ -9,6 +9,7 @@ use App\Models\Invoice;
 use App\Models\Branch;
 use App\Models\PaymentReceipt;
 use App\Services\AccountingService;
+use App\Services\ContractClosureService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -804,16 +805,11 @@ class ContractController extends Controller
                             'amount' => 0,
                             'editable' => true,
                         ],
-                    ],
-                ],
-                [
-                    'key' => 'income',
-                    'rows' => [
                         [
                             'id' => 'rental_income',
                             'description' => __('words.qp_rental_income'),
-                            'gl_account_id' => $incomeMap['rental_income'] ?? '',
-                            'gl_account' => $glAccounts->get($incomeMap['rental_income'] ?? '')?->name ?? __('words.qp_rental_income'),
+                            'gl_account_id' => $liabilityMap['rental_income'] ?? '',
+                            'gl_account' => $glAccounts->get($liabilityMap['rental_income'] ?? '')?->name ?? __('words.qp_rental_income'),
                             'total' => 0,
                             'paid' => 0,
                             'remaining' => 0,
@@ -823,14 +819,30 @@ class ContractController extends Controller
                         [
                             'id' => 'vat_collection',
                             'description' => __('words.qp_vat_collection'),
-                            'gl_account_id' => $incomeMap['vat_collection'] ?? '',
-                            'gl_account' => $glAccounts->get($incomeMap['vat_collection'] ?? '')?->name ?? __('words.qp_vat_collection'),
+                            'gl_account_id' => $liabilityMap['vat_collection'] ?? '',
+                            'gl_account' => $glAccounts->get($liabilityMap['vat_collection'] ?? '')?->name ?? __('words.qp_vat_collection'),
                             'total' => 0,
                             'paid' => 0,
                             'remaining' => 0,
                             'amount' => 0,
                             'editable' => true,
                         ],
+                        [
+                            'id' => 'salik_fees',
+                            'description' => __('words.qp_salik_fees'),
+                            'gl_account_id' => $liabilityMap['salik_fees'] ?? '',
+                            'gl_account' => $glAccounts->get($liabilityMap['salik_fees'] ?? '')?->name ?? __('words.qp_salik_fees'),
+                            'total' => 0,
+                            'paid' => 0,
+                            'remaining' => 0,
+                            'amount' => 0,
+                            'editable' => true,
+                        ],
+                    ],
+                ],
+                [
+                    'key' => 'income',
+                    'rows' => [
                         [
                             'id' => 'insurance_fee',
                             'description' => __('words.qp_insurance_fee'),
@@ -847,17 +859,6 @@ class ContractController extends Controller
                             'description' => __('words.qp_fines'),
                             'gl_account_id' => $incomeMap['fines'] ?? '',
                             'gl_account' => $glAccounts->get($incomeMap['fines'] ?? '')?->name ?? __('words.qp_fines'),
-                            'total' => 0,
-                            'paid' => 0,
-                            'remaining' => 0,
-                            'amount' => 0,
-                            'editable' => true,
-                        ],
-                        [
-                            'id' => 'salik_fees',
-                            'description' => __('words.qp_salik_fees'),
-                            'gl_account_id' => $incomeMap['salik_fees'] ?? '',
-                            'gl_account' => $glAccounts->get($incomeMap['salik_fees'] ?? '')?->name ?? __('words.qp_salik_fees'),
                             'total' => 0,
                             'paid' => 0,
                             'remaining' => 0,
@@ -1148,5 +1149,186 @@ class ContractController extends Controller
         
         return redirect()->route('contracts.show', $contract)
             ->with('success', 'Contract closed successfully');
+    }
+
+    /**
+     * Prepare contract closure with financial summary.
+     */
+    public function prepareClosure(Contract $contract): Response
+    {
+        // Ensure contract is active or completed
+        if (!in_array($contract->status, ['active', 'completed'])) {
+            return redirect()->route('contracts.show', $contract)
+                ->withErrors(['error' => 'Only active or completed contracts can be closed.']);
+        }
+
+        $closureService = new ContractClosureService();
+        $summary = $closureService->getContractSummary($contract);
+
+        return Inertia::render('Contracts/ClosureReview', [
+            'contract' => $contract->load(['customer', 'vehicle', 'paymentReceipts.allocations', 'extensions']),
+            'summary' => $summary,
+        ]);
+    }
+
+    /**
+     * Review and adjust contract closure details.
+     */
+    public function reviewClosure(Contract $contract, Request $request): Response
+    {
+        // This will be implemented for manual adjustments
+        $closureService = new ContractClosureService();
+        $summary = $closureService->getContractSummary($contract);
+
+        return Inertia::render('Contracts/ClosureReview', [
+            'contract' => $contract->load(['customer', 'vehicle', 'paymentReceipts.allocations', 'extensions']),
+            'summary' => $summary,
+            'editing' => true,
+        ]);
+    }
+
+    /**
+     * Finalize contract closure and create invoice with IFRS entries.
+     */
+    public function finalizeClosure(Contract $contract, Request $request): RedirectResponse
+    {
+        // Validate request
+        $validated = $request->validate([
+            'invoice_items' => 'required|array',
+            'invoice_items.*.description' => 'required|string',
+            'invoice_items.*.amount' => 'required|numeric|min:0',
+            'refund_deposit' => 'boolean',
+            'refund_method' => 'nullable|string|in:cash,transfer,credit',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $accountingService = new AccountingService();
+            $closureService = new ContractClosureService();
+
+            // 1. Create final invoice
+            $invoice = $this->createFinalInvoice($contract, $validated['invoice_items']);
+
+            // 2. Apply Quick Pay advances to invoice (convert liabilities to revenue)
+            $this->applyAdvancesToInvoice($invoice, $contract, $accountingService);
+
+            // 3. Record revenue recognition
+            $accountingService->recordInvoice($invoice);
+
+            // 4. Handle security deposit refund if applicable
+            if ($validated['refund_deposit'] ?? false) {
+                $this->processDepositRefund($contract, $accountingService, $validated['refund_method'] ?? 'cash');
+            }
+
+            // 5. Complete contract if not already completed
+            if ($contract->status !== 'completed') {
+                $contract->update([
+                    'status' => 'completed',
+                    'completed_at' => now(),
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()->route('invoices.show', $invoice)
+                ->with('success', 'Contract closure finalized and invoice created successfully.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            Log::error('Contract closure finalization failed', [
+                'contract_id' => $contract->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return back()->withErrors(['error' => 'Failed to finalize contract closure: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Create final invoice with all line items.
+     */
+    private function createFinalInvoice(Contract $contract, array $invoiceItems): Invoice
+    {
+        $totalAmount = array_sum(array_column($invoiceItems, 'amount'));
+
+        $invoice = Invoice::create([
+            'contract_id' => $contract->id,
+            'customer_id' => $contract->customer_id,
+            'invoice_number' => $this->generateInvoiceNumber(),
+            'invoice_date' => now()->toDateString(),
+            'due_date' => now()->addDays(30)->toDateString(),
+            'total_amount' => $totalAmount,
+            'currency' => $contract->currency ?? 'AED',
+            'status' => 'pending',
+            'team_id' => $contract->team_id,
+        ]);
+
+        // Create invoice items
+        foreach ($invoiceItems as $item) {
+            $invoice->items()->create([
+                'description' => $item['description'],
+                'quantity' => $item['quantity'] ?? 1,
+                'unit_price' => $item['amount'],
+                'total_amount' => $item['amount'],
+            ]);
+        }
+
+        return $invoice;
+    }
+
+    /**
+     * Apply Quick Pay advances to invoice (convert liabilities to revenue).
+     */
+    private function applyAdvancesToInvoice(Invoice $invoice, Contract $contract, AccountingService $accountingService): void
+    {
+        $payments = $contract->paymentReceipts()
+            ->with('allocations')
+            ->get();
+
+        foreach ($payments as $payment) {
+            foreach ($payment->allocations as $allocation) {
+                // Skip security deposit - handled separately
+                if ($allocation->row_id === 'violation_guarantee') {
+                    continue;
+                }
+
+                // Apply advance to invoice
+                $accountingService->applyAdvanceToInvoice($invoice, $allocation);
+            }
+        }
+    }
+
+    /**
+     * Process security deposit refund.
+     */
+    private function processDepositRefund(Contract $contract, AccountingService $accountingService, string $refundMethod): void
+    {
+        $depositAmount = $contract->paymentReceipts()
+            ->with('allocations')
+            ->get()
+            ->flatMap->allocations
+            ->where('row_id', 'violation_guarantee')
+            ->sum('amount');
+
+        if ($depositAmount > 0) {
+            $accountingService->processDepositRefund($contract, $depositAmount, $refundMethod);
+        }
+    }
+
+    /**
+     * Generate unique invoice number.
+     */
+    private function generateInvoiceNumber(): string
+    {
+        $lastInvoice = Invoice::where('team_id', Auth::user()->team_id)
+            ->orderBy('id', 'desc')
+            ->first();
+
+        $nextNumber = $lastInvoice ? (int) substr($lastInvoice->invoice_number, 4) + 1 : 1;
+
+        return 'INV-' . str_pad((string) $nextNumber, 6, '0', STR_PAD_LEFT);
     }
 }
