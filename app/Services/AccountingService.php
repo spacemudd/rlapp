@@ -1523,4 +1523,163 @@ class AccountingService
 
         return $securityDepositAccount;
     }
+
+    /**
+     * Apply Quick Pay advance to invoice (convert liability to revenue).
+     */
+    public function applyAdvanceToInvoice(Invoice $invoice, PaymentReceiptAllocation $allocation): void
+    {
+        $entity = $this->getCurrentEntity();
+        $currency = $this->getDefaultCurrency();
+        
+        if (!$entity || !$currency) {
+            throw new \RuntimeException('Failed to get IFRS entity or currency for advance application');
+        }
+
+        // Get the advance liability account
+        $advanceAccount = Account::find($allocation->gl_account_id);
+        if (!$advanceAccount) {
+            throw new \RuntimeException("Advance account not found for allocation {$allocation->id}");
+        }
+
+        // Get customer receivable account
+        $customerReceivableAccount = $this->getOrCreateCustomerReceivableAccount($invoice->customer);
+
+        // Create transaction to apply advance to invoice
+        $transaction = Transaction::create([
+            'transaction_type' => 'JN',
+            'transaction_date' => now()->toDateString(),
+            'narration' => "Apply advance payment to invoice {$invoice->invoice_number}",
+            'entity_id' => $entity->id,
+            'currency_id' => $currency->id,
+        ]);
+
+        // Debit: Advance Liability Account (reduce liability)
+        LineItem::create([
+            'transaction_id' => $transaction->id,
+            'account_id' => $advanceAccount->id,
+            'description' => "Apply advance to invoice {$invoice->invoice_number}",
+            'amount' => $allocation->amount,
+            'credited' => false, // Debit
+        ]);
+
+        // Credit: Customer Receivable Account (reduce receivable)
+        LineItem::create([
+            'transaction_id' => $transaction->id,
+            'account_id' => $customerReceivableAccount->id,
+            'description' => "Apply advance to invoice {$invoice->invoice_number}",
+            'amount' => $allocation->amount,
+            'credited' => true, // Credit
+        ]);
+
+        // Update allocation with transaction reference
+        $allocation->update([
+            'ifrs_line_item_id' => $transaction->id,
+        ]);
+    }
+
+    /**
+     * Process security deposit refund.
+     */
+    public function processDepositRefund(Contract $contract, float $amount, string $method = 'cash'): void
+    {
+        $entity = $this->getCurrentEntity();
+        $currency = $this->getDefaultCurrency();
+        
+        if (!$entity || !$currency) {
+            throw new \RuntimeException('Failed to get IFRS entity or currency for deposit refund');
+        }
+
+        // Get security deposit liability account
+        $securityDepositAccount = $this->getSecurityDepositLiabilityAccount($contract->vehicle->branch);
+        
+        // Get cash account based on refund method
+        $cashAccount = $this->getCashAccountForRefund($method);
+
+        // Create transaction for deposit refund
+        $transaction = Transaction::create([
+            'transaction_type' => 'JN',
+            'transaction_date' => now()->toDateString(),
+            'narration' => "Security deposit refund for contract {$contract->contract_number}",
+            'entity_id' => $entity->id,
+            'currency_id' => $currency->id,
+        ]);
+
+        // Debit: Security Deposit Liability Account (reduce liability)
+        LineItem::create([
+            'transaction_id' => $transaction->id,
+            'account_id' => $securityDepositAccount->id,
+            'description' => "Security deposit refund - {$contract->contract_number}",
+            'amount' => $amount,
+            'credited' => false, // Debit
+        ]);
+
+        // Credit: Cash Account (reduce cash)
+        LineItem::create([
+            'transaction_id' => $transaction->id,
+            'account_id' => $cashAccount->id,
+            'description' => "Security deposit refund - {$contract->contract_number}",
+            'amount' => $amount,
+            'credited' => true, // Credit
+        ]);
+    }
+
+    /**
+     * Get cash account for refund based on method.
+     */
+    private function getCashAccountForRefund(string $method): Account
+    {
+        $entity = $this->getCurrentEntity();
+        $currency = $this->getDefaultCurrency();
+
+        switch ($method) {
+            case 'cash':
+                // Find petty cash account
+                $cashAccount = Account::where('entity_id', $entity->id)
+                    ->where('name', 'LIKE', '%Petty Cash%')
+                    ->where('account_type', Account::CURRENT_ASSET)
+                    ->first();
+                
+                if (!$cashAccount) {
+                    // Create default petty cash account
+                    $cashAccount = Account::create([
+                        'name' => 'Petty Cash',
+                        'code' => $this->generateAccountCode(Account::CURRENT_ASSET),
+                        'account_type' => Account::CURRENT_ASSET,
+                        'entity_id' => $entity->id,
+                        'currency_id' => $currency->id,
+                    ]);
+                }
+                return $cashAccount;
+
+            case 'transfer':
+                // Find bank account
+                $bankAccount = Account::where('entity_id', $entity->id)
+                    ->where('name', 'LIKE', '%Bank%')
+                    ->where('account_type', Account::CURRENT_ASSET)
+                    ->first();
+                
+                if (!$bankAccount) {
+                    // Create default bank account
+                    $bankAccount = Account::create([
+                        'name' => 'Bank Account',
+                        'code' => $this->generateAccountCode(Account::CURRENT_ASSET),
+                        'account_type' => Account::CURRENT_ASSET,
+                        'entity_id' => $entity->id,
+                        'currency_id' => $currency->id,
+                    ]);
+                }
+                return $bankAccount;
+
+            case 'credit':
+                // For credit refunds, we might credit the customer's account
+                // This would be handled differently based on business rules
+                throw new \RuntimeException('Credit refunds not yet implemented');
+
+            default:
+                throw new \RuntimeException("Unknown refund method: {$method}");
+        }
+    }
+
+
 }

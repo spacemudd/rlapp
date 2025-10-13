@@ -480,7 +480,7 @@ const toggleExpandAll = async () => {
                                 v-if="contract.status === 'active' || contract.status === 'completed'"
                                 variant="default"
                                 class="bg-indigo-600 text-white hover:bg-indigo-700"
-                                @click="goToCreateInvoice"
+                                @click="$inertia.visit(route('contracts.prepare-closure', contract.id))"
                             >
                                 {{ t('create_invoice') }}
                             </Button>
@@ -516,7 +516,7 @@ const toggleExpandAll = async () => {
                             <Button v-if="contract.status === 'active'" size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="showCloseDialog = true">
                                 {{ t('close_contract') }}
                             </Button>
-                            <Button v-if="contract.status !== 'void'" size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="goToCreateInvoice">
+                            <Button v-if="contract.status !== 'void'" size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="$inertia.visit(route('contracts.prepare-closure', contract.id))">
                                 {{ t('create_invoice') }}
                             </Button>
                             <Button v-if="contract.status === 'active'" size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="openExtendDialog">

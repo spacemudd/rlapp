@@ -66,6 +66,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Refund endpoints
     Route::post('/contracts/{contract}/refund', [App\Http\Controllers\ContractController::class, 'refund'])->name('contracts.refund');
+    
+    // Contract closure workflow
+    Route::get('/contracts/{contract}/prepare-closure', [App\Http\Controllers\ContractController::class, 'prepareClosure'])->name('contracts.prepare-closure');
+    Route::get('/contracts/{contract}/review-closure', [App\Http\Controllers\ContractController::class, 'reviewClosure'])->name('contracts.review-closure');
+    Route::post('/contracts/{contract}/finalize-closure', [App\Http\Controllers\ContractController::class, 'finalizeClosure'])->name('contracts.finalize-closure');
 
     // Test routes
     Route::get('/test-arabic', function() {
