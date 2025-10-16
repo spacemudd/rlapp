@@ -70,6 +70,7 @@ const { t } = useI18n();
                                     <ul class="space-y-1">
                                         <li>• {{ t('qp_violation_guarantee') }}: <span dir="ltr">{{ props.branch.quick_pay_accounts?.liability?.violation_guarantee || '-' }}</span></li>
                                         <li>• {{ t('qp_prepayment') }}: <span dir="ltr">{{ props.branch.quick_pay_accounts?.liability?.prepayment || '-' }}</span></li>
+                                        <li>• {{ t('additional_fees') }}: <span dir="ltr">{{ props.branch.quick_pay_accounts?.liability?.additional_fees || '-' }}</span></li>
                                     </ul>
                                 </div>
                                 <div>

@@ -61,6 +61,20 @@ const inputRef = ref<HTMLInputElement | null>(null);
 
 let searchTimeout: number;
 
+// Watch for external modelValue changes (v-model binding from parent)
+watch(() => props.modelValue, (newValue) => {
+    console.log('modelValue changed from parent:', newValue);
+    // If parent clears the value, clear our internal state
+    if (!newValue && selectedVehicle.value) {
+        console.log('Parent cleared modelValue, clearing selection');
+        selectedVehicle.value = null;
+        searchQuery.value = '';
+        vehicles.value = [];
+    }
+    // If parent sets a value but we don't have it selected, keep our state
+    // (this prevents external changes from clearing the selection)
+});
+
 // Computed properties
 const canSearch = computed(() => {
     return props.pickupDate && props.returnDate && searchQuery.value.length >= 2;
@@ -74,13 +88,57 @@ const searchUrl = computed(() => {
 });
 
 // Watch for date changes
-watch([() => props.pickupDate, () => props.returnDate], () => {
-    // Clear selection when dates change
-    selectedVehicle.value = null;
-    searchQuery.value = '';
+watch([() => props.pickupDate, () => props.returnDate], async () => {
+    console.log('Date change detected. Pickup:', props.pickupDate, 'Return:', props.returnDate, 'Selected vehicle:', selectedVehicle.value?.label);
+    
+    // Only re-validate if BOTH dates are set and a vehicle is already selected
+    if (!props.pickupDate || !props.returnDate) {
+        // If dates are incomplete, just clear the search results but keep selection
+        console.log('Dates incomplete, keeping selection but clearing search results');
+        vehicles.value = [];
+        return;
+    }
+    
+    // If a vehicle is already selected, re-validate its availability with the new dates
+    if (selectedVehicle.value) {
+        console.log('Re-validating selected vehicle:', selectedVehicle.value.label);
+        try {
+            isLoading.value = true;
+            const response = await axios.post(searchUrl.value, {
+                query: selectedVehicle.value.label,
+                pickup_date: props.pickupDate,
+                return_date: props.returnDate
+            });
+
+            // Find the same vehicle in the new results
+            const updatedVehicle = response.data.find((v: Vehicle) => v.id === selectedVehicle.value?.id);
+            
+            if (updatedVehicle) {
+                // Update the selected vehicle with new availability status
+                selectedVehicle.value = updatedVehicle;
+                // Keep the search query showing the vehicle name
+                searchQuery.value = updatedVehicle.label;
+                // Make sure modelValue stays set
+                emit('update:modelValue', updatedVehicle.value);
+                // Re-emit the updated vehicle info to parent
+                emit('optionSelected', updatedVehicle);
+                console.log('Re-validated vehicle after date change:', updatedVehicle);
+            } else {
+                // Vehicle not found in new results (shouldn't happen but handle it)
+                selectedVehicle.value = null;
+                searchQuery.value = '';
+                emit('update:modelValue', '');
+                emit('optionSelected', null as any);
+            }
+        } catch (error) {
+            console.error('Error re-validating vehicle:', error);
+            // Keep selection but log error - preserve search query
+        } finally {
+            isLoading.value = false;
+        }
+    }
+    // Clear vehicle list to force new search
     vehicles.value = [];
-    emit('update:modelValue', '');
-    emit('optionSelected', null as any);
 });
 
 const searchVehicles = async (query: string) => {
@@ -139,6 +197,7 @@ const selectVehicle = (vehicle: Vehicle) => {
         return;
     }
 
+    console.log('Vehicle selected:', vehicle.label, vehicle.id);
     selectedVehicle.value = vehicle;
     searchQuery.value = vehicle.label;
     isOpen.value = false;
@@ -147,12 +206,26 @@ const selectVehicle = (vehicle: Vehicle) => {
 };
 
 const clearSelection = () => {
+    console.log('clearSelection called');
     selectedVehicle.value = null;
     searchQuery.value = '';
     vehicles.value = [];
     emit('update:modelValue', '');
     emit('optionSelected', null as any);
 };
+
+// Expose method for parent to programmatically select a vehicle
+const selectOption = (vehicle: Vehicle) => {
+    if (vehicle) {
+        selectVehicle(vehicle);
+    }
+};
+
+// Expose methods to parent component
+defineExpose({
+    selectOption,
+    clearSelection
+});
 
 const toggleDropdown = () => {
     if (props.disabled || !props.pickupDate || !props.returnDate) return;

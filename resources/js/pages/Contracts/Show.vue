@@ -15,6 +15,7 @@ import { useI18n } from 'vue-i18n';
 import QuickPayModal from '@/components/QuickPayModal.vue';
 import PaymentReceiptDetailsModal from '@/components/PaymentReceiptDetailsModal.vue';
 import RefundModal from '@/components/RefundModal.vue';
+import AdditionalFeesModal from '@/components/AdditionalFeesModal.vue';
 
 interface Contract {
     id: string;
@@ -168,6 +169,7 @@ const showQuickPayDialog = ref(false);
 const showRefundDialog = ref(false);
 const showReceiptDetailsDialog = ref(false);
 const showCloseDialog = ref(false);
+const showAdditionalFeesDialog = ref(false);
 const selectedReceipt = ref<any>(null);
 const extensionPricing = ref<any>(null);
 
@@ -183,6 +185,15 @@ const activateContract = () => {
 const showReceiptDetails = (receipt: any) => {
     selectedReceipt.value = receipt;
     showReceiptDetailsDialog.value = true;
+};
+
+const openAdditionalFeesDialog = () => {
+    showAdditionalFeesDialog.value = true;
+};
+
+const handleFeeSubmitted = (data: any) => {
+    // Refresh the page to show the updated fees
+    window.location.reload();
 };
 
 const confirmActivation = () => {
@@ -500,7 +511,7 @@ const toggleExpandAll = async () => {
                             <Button size="sm" class="h-7 px-2 py-1 text-xs bg-orange-600 text-white hover:bg-orange-700" @click="openRefund">
                                 {{ t('refund') }}
                             </Button>
-                            <Button size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700">
+                            <Button size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="openAdditionalFeesDialog">
                                 {{ t('additional_fees') }}
                             </Button>
                             <Button size="sm" class="h-7 px-2 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700">
@@ -1255,6 +1266,15 @@ const toggleExpandAll = async () => {
             :contract="contract"
             @update:open="showRefundDialog = $event"
             @refund-processed="handleRefundProcessed"
+        />
+
+        <!-- Additional Fees Modal -->
+        <AdditionalFeesModal 
+            :contract-id="contract.id" 
+            :branch-id="contract.vehicle.branch?.id || contract.branch?.id" 
+            :is-open="showAdditionalFeesDialog"
+            @update:is-open="showAdditionalFeesDialog = $event"
+            @fee-submitted="handleFeeSubmitted"
         />
     </AppLayout>
 </template>

@@ -125,6 +125,7 @@ class BranchController extends Controller
                 'liability' => [
                     ['key' => 'violation_guarantee', 'label' => __('words.qp_violation_guarantee')],
                     ['key' => 'prepayment', 'label' => __('words.qp_prepayment')],
+                    ['key' => 'additional_fees', 'label' => __('words.additional_fees')],
                     ['key' => 'rental_income', 'label' => __('words.qp_rental_income')],
                     ['key' => 'vat_collection', 'label' => __('words.qp_vat_collection')],
                     ['key' => 'salik_fees', 'label' => __('words.qp_salik_fees')],

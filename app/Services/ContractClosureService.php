@@ -17,6 +17,7 @@ class ContractClosureService
             'extensions' => $this->calculateExtensions($contract),
             'payments_received' => $this->getPaymentsReceived($contract),
             'additional_charges' => $this->getAdditionalCharges($contract),
+            'additional_fees' => $this->getAdditionalFees($contract),
             'security_deposit' => $this->getSecurityDeposit($contract),
             'outstanding_balance' => $this->calculateOutstanding($contract),
             'refund_due' => $this->calculateRefundDue($contract),
@@ -161,6 +162,55 @@ class ContractClosureService
         ];
     }
 
+    private function getAdditionalFees(Contract $contract): array
+    {
+        // Load additional fees if not already loaded
+        if (!$contract->relationLoaded('additionalFees')) {
+            $contract->load('additionalFees');
+        }
+        
+        $fees = [];
+        $subtotalAmount = 0;
+        $vatAmount = 0;
+        $totalAmount = 0;
+        
+        // Get fee types for localized names
+        $feeTypes = \App\Models\SystemSetting::getFeeTypes();
+        $feeTypeMap = collect($feeTypes)->keyBy('key');
+        $locale = app()->getLocale();
+
+        foreach ($contract->additionalFees as $fee) {
+            $feeTypeInfo = $feeTypeMap->get($fee->fee_type);
+            $feeTypeName = $feeTypeInfo[$locale] ?? $feeTypeInfo['en'] ?? $fee->fee_type;
+            
+            $fees[] = [
+                'id' => $fee->id,
+                'fee_type' => $fee->fee_type,
+                'fee_type_name' => $feeTypeName,
+                'description' => $fee->description,
+                'quantity' => $fee->quantity,
+                'unit_price' => $fee->unit_price,
+                'discount' => $fee->discount,
+                'subtotal' => $fee->subtotal,
+                'vat_amount' => $fee->vat_amount,
+                'is_vat_exempt' => $fee->is_vat_exempt,
+                'total' => $fee->total,
+            ];
+            
+            $subtotalAmount += $fee->subtotal;
+            $vatAmount += $fee->vat_amount;
+            $totalAmount += $fee->total;
+        }
+
+        return [
+            'fees' => $fees,
+            'subtotal' => $subtotalAmount,
+            'vat' => $vatAmount,
+            'total' => $totalAmount,
+            'currency' => $contract->currency ?? 'AED',
+        ];
+    }
+
     private function getSecurityDeposit(Contract $contract): array
     {
         $payments = $contract->paymentReceipts()
@@ -196,10 +246,11 @@ class ContractClosureService
         $baseRental = $this->calculateBaseRental($contract);
         $extensions = $this->calculateExtensions($contract);
         $additionalCharges = $this->getAdditionalCharges($contract);
+        $additionalFees = $this->getAdditionalFees($contract);
         $securityDeposit = $this->getSecurityDeposit($contract);
         $payments = $this->getPaymentsReceived($contract);
         
-        $totalDue = $baseRental['total'] + $extensions['total'] + $additionalCharges['total'];
+        $totalDue = $baseRental['total'] + $extensions['total'] + $additionalCharges['total'] + $additionalFees['total'];
         $totalPaid = $payments['total'];
         
         // Subtract security deposit from paid amount for outstanding calculation
@@ -222,10 +273,11 @@ class ContractClosureService
         $baseRental = $this->calculateBaseRental($contract);
         $extensions = $this->calculateExtensions($contract);
         $additionalCharges = $this->getAdditionalCharges($contract);
+        $additionalFees = $this->getAdditionalFees($contract);
         $securityDeposit = $this->getSecurityDeposit($contract);
         $payments = $this->getPaymentsReceived($contract);
         
-        $totalDue = $baseRental['total'] + $extensions['total'] + $additionalCharges['total'];
+        $totalDue = $baseRental['total'] + $extensions['total'] + $additionalCharges['total'] + $additionalFees['total'];
         $totalPaid = $payments['total'];
         $netPaid = $totalPaid - $securityDeposit['amount'];
         $outstandingAmount = max(0, $totalDue - $netPaid);
@@ -275,6 +327,7 @@ class ContractClosureService
             ],
             'payments' => $summary['payments_received'],
             'additional_charges' => $summary['additional_charges'],
+            'additional_fees' => $summary['additional_fees'],
             'security_deposit' => $summary['security_deposit'],
             'financial_summary' => [
                 'total_due' => $outstanding['total_due'],
