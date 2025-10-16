@@ -1185,4 +1185,8 @@ return [
     'late_return_charge' => 'Late Return Charge',
     'days' => 'days',
     'day' => 'day',
+    
+    // Revenue Recognition
+    'revenue_recognition' => 'Revenue Recognition',
+    'daily_revenue_recognized' => 'Daily Revenue Recognized',
 ];

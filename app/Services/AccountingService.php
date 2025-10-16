@@ -1681,5 +1681,158 @@ class AccountingService
         }
     }
 
+    /**
+     * Record daily revenue recognition for a contract.
+     * 
+     * This implements IFRS accrual accounting by recognizing revenue as the service is consumed.
+     * Each day of the rental period, we transfer the daily rental amount from the 
+     * Customer Deposits liability account to the Rental Income revenue account.
+     * 
+     * @param \App\Models\Contract $contract The contract to recognize revenue for
+     * @param \Carbon\Carbon $recognitionDate The date to recognize revenue for
+     * @param int $dayNumber The sequential day number (1, 2, 3, etc.)
+     * @param float $amount The amount to recognize for this day
+     * @return Transaction The created IFRS transaction
+     */
+    public function recordDailyRevenueRecognition(\App\Models\Contract $contract, \Carbon\Carbon $recognitionDate, int $dayNumber, float $amount): Transaction
+    {
+        DB::beginTransaction();
+
+        try {
+            $entity = $this->getCurrentEntity();
+            $currency = $this->getDefaultCurrency();
+
+            // Get the Customer Deposits liability account
+            // This is where customer prepayments are held until revenue is recognized
+            $customerDepositsAccount = $this->getCustomerDepositsAccount($contract);
+
+            // Get the Rental Income revenue account
+            $rentalIncomeAccount = $this->getRentalIncomeAccount($contract);
+
+            // Create the revenue recognition transaction
+            $transaction = Transaction::create([
+                'transaction_type' => Transaction::JN, // Journal Entry
+                'transaction_date' => $recognitionDate->toDateString(),
+                'narration' => "Revenue recognition for Contract {$contract->contract_number} - Day {$dayNumber}",
+                'entity_id' => $entity->id,
+                'currency_id' => $currency->id,
+                'account_id' => $customerDepositsAccount->id,
+            ]);
+
+            // Debit: Customer Deposits (reduce liability - we no longer owe this to the customer)
+            LineItem::create([
+                'transaction_id' => $transaction->id,
+                'account_id' => $customerDepositsAccount->id,
+                'narration' => "Revenue earned - Day {$dayNumber} of rental period",
+                'amount' => $amount,
+                'quantity' => 1,
+                'vat_inclusive' => false,
+                'entity_id' => $entity->id,
+                'credited' => false, // Debit
+            ]);
+
+            // Credit: Rental Income (recognize revenue)
+            LineItem::create([
+                'transaction_id' => $transaction->id,
+                'account_id' => $rentalIncomeAccount->id,
+                'narration' => "Rental revenue - Contract {$contract->contract_number} Day {$dayNumber}",
+                'amount' => $amount,
+                'quantity' => 1,
+                'vat_inclusive' => false,
+                'entity_id' => $entity->id,
+                'credited' => true, // Credit
+            ]);
+
+            DB::commit();
+
+            Log::info("Daily revenue recognized in IFRS system", [
+                'contract_id' => $contract->id,
+                'contract_number' => $contract->contract_number,
+                'transaction_id' => $transaction->id,
+                'day_number' => $dayNumber,
+                'recognition_date' => $recognitionDate->toDateString(),
+                'amount' => $amount,
+            ]);
+
+            return $transaction;
+
+        } catch (Exception $e) {
+            DB::rollback();
+            Log::error("Failed to record daily revenue recognition in IFRS system", [
+                'contract_id' => $contract->id,
+                'day_number' => $dayNumber,
+                'amount' => $amount,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Get or create the Customer Deposits liability account for a contract.
+     * This account holds customer prepayments until revenue is recognized.
+     */
+    private function getCustomerDepositsAccount(\App\Models\Contract $contract): Account
+    {
+        $entity = $this->getCurrentEntity();
+        $branch = $contract->branch ?? $contract->vehicle->branch;
+
+        // Try to get from branch Quick Pay mappings first
+        if ($branch && isset($branch->quick_pay_accounts['liability']['rental_income'])) {
+            $accountId = $branch->quick_pay_accounts['liability']['rental_income'];
+            $account = Account::find($accountId);
+            if ($account) {
+                return $account;
+            }
+        }
+
+        // Fallback to general Customer Deposits account
+        $account = Account::where('entity_id', $entity->id)
+            ->where('name', 'Customer Deposits - Unearned Revenue')
+            ->where('account_type', Account::CURRENT_LIABILITY)
+            ->first();
+
+        if (!$account) {
+            $account = Account::create([
+                'name' => 'Customer Deposits - Unearned Revenue',
+                'account_type' => Account::CURRENT_LIABILITY,
+                'code' => '2102',
+                'currency_id' => $this->getDefaultCurrency()->id,
+                'entity_id' => $entity->id,
+            ]);
+        }
+
+        return $account;
+    }
+
+    /**
+     * Get or create the Rental Income revenue account for a contract.
+     */
+    private function getRentalIncomeAccount(\App\Models\Contract $contract): Account
+    {
+        $entity = $this->getCurrentEntity();
+
+        // Try to use standard rental revenue account
+        $account = Account::where('entity_id', $entity->id)
+            ->where('account_type', Account::OPERATING_REVENUE)
+            ->where(function ($q) {
+                $q->where('name', 'Rental Revenue')
+                  ->orWhere('name', 'Rental Income')
+                  ->orWhere('code', '4001');
+            })
+            ->first();
+
+        if (!$account) {
+            $account = Account::create([
+                'name' => 'Rental Revenue',
+                'account_type' => Account::OPERATING_REVENUE,
+                'code' => '4001',
+                'currency_id' => $this->getDefaultCurrency()->id,
+                'entity_id' => $entity->id,
+            ]);
+        }
+
+        return $account;
+    }
 
 }
