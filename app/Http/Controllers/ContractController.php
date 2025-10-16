@@ -1001,8 +1001,9 @@ class ContractController extends Controller
             $remaining = max(0, $consumedAmount - $paidToRental);
 
             // Inject values into the response for the rental_income row
+            // Note: rental_income is in the 'liability' section, not 'income'
             foreach ($response['sections'] as &$section) {
-                if (($section['key'] ?? null) === 'income') {
+                if (($section['key'] ?? null) === 'liability') {
                     foreach ($section['rows'] as &$row) {
                         if (($row['id'] ?? null) === 'rental_income') {
                             $row['total'] = $consumedAmount;

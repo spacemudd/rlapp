@@ -124,7 +124,7 @@ const submitQuickPay = async () => {
         }
     };
     collect('liability');
-    collect('income');
+    // collect('income'); // Hidden in UI
 
     try {
         const url = route('contracts.quick-pay', props.contractId);
@@ -447,60 +447,62 @@ watch(() => props.isOpen, async (isOpen) => {
                                 <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(computeGrandTotal(row, 'liability')) }}</td>
                             </tr>
 
-                            <!-- Income section header -->
-                            <tr class="bg-gray-100">
-                                <td class="px-1 py-0.5 font-medium text-center text-xs border border-gray-300" colspan="3">{{ t('income_section') || 'Income' }}</td>
-                                <td class="px-1 py-0.5 border border-gray-300" colspan="4"></td>
-                            </tr>
-                            <tr v-for="row in (quickPaySummary.sections?.find((s: any) => s.key === 'income')?.rows || [])" :key="row.id">
-                                <td class="px-1 py-0.5 text-start border border-gray-300">
-                                    <Input 
-                                        v-model="row.memo" 
-                                        class="h-8 text-sm focus:bg-yellow-50 transition-colors"
-                                        placeholder="Memo"
-                                    />
-                                </td>
-                                <td class="px-1 py-0.5 text-start border border-gray-300">
-                                    <div class="text-xs">{{ displayQuickPayDescription(row.description) }}</div>
-                                    <div class="text-xs text-gray-500">({{ row.gl_account }})</div>
-                                </td>
-                                <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(row.total) }}</td>
-                                <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(row.paid) }}</td>
-                                <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(row.remaining) }}</td>
-                                <td class="px-1 py-0.5 text-center border border-gray-300">
-                                    <div class="space-y-1">
+                            <!-- Income section header (Hidden) -->
+                            <template v-if="false">
+                                <tr class="bg-gray-100">
+                                    <td class="px-1 py-0.5 font-medium text-center text-xs border border-gray-300" colspan="3">{{ t('income_section') || 'Income' }}</td>
+                                    <td class="px-1 py-0.5 border border-gray-300" colspan="4"></td>
+                                </tr>
+                                <tr v-for="row in (quickPaySummary.sections?.find((s: any) => s.key === 'income')?.rows || [])" :key="row.id">
+                                    <td class="px-1 py-0.5 text-start border border-gray-300">
                                         <Input 
-                                            ref="rentalIncomeInputRef"
-                                            type="number" 
-                                            class="h-6 text-xs focus:bg-yellow-50 transition-colors" 
-                                            v-model.number="row.amount" 
-                                            :max="row.remaining" 
-                                            min="0" 
-                                            @input="handleRentalIncomeInput(row, 'income')" 
-                                            @change="handleRentalIncomeInput(row, 'income')" 
+                                            v-model="row.memo" 
+                                            class="h-8 text-sm focus:bg-yellow-50 transition-colors"
+                                            placeholder="Memo"
                                         />
-                                        
-                                        <!-- VAT Options Tags -->
-                                        <div v-if="showVATOptions[row.id]" class="flex gap-1 justify-center">
-                                            <button 
-                                                @click="applyVAT(row, 'income')"
-                                                @keydown.enter="applyVAT(row, 'income')"
-                                                class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 border border-green-300 rounded-full hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 transition-all duration-200 transform hover:scale-105"
-                                            >
-                                                {{ formatNumber(Math.round((originalAmounts[row.id] * 0.95) * 100) / 100) }} + {{ formatNumber(Math.round((originalAmounts[row.id] * 0.05) * 100) / 100) }} VAT
-                                            </button>
-                                            <button 
-                                                @click="applyWithoutVAT(row, 'income')"
-                                                @keydown.enter="applyWithoutVAT(row, 'income')"
-                                                class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 border border-blue-300 rounded-full hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-all duration-200 transform hover:scale-105"
-                                            >
-                                                {{ formatNumber(Math.round(originalAmounts[row.id] * 100) / 100) }} (No VAT)
-                                            </button>
+                                    </td>
+                                    <td class="px-1 py-0.5 text-start border border-gray-300">
+                                        <div class="text-xs">{{ displayQuickPayDescription(row.description) }}</div>
+                                        <div class="text-xs text-gray-500">({{ row.gl_account }})</div>
+                                    </td>
+                                    <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(row.total) }}</td>
+                                    <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(row.paid) }}</td>
+                                    <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(row.remaining) }}</td>
+                                    <td class="px-1 py-0.5 text-center border border-gray-300">
+                                        <div class="space-y-1">
+                                            <Input 
+                                                ref="rentalIncomeInputRef"
+                                                type="number" 
+                                                class="h-6 text-xs focus:bg-yellow-50 transition-colors" 
+                                                v-model.number="row.amount" 
+                                                :max="row.remaining" 
+                                                min="0" 
+                                                @input="handleRentalIncomeInput(row, 'income')" 
+                                                @change="handleRentalIncomeInput(row, 'income')" 
+                                            />
+                                            
+                                            <!-- VAT Options Tags -->
+                                            <div v-if="showVATOptions[row.id]" class="flex gap-1 justify-center">
+                                                <button 
+                                                    @click="applyVAT(row, 'income')"
+                                                    @keydown.enter="applyVAT(row, 'income')"
+                                                    class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 border border-green-300 rounded-full hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 transition-all duration-200 transform hover:scale-105"
+                                                >
+                                                    {{ formatNumber(Math.round((originalAmounts[row.id] * 0.95) * 100) / 100) }} + {{ formatNumber(Math.round((originalAmounts[row.id] * 0.05) * 100) / 100) }} VAT
+                                                </button>
+                                                <button 
+                                                    @click="applyWithoutVAT(row, 'income')"
+                                                    @keydown.enter="applyWithoutVAT(row, 'income')"
+                                                    class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 border border-blue-300 rounded-full hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-all duration-200 transform hover:scale-105"
+                                                >
+                                                    {{ formatNumber(Math.round(originalAmounts[row.id] * 100) / 100) }} (No VAT)
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                </td>
-                                <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(computeGrandTotal(row, 'income')) }}</td>
-                            </tr>
+                                    </td>
+                                    <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(computeGrandTotal(row, 'income')) }}</td>
+                                </tr>
+                            </template>
                         </tbody>
                         <tfoot class="bg-gray-100 border-t-2 border-gray-300">
                             <tr>

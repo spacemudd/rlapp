@@ -1158,4 +1158,8 @@ return [
     'late_return_charge' => 'رسوم التأخير في الإرجاع',
     'days' => 'أيام',
     'day' => 'يوم',
+    
+    // Revenue Recognition
+    'revenue_recognition' => 'الاعتراف بالإيرادات',
+    'daily_revenue_recognized' => 'الإيرادات اليومية المعترف بها',
 ];
