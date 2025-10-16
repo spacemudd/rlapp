@@ -18,4 +18,8 @@ Route::middleware('auth')->group(function () {
     Route::get('settings/appearance', function () {
         return Inertia::render('settings/Appearance');
     })->name('appearance');
+
+    // System Settings - Fee Types
+    Route::get('settings/fee-types', [App\Http\Controllers\Settings\SystemSettingsController::class, 'index'])->name('settings.fee-types.index');
+    Route::post('settings/fee-types', [App\Http\Controllers\Settings\SystemSettingsController::class, 'updateFeeTypes'])->name('settings.fee-types.update');
 });

@@ -284,11 +284,6 @@ const handleFinalPriceOverride = () => {
 
 // Watch for changes that require pricing recalculation
 watch([() => form.vehicle_id, () => form.start_date, () => form.end_date], async () => {
-    // Clear conflicts when dates change
-    if (form.start_date && form.end_date) {
-        clearConflicts();
-    }
-    
     // Only recalculate if no overrides are active
     if (!form.override_daily_rate && !form.override_final_price) {
         await calculatePricing();

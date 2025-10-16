@@ -143,6 +143,14 @@ class Contract extends Model
     }
 
     /**
+     * Get the additional fees associated with the contract.
+     */
+    public function additionalFees()
+    {
+        return $this->hasMany(ContractAdditionalFee::class);
+    }
+
+    /**
      * Scope a query to only include active contracts.
      */
     public function scopeActive($query)

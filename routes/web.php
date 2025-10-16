@@ -63,6 +63,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Quick Pay endpoints
     Route::get('/contracts/{contract}/quick-pay-summary', [App\Http\Controllers\ContractController::class, 'quickPaySummary'])->name('contracts.quick-pay-summary');
     Route::post('/contracts/{contract}/quick-pay', [App\Http\Controllers\ContractController::class, 'quickPay'])->name('contracts.quick-pay');
+
+    // Additional Fees endpoints
+    Route::post('/contracts/{contract}/additional-fees', [App\Http\Controllers\ContractAdditionalFeesController::class, 'store'])->name('contracts.additional-fees.store');
+    Route::delete('/additional-fees/{fee}', [App\Http\Controllers\ContractAdditionalFeesController::class, 'destroy'])->name('additional-fees.destroy');
     
     // Refund endpoints
     Route::post('/contracts/{contract}/refund', [App\Http\Controllers\ContractController::class, 'refund'])->name('contracts.refund');

@@ -64,6 +64,30 @@ Route::prefix('v1')->group(function () {
 
 // Vehicle availability endpoints moved to web routes to avoid API key conflicts
 
+// System Settings and Branch info endpoints
+// Using web middleware for session-based authentication
+Route::middleware(['web', 'auth'])->group(function () {
+    Route::get('/system-settings/fee-types', function () {
+        $feeTypes = \App\Models\SystemSetting::getFeeTypes();
+        return response()->json(['fee_types' => $feeTypes]);
+    });
+    
+    Route::get('/branches/{branch}/vat-account', function (\App\Models\Branch $branch) {
+        $vatAccount = null;
+        if ($branch->ifrs_vat_account_id) {
+            $vatAccount = \IFRS\Models\Account::find($branch->ifrs_vat_account_id);
+            if ($vatAccount) {
+                $vatAccount = [
+                    'id' => $vatAccount->id,
+                    'name' => $vatAccount->name,
+                    'code' => $vatAccount->code,
+                ];
+            }
+        }
+        return response()->json(['vat_account' => $vatAccount]);
+    });
+});
+
 Route::middleware(['api.key'])->group(function () {
     // Vehicle API endpoints (requires API key)
     Route::prefix('vehicles')->group(function () {

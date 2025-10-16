@@ -875,6 +875,94 @@ class ContractController extends Controller
             ],
         ];
 
+        // Add aggregated additional fees to liability section (split into subtotal and VAT)
+        try {
+            $additionalFees = \App\Models\ContractAdditionalFee::query()
+                ->where('contract_id', $contract->id)
+                ->selectRaw('fee_type, SUM(subtotal) as total_subtotal, SUM(vat_amount) as total_vat, SUM(total) as total_amount')
+                ->groupBy('fee_type')
+                ->get();
+
+            $feeTypes = \App\Models\SystemSetting::getFeeTypes();
+            $feeTypeMap = collect($feeTypes)->keyBy('key');
+            
+            // Get VAT Collection account from branch configuration
+            $vatCollectionAccountId = $liabilityMap['vat_collection'] ?? '';
+
+            foreach ($additionalFees as $aggregatedFee) {
+                $feeTypeKey = $aggregatedFee->fee_type;
+                $feeTypeInfo = $feeTypeMap->get($feeTypeKey);
+                
+                // Get localized name based on app locale
+                $locale = app()->getLocale();
+                $feeTypeName = $feeTypeInfo[$locale] ?? $feeTypeInfo['en'] ?? $feeTypeKey;
+                
+                $additionalFeesAccountId = $liabilityMap['additional_fees'] ?? '';
+                
+                // Create subtotal row (deferred revenue/liability line item)
+                if ($aggregatedFee->total_subtotal > 0) {
+                    $subtotalRowId = "additional_fee_{$feeTypeKey}";
+                    
+                    // Calculate paid amount for subtotal row
+                    $subtotalPaid = (float) \App\Models\PaymentReceiptAllocation::query()
+                        ->where('row_id', $subtotalRowId)
+                        ->whereHas('paymentReceipt', function ($q) use ($contract) {
+                            $q->where('contract_id', $contract->id)
+                              ->where('status', 'completed');
+                        })
+                        ->sum('amount');
+                    
+                    $subtotalRemaining = max(0, $aggregatedFee->total_subtotal - $subtotalPaid);
+                    
+                    $response['sections'][0]['rows'][] = [
+                        'id' => $subtotalRowId,
+                        'description' => $feeTypeName,
+                        'gl_account_id' => $additionalFeesAccountId,
+                        'gl_account' => $glAccounts->get($additionalFeesAccountId)?->name ?? $feeTypeName,
+                        'total' => round((float) $aggregatedFee->total_subtotal, 2),
+                        'paid' => round($subtotalPaid, 2),
+                        'remaining' => round($subtotalRemaining, 2),
+                        'amount' => 0,
+                        'editable' => true,
+                    ];
+                }
+                
+                // Create VAT row (VAT Collection liability line item)
+                if ($aggregatedFee->total_vat > 0) {
+                    $vatRowId = "additional_fee_{$feeTypeKey}_vat";
+                    $vatDescription = __('words.vat_for_fee', ['fee' => $feeTypeName]);
+                    
+                    // Calculate paid amount for VAT row
+                    $vatPaid = (float) \App\Models\PaymentReceiptAllocation::query()
+                        ->where('row_id', $vatRowId)
+                        ->whereHas('paymentReceipt', function ($q) use ($contract) {
+                            $q->where('contract_id', $contract->id)
+                              ->where('status', 'completed');
+                        })
+                        ->sum('amount');
+                    
+                    $vatRemaining = max(0, $aggregatedFee->total_vat - $vatPaid);
+                    
+                    $response['sections'][0]['rows'][] = [
+                        'id' => $vatRowId,
+                        'description' => $vatDescription,
+                        'gl_account_id' => $vatCollectionAccountId,
+                        'gl_account' => $glAccounts->get($vatCollectionAccountId)?->name ?? __('words.qp_vat_collection'),
+                        'total' => round((float) $aggregatedFee->total_vat, 2),
+                        'paid' => round($vatPaid, 2),
+                        'remaining' => round($vatRemaining, 2),
+                        'amount' => 0,
+                        'editable' => true,
+                    ];
+                }
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to add additional fees to quick pay summary', [
+                'contract_id' => $contract->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         // Calculate consumed rental income to date (accrued)
         try {
             $tz = config('app.timezone', 'UTC');
@@ -1166,7 +1254,7 @@ class ContractController extends Controller
         $summary = $closureService->getContractSummary($contract);
 
         return Inertia::render('Contracts/ClosureReview', [
-            'contract' => $contract->load(['customer', 'vehicle', 'paymentReceipts.allocations', 'extensions']),
+            'contract' => $contract->load(['customer', 'vehicle', 'paymentReceipts.allocations', 'extensions', 'additionalFees']),
             'summary' => $summary,
         ]);
     }
