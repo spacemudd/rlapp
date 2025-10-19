@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue';
+import axios from 'axios';
 import { useI18n } from 'vue-i18n';
 import { XCircle, Loader2 } from 'lucide-vue-next';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -102,81 +103,65 @@ const submitQuickPay = async () => {
     if (!quickPaySummary.value) return;
     
     isSubmitting.value = true;
-    errorMessage.value = ''; // Clear any previous errors
+    errorMessage.value = '';
     
+    // Collect allocations
     const allocations = [] as Array<{ row_id: string; amount: number; memo?: string; type?: 'security_deposit' | 'advance_payment' | 'invoice_settlement'; }>;
-    const inferAllocationType = (rowId: string, sectionKey: string): 'security_deposit' | 'advance_payment' | 'invoice_settlement' => {
+    
+    const inferAllocationType = (rowId: string): 'security_deposit' | 'advance_payment' | 'invoice_settlement' => {
         if (rowId === 'violation_guarantee') return 'security_deposit';
-        // For now, treat other quick pay rows as advances; invoice settlement should be a separate flow
         return 'advance_payment';
     };
-    const collect = (sectionKey: string) => {
-        const section = quickPaySummary.value?.sections?.find((s: any) => s.key === sectionKey);
-        if (!section) return;
+    
+    const section = quickPaySummary.value?.sections?.find((s: any) => s.key === 'liability');
+    if (section) {
         for (const row of section.rows || []) {
             const amount = Number(row.amount || 0);
-            if (amount > 0) allocations.push({ 
-                row_id: row.id, 
-                amount,
-                memo: row.memo || '',
-                type: inferAllocationType(row.id, sectionKey),
-            });
+            if (amount > 0) {
+                allocations.push({ 
+                    row_id: row.id, 
+                    amount,
+                    memo: row.memo || '',
+                    type: inferAllocationType(row.id),
+                });
+            }
         }
-    };
-    collect('liability');
-    // collect('income'); // Hidden in UI
-
+    }
+    
     try {
-        const url = route('contracts.quick-pay', props.contractId);
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-            },
-            body: JSON.stringify({
-                payment_method: quickPayMethod.value,
-                reference: quickPayRef.value,
-                allocations,
-                amount_total: allocations.reduce((sum, a) => sum + a.amount, 0),
-            }),
+        const { data } = await axios.post(route('contracts.quick-pay', props.contractId), {
+            payment_method: quickPayMethod.value,
+            reference: quickPayRef.value,
+            allocations,
+            amount_total: allocations.reduce((sum, a) => sum + a.amount, 0),
         });
         
-        const data = await response.json();
-        
-        if (!response.ok) {
-            // Handle different error response formats
-            let errorMsg = 'Quick pay processing failed';
-            
-            if (data.message && data.error) {
-                // Show both message and error for better debugging
-                errorMsg = `${data.message}\n\nTechnical Error: ${data.error}`;
-            } else if (data.message) {
-                errorMsg = data.message;
-            } else if (data.error) {
-                errorMsg = data.error;
-            } else if (data.errors) {
-                // Handle validation errors
-                const errorArray = Object.values(data.errors).flat();
-                errorMsg = errorArray.join(', ');
-            }
-            
-            errorMessage.value = errorMsg;
-            console.error('Quick pay error:', data);
-            return; // Don't close modal, show error
-        }
-        
-        if (data?.success) {
+        if (data.success) {
             emit('payment-submitted', data);
             isDialogOpen.value = false;
             // Reset form
             quickPayMethod.value = 'cash';
             quickPayRef.value = '';
         }
-    } catch (e) {
-        console.error('Quick pay error:', e);
-        errorMessage.value = e instanceof Error ? e.message : 'Quick pay processing failed';
+    } catch (error: any) {
+        console.error('Quick pay error:', error);
+        const errors = error.response?.data;
+        
+        // Handle different error response formats
+        let errorMsg = 'Quick pay processing failed';
+        
+        if (errors?.message && errors?.error) {
+            errorMsg = `${errors.message}\n\nTechnical Error: ${errors.error}`;
+        } else if (errors?.message) {
+            errorMsg = errors.message;
+        } else if (errors?.error) {
+            errorMsg = errors.error;
+        } else if (errors?.errors) {
+            const errorArray = Object.values(errors.errors).flat();
+            errorMsg = errorArray.join(', ');
+        }
+        
+        errorMessage.value = errorMsg;
     } finally {
         isSubmitting.value = false;
     }
@@ -184,7 +169,6 @@ const submitQuickPay = async () => {
 
 const handleCancel = () => {
     isDialogOpen.value = false;
-    // Reset form
     quickPayMethod.value = 'cash';
     quickPayRef.value = '';
     errorMessage.value = '';

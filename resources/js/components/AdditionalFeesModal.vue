@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
+import axios from 'axios';
 import { useI18n } from 'vue-i18n';
 import { XCircle, Loader2, Plus, X } from 'lucide-vue-next';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -192,42 +193,35 @@ const submitFees = async () => {
     errorMessage.value = '';
     
     try {
-        const url = route('contracts.additional-fees.store', props.contractId);
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-            },
-            body: JSON.stringify({
-                fees: feeItems.value.map(item => ({
-                    fee_type: item.fee_type,
-                    description: item.description,
-                    quantity: item.quantity,
-                    unit_price: item.unit_price,
-                    discount: item.discount,
-                    is_vat_exempt: item.is_vat_exempt,
-                    vat_account_id: item.vat_account_id,
-                })),
-            }),
+        const { data } = await axios.post(route('contracts.additional-fees.store', props.contractId), {
+            fees: feeItems.value.map(item => ({
+                fee_type: item.fee_type,
+                description: item.description,
+                quantity: item.quantity,
+                unit_price: item.unit_price,
+                discount: item.discount,
+                is_vat_exempt: item.is_vat_exempt,
+                vat_account_id: item.vat_account_id,
+            })),
         });
         
-        const data = await response.json();
-        
-        if (!response.ok) {
-            errorMessage.value = data.message || 'Failed to add fees';
-            return;
+        if (data.success) {
+            emit('fee-submitted', data);
+            isDialogOpen.value = false;
+            feeItems.value = [];
         }
+    } catch (error: any) {
+        console.error('Error submitting fees:', error);
+        const errors = error.response?.data;
         
-        emit('fee-submitted', data);
-        isDialogOpen.value = false;
-        
-        // Reset form
-        feeItems.value = [];
-    } catch (e) {
-        console.error('Error submitting fees:', e);
-        errorMessage.value = e instanceof Error ? e.message : 'Failed to add fees';
+        if (errors?.message) {
+            errorMessage.value = errors.message;
+        } else if (errors?.errors) {
+            const errorArray = Object.values(errors.errors).flat();
+            errorMessage.value = errorArray.join(', ');
+        } else {
+            errorMessage.value = 'Failed to add fees';
+        }
     } finally {
         isSubmitting.value = false;
     }
