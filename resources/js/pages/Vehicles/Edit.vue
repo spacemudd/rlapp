@@ -29,6 +29,7 @@ interface Vehicle {
     price_daily?: number;
     price_weekly?: number;
     price_monthly?: number;
+    price_yearly?: number;
     seats?: number;
     doors?: number;
     odometer: number;
@@ -98,6 +99,7 @@ const form = useForm({
     price_daily: props.vehicle.price_daily,
     price_weekly: props.vehicle.price_weekly,
     price_monthly: props.vehicle.price_monthly,
+    price_yearly: props.vehicle.price_yearly,
     location_id: props.vehicle.location_id || '',
     branch_id: (props.vehicle as any).branch_id || '',
     status: props.vehicle.status,
@@ -580,6 +582,21 @@ const submit = () => {
                                         />
                                         <div v-if="form.errors.price_monthly" class="text-red-500 text-sm mt-1">
                                             {{ form.errors.price_monthly }}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <Label for="price_yearly">{{ t('yearly_rate') }} (AED)</Label>
+                                        <Input
+                                            id="price_yearly"
+                                            v-model.number="form.price_yearly"
+                                            :class="{ 'border-red-500': form.errors.price_yearly }"
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            placeholder="e.g. 36000.00"
+                                        />
+                                        <div v-if="form.errors.price_yearly" class="text-red-500 text-sm mt-1">
+                                            {{ form.errors.price_yearly }}
                                         </div>
                                     </div>
                                 </div>

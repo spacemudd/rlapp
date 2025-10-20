@@ -957,28 +957,43 @@ watch(() => props.newCustomer, (customer) => {
                             </div>
 
                             <div class="p-3 bg-blue-50 rounded-md">
-                                <p class="text-sm text-blue-800">
-                                    <strong>{{ t('rental_period') }}:</strong> {{ totalDays }} {{ t('day') }}{{ totalDays !== 1 ? 's' : '' }}
-                                    <span v-if="form.start_date && form.end_date" class="block text-xs mt-1">
-                                        {{ new Date(form.start_date).toLocaleDateString('en-AE', {
-                                            weekday: 'short',
-                                            year: 'numeric',
-                                            month: 'short',
-                                            day: 'numeric',
-                                            hour: '2-digit',
-                                            minute: '2-digit'
-                                        }) }}
-                                        →
-                                        {{ new Date(form.end_date).toLocaleDateString('en-AE', {
-                                            weekday: 'short',
-                                            year: 'numeric',
-                                            month: 'short',
-                                            day: 'numeric',
-                                            hour: '2-digit',
-                                            minute: '2-digit'
-                                        }) }}
-                                    </span>
+                                <p class="text-sm text-blue-800 mb-2">
+                                    <strong>{{ t('rental_period') }}:</strong> {{ totalDays }} {{ t('days') }}
                                 </p>
+                                <div v-if="form.start_date && form.end_date" class="text-xs">
+                                    <table class="w-full border-collapse">
+                                        <thead>
+                                            <tr class="border-b border-blue-200">
+                                                <th class="text-start py-1 px-2 font-semibold text-blue-900">{{ t('start') }}</th>
+                                                <th class="text-start py-1 px-2 font-semibold text-blue-900">{{ t('end') }}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td class="py-1 px-2 text-blue-800" dir="ltr">
+                                                    {{ new Date(form.start_date).toLocaleDateString('en-AE', {
+                                                        weekday: 'short',
+                                                        year: 'numeric',
+                                                        month: 'short',
+                                                        day: 'numeric',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit'
+                                                    }) }}
+                                                </td>
+                                                <td class="py-1 px-2 text-blue-800" dir="ltr">
+                                                    {{ new Date(form.end_date).toLocaleDateString('en-AE', {
+                                                        weekday: 'short',
+                                                        year: 'numeric',
+                                                        month: 'short',
+                                                        day: 'numeric',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit'
+                                                    }) }}
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>

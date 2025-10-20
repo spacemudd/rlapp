@@ -32,6 +32,7 @@ class VehicleFactory extends Factory
             'price_daily' => $this->faker->numberBetween(100, 500),
             'price_weekly' => $this->faker->numberBetween(600, 3000),
             'price_monthly' => $this->faker->numberBetween(2400, 12000),
+            'price_yearly' => $this->faker->numberBetween(28800, 144000),
             'odometer' => $this->faker->numberBetween(10000, 100000),
             'license_expiry_date' => $this->faker->dateTimeBetween('now', '+2 years')->format('Y-m-d'),
             'insurance_expiry_date' => $this->faker->dateTimeBetween('now', '+1 year')->format('Y-m-d'),

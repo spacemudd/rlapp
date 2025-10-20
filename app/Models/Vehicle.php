@@ -31,6 +31,7 @@ class Vehicle extends Model
         'price_daily',
         'price_weekly',
         'price_monthly',
+        'price_yearly',
         'location_id',
         'branch_id',
         'status',

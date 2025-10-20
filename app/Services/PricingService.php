@@ -52,10 +52,12 @@ class PricingService
     {
         // 1-6 days: Use daily rate
         if ($days <= 6) {
-            $totalAmount = $vehicle->price_daily * $days;
+            $effectiveDailyRate = $vehicle->price_daily;
+            $totalAmount = $effectiveDailyRate * $days;
+            
             return [
                 'tier' => 'daily',
-                'effective_daily_rate' => $vehicle->price_daily,
+                'effective_daily_rate' => $effectiveDailyRate,
                 'total_amount' => $totalAmount,
                 'base_rate' => $vehicle->price_daily,
                 'rate_type' => 'per_day',
@@ -66,56 +68,59 @@ class PricingService
             ];
         }
         
-        // 7-29 days: Calculate complete weeks + remaining days
+        // 7-29 days: Use weekly rate divided by 7
         if ($days >= 7 && $days <= 29) {
-            $completeWeeks = intval($days / 7);
-            $remainingDays = $days % 7;
-            
-            $weeklyCost = $completeWeeks * $vehicle->price_weekly;
-            $dailyCost = $remainingDays * $vehicle->price_daily;
-            $totalAmount = $weeklyCost + $dailyCost;
+            $effectiveDailyRate = round($vehicle->price_weekly / 7, 2);
+            $totalAmount = round($effectiveDailyRate * $days, 2);
             
             return [
                 'tier' => 'weekly',
-                'effective_daily_rate' => round($totalAmount / $days, 2),
+                'effective_daily_rate' => $effectiveDailyRate,
                 'total_amount' => $totalAmount,
                 'base_rate' => $vehicle->price_weekly,
-                'rate_type' => 'weeks_plus_days',
+                'rate_type' => 'weekly_flat',
                 'breakdown' => [
-                    'complete_weeks' => $completeWeeks,
-                    'remaining_days' => $remainingDays,
-                    'weekly_cost' => $weeklyCost,
-                    'daily_cost' => $dailyCost,
+                    'days' => $days,
+                    'daily_rate' => $effectiveDailyRate,
+                    'total_cost' => $totalAmount,
                 ],
             ];
         }
         
-        // 30+ days: Calculate complete months + remaining weeks + remaining days
-        if ($days >= 30) {
-            $completeMonths = intval($days / 30);
-            $remainingDaysAfterMonths = $days % 30;
-            
-            $completeWeeks = intval($remainingDaysAfterMonths / 7);
-            $remainingDays = $remainingDaysAfterMonths % 7;
-            
-            $monthlyCost = $completeMonths * $vehicle->price_monthly;
-            $weeklyCost = $completeWeeks * $vehicle->price_weekly;
-            $dailyCost = $remainingDays * $vehicle->price_daily;
-            $totalAmount = $monthlyCost + $weeklyCost + $dailyCost;
+        // 30-364 days: Use monthly rate divided by 30
+        if ($days >= 30 && $days <= 364) {
+            $effectiveDailyRate = round($vehicle->price_monthly / 30, 2);
+            $totalAmount = round($effectiveDailyRate * $days, 2);
             
             return [
                 'tier' => 'monthly',
-                'effective_daily_rate' => round($totalAmount / $days, 2),
+                'effective_daily_rate' => $effectiveDailyRate,
                 'total_amount' => $totalAmount,
                 'base_rate' => $vehicle->price_monthly,
-                'rate_type' => 'months_weeks_days',
+                'rate_type' => 'monthly_flat',
                 'breakdown' => [
-                    'complete_months' => $completeMonths,
-                    'complete_weeks' => $completeWeeks,
-                    'remaining_days' => $remainingDays,
-                    'monthly_cost' => $monthlyCost,
-                    'weekly_cost' => $weeklyCost,
-                    'daily_cost' => $dailyCost,
+                    'days' => $days,
+                    'daily_rate' => $effectiveDailyRate,
+                    'total_cost' => $totalAmount,
+                ],
+            ];
+        }
+        
+        // 365+ days: Use yearly rate divided by 365
+        if ($days >= 365) {
+            $effectiveDailyRate = round($vehicle->price_yearly / 365, 2);
+            $totalAmount = round($effectiveDailyRate * $days, 2);
+            
+            return [
+                'tier' => 'yearly',
+                'effective_daily_rate' => $effectiveDailyRate,
+                'total_amount' => $totalAmount,
+                'base_rate' => $vehicle->price_yearly,
+                'rate_type' => 'yearly_flat',
+                'breakdown' => [
+                    'days' => $days,
+                    'daily_rate' => $effectiveDailyRate,
+                    'total_cost' => $totalAmount,
                 ],
             ];
         }
