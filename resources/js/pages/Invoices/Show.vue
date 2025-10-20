@@ -9,7 +9,7 @@ import { ref } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import { Dialog, DialogOverlay, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'vue3-toastify';
-import axios from 'axios';
+import axios from '@/lib/axios';
 import DropdownMenu from '@/components/ui/dropdown-menu/DropdownMenu.vue';
 import DropdownMenuTrigger from '@/components/ui/dropdown-menu/DropdownMenuTrigger.vue';
 import DropdownMenuContent from '@/components/ui/dropdown-menu/DropdownMenuContent.vue';

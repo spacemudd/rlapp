@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ChevronDown, Check, X, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-vue-next';
 import { useI18n } from 'vue-i18n';
-import axios from 'axios';
+import axios from '@/lib/axios';
 
 interface Vehicle {
     id: string;
@@ -37,6 +37,7 @@ interface Props {
     required?: boolean;
     disabled?: boolean;
     error?: string;
+    label?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -58,6 +59,8 @@ const isOpen = ref(false);
 const isLoading = ref(false);
 const selectedVehicle = ref<Vehicle | null>(null);
 const inputRef = ref<HTMLInputElement | null>(null);
+const recentVehicles = ref<Vehicle[]>([]);
+const isLoadingRecent = ref(false);
 
 let searchTimeout: number;
 
@@ -193,16 +196,99 @@ const handleInput = (event: Event) => {
 };
 
 const selectVehicle = (vehicle: Vehicle) => {
-    if (vehicle.disabled) {
-        return;
-    }
-
-    console.log('Vehicle selected:', vehicle.label, vehicle.id);
+    console.log('Vehicle selected:', vehicle.label, vehicle.id, 'disabled:', vehicle.disabled);
+    
+    // Always update the selected vehicle and search query to show what was clicked
     selectedVehicle.value = vehicle;
     searchQuery.value = vehicle.label;
     isOpen.value = false;
+    
+    if (vehicle.disabled) {
+        // For disabled/unavailable vehicles, don't emit the selection but show in UI
+        emit('update:modelValue', '');
+        emit('optionSelected', null as any);
+        return;
+    }
+
+    // For available vehicles, emit the selection
     emit('update:modelValue', vehicle.value);
     emit('optionSelected', vehicle);
+    
+    // Record the selection (only for available vehicles)
+    recordVehicleSelection(vehicle.id);
+};
+
+const recordVehicleSelection = async (vehicleId: string) => {
+    try {
+        await axios.post('/api/recent-vehicles', {
+            vehicle_id: vehicleId
+        });
+        // Refresh recent vehicles list
+        await fetchRecentVehicles();
+    } catch (error) {
+        console.error('Error recording vehicle selection:', error);
+    }
+};
+
+const fetchRecentVehicles = async () => {
+    try {
+        isLoadingRecent.value = true;
+        const response = await axios.get('/api/recent-vehicles');
+        recentVehicles.value = response.data;
+    } catch (error) {
+        console.error('Error fetching recent vehicles:', error);
+        recentVehicles.value = [];
+    } finally {
+        isLoadingRecent.value = false;
+    }
+};
+
+const handleRecentVehicleClick = async (vehicle: Vehicle) => {
+    // Check if dates are selected
+    if (!props.pickupDate || !props.returnDate) {
+        console.log('Dates not selected, showing error');
+        return;
+    }
+    
+    // Check availability for the specific vehicle by ID
+    try {
+        isLoading.value = true;
+        const response = await axios.post('/vehicle-availability/check', {
+            vehicle_id: vehicle.id,
+            pickup_date: props.pickupDate,
+            return_date: props.returnDate
+        });
+        
+        if (response.data.available) {
+            // Vehicle is available, select it
+            const vehicleWithAvailability = {
+                ...vehicle,
+                availability: 'available' as const,
+                disabled: false
+            };
+            selectVehicle(vehicleWithAvailability);
+        } else {
+            // Vehicle is unavailable, show conflict info
+            const vehicleWithConflict = {
+                ...vehicle,
+                availability: 'unavailable' as const,
+                conflict: response.data.conflicts && response.data.conflicts.length > 0 ? {
+                    type: response.data.conflicts[0].type,
+                    contract_number: response.data.conflicts[0].contract_number,
+                    customer_name: response.data.conflicts[0].customer_name,
+                    start_date: response.data.conflicts[0].start_date,
+                    end_date: response.data.conflicts[0].end_date,
+                } : undefined,
+                disabled: true
+            };
+            // Still select it to show the conflict information
+            selectVehicle(vehicleWithConflict);
+        }
+    } catch (error) {
+        console.error('Error checking recent vehicle availability:', error);
+    } finally {
+        isLoading.value = false;
+    }
 };
 
 const clearSelection = () => {
@@ -285,6 +371,8 @@ onMounted(() => {
     if (typeof window !== 'undefined') {
         document.addEventListener('click', handleClickOutside);
     }
+    // Fetch recent vehicles
+    fetchRecentVehicles();
 });
 
 // Clean up event listener when component is unmounted
@@ -302,6 +390,34 @@ onUnmounted(() => {
             <span v-if="props.required" class="text-red-500 ml-1">*</span>
         </Label>
         
+        <!-- Recent Vehicles Section -->
+        <div v-if="recentVehicles.length > 0" class="mb-3">
+            <div class="text-xs font-medium text-gray-600 mb-1.5">
+                {{ t('recent_vehicles') }}
+            </div>
+            <div class="flex gap-2 flex-wrap">
+                <button
+                    v-for="vehicle in recentVehicles"
+                    :key="vehicle.id"
+                    type="button"
+                    @click="handleRecentVehicleClick(vehicle)"
+                    class="px-3 py-1.5 text-xs border rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1"
+                    :class="{
+                        'opacity-50 cursor-not-allowed': !props.pickupDate || !props.returnDate,
+                        'bg-blue-50 border-blue-500 ring-2 ring-blue-500': selectedVehicle?.id === vehicle.id && selectedVehicle?.availability === 'available',
+                        'bg-red-50 border-red-500 ring-2 ring-red-500': selectedVehicle?.id === vehicle.id && selectedVehicle?.availability === 'unavailable',
+                        'border-gray-300 hover:border-blue-500 hover:bg-blue-50': selectedVehicle?.id !== vehicle.id
+                    }"
+                    :disabled="!props.pickupDate || !props.returnDate"
+                >
+                    <div class="text-left">
+                        <div class="font-medium text-gray-900">{{ vehicle.label }}</div>
+                        <div class="text-gray-500" dir="ltr">{{ vehicle.plate_number }}</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+        
         <div class="relative">
             <Input
                 ref="inputRef"
@@ -309,12 +425,24 @@ onUnmounted(() => {
                 :placeholder="props.placeholder"
                 :disabled="props.disabled || !props.pickupDate || !props.returnDate"
                 :class="{
-                    'border-red-500': props.error,
+                    'border-red-500': props.error || (selectedVehicle && selectedVehicle.availability === 'unavailable'),
                     'cursor-not-allowed opacity-50': props.disabled || !props.pickupDate || !props.returnDate
                 }"
                 @input="handleInput"
                 @focus="openDropdown"
             />
+            
+            <!-- Clear button (only show when something is selected) -->
+            <Button
+                v-if="selectedVehicle"
+                type="button"
+                variant="ghost"
+                size="sm"
+                class="absolute top-0 h-full px-2 py-2 hover:bg-transparent rtl:left-8 ltr:right-8"
+                @click.stop="clearSelection"
+            >
+                <X class="h-4 w-4 text-gray-500 hover:text-gray-700" />
+            </Button>
             
             <Button
                 type="button"
@@ -336,6 +464,21 @@ onUnmounted(() => {
         <!-- Date requirement message -->
         <div v-if="!props.pickupDate || !props.returnDate" class="text-amber-600 text-sm mt-1">
             {{ t('please_select_dates_first') }}
+        </div>
+
+        <!-- Vehicle unavailable conflict message -->
+        <div v-if="selectedVehicle && selectedVehicle.availability === 'unavailable' && selectedVehicle.conflict" class="mt-2 p-3 bg-red-50 border border-red-200 rounded-md">
+            <div class="flex gap-2 text-red-700 items-start">
+                <AlertTriangle class="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <div class="flex-1">
+                    <div class="font-semibold text-sm mb-1">{{ t('vehicle_unavailable') }}</div>
+                    <div class="text-xs space-y-1">
+                        <div><span class="font-medium">{{ t('conflict_contract') }}:</span> <span dir="ltr">{{ selectedVehicle.conflict.contract_number }}</span></div>
+                        <div><span class="font-medium">{{ t('conflict_customer') }}:</span> {{ selectedVehicle.conflict.customer_name }}</div>
+                        <div><span class="font-medium">{{ t('conflict_period') }}:</span> <span dir="ltr">{{ selectedVehicle.conflict.start_date }} - {{ selectedVehicle.conflict.end_date }}</span></div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Dropdown -->

@@ -980,6 +980,8 @@ return [
      'available_until' => 'متاح حتى',
      'not_available_until' => 'غير متاح حتى',
      'please_select_dates_first' => 'يرجى اختيار التواريخ أولاً',
+     'recent_vehicles' => 'المركبات الأخيرة',
+     'no_recent_vehicles' => 'لا توجد مركبات حديثة',
      'please_resolve_conflicts' => 'يرجى حل التعارضات قبل المتابعة',
      'vehicle_availability' => 'توفر المركبة',
      'checking_availability' => 'جاري فحص التوفر...',

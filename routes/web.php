@@ -98,6 +98,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/api/customers/search', [App\Http\Controllers\ContractController::class, 'searchCustomers'])->name('api.customers.search');
     Route::get('/api/vehicle-search', [App\Http\Controllers\ContractController::class, 'searchVehicles'])->name('api.vehicles.search');
     
+    // Recent vehicles endpoints
+    Route::get('/api/recent-vehicles', [App\Http\Controllers\RecentVehicleController::class, 'index'])->name('api.recent-vehicles.index');
+    Route::post('/api/recent-vehicles', [App\Http\Controllers\RecentVehicleController::class, 'store'])->name('api.recent-vehicles.store');
+    
     // Enhanced reservation API endpoints (moved outside middleware group for testing)
     
     // Test page for vehicle availability

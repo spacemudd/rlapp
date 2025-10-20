@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import axios from 'axios';
+import axios from '@/lib/axios';
 import { useI18n } from 'vue-i18n';
 import { XCircle, Loader2, Plus, X } from 'lucide-vue-next';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';

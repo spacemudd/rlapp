@@ -1007,6 +1007,8 @@ return [
     'available_until' => 'Available until',
     'not_available_until' => 'Not available until',
     'please_select_dates_first' => 'Please select dates first',
+    'recent_vehicles' => 'Recent Vehicles',
+    'no_recent_vehicles' => 'No recent vehicles',
     'please_resolve_conflicts' => 'Please resolve conflicts before proceeding',
     'vehicle_availability' => 'Vehicle Availability',
     'checking_availability' => 'Checking availability...',

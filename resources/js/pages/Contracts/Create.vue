@@ -11,7 +11,7 @@ import VehicleSelectionWithAvailability from '@/components/VehicleSelectionWithA
 import CreateCustomerForm from '@/components/CreateCustomerForm.vue';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import { ref, computed, watch, onMounted } from 'vue';
-import axios from 'axios';
+import axios from '@/lib/axios';
 import { Calendar, DollarSign, FileText, User, Car, Plus, AlertTriangle } from 'lucide-vue-next';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useI18n } from 'vue-i18n';
