@@ -85,6 +85,7 @@ const customerComboboxRef = ref<any>(null);
 const durationDays = ref<number>(1);
 const selectedBlockedCustomer = ref<any>(null);
 const blockedCustomerError = ref<string>('');
+const isUpdatingDates = ref<boolean>(false);
 // Vehicle availability composable
 const {
     conflictDetails,
@@ -501,6 +502,8 @@ const getCurrentDubaiTime = (): string => {
 const updateEndDate = () => {
     if (!form.start_date || !durationDays.value || durationDays.value < 1) return;
 
+    isUpdatingDates.value = true;
+    
     // Parse the start date as Dubai time
     const startDubaiDate = new Date(form.start_date);
 
@@ -510,6 +513,8 @@ const updateEndDate = () => {
 
     // Set the end date
     form.end_date = formatDateForInput(endDubaiDate);
+    
+    isUpdatingDates.value = false;
 };
 
 // Initialize with current Dubai time if no start date is set
@@ -522,14 +527,27 @@ const initializeStartDate = () => {
 
 // Watch for changes in duration and start date
 watch(durationDays, () => {
-    if (form.start_date) {
+    if (form.start_date && !isUpdatingDates.value) {
         updateEndDate();
     }
 });
 
 watch(() => form.start_date, () => {
-    if (form.start_date && durationDays.value > 0) {
+    if (form.start_date && durationDays.value > 0 && !isUpdatingDates.value) {
         updateEndDate();
+    }
+});
+
+// Watch for manual changes to end_date to update durationDays
+watch(() => form.end_date, () => {
+    if (form.start_date && form.end_date && !isUpdatingDates.value) {
+        // Calculate the difference and update durationDays
+        const calculatedDays = totalDays.value;
+        if (calculatedDays > 0 && calculatedDays !== durationDays.value) {
+            isUpdatingDates.value = true;
+            durationDays.value = calculatedDays;
+            isUpdatingDates.value = false;
+        }
     }
 });
 
@@ -833,51 +851,159 @@ watch(() => props.newCustomer, (customer) => {
                         </CardContent>
                     </Card>
 
-                    <!-- Vehicle Selection -->
+                    <!-- Date Selection -->
                     <Card>
                         <CardHeader>
                             <CardTitle class="flex gap-2">
-                                <Car class="w-5 h-5" />
-                                {{ t('vehicle_information') }}
+                                <Calendar class="w-5 h-5" />
+                                {{ t('rental_dates') }}
                             </CardTitle>
                         </CardHeader>
                         <CardContent class="space-y-4">
-                            <VehicleSelectionWithAvailability
-                                v-model="form.vehicle_id"
-                                :placeholder="t('search_vehicles_placeholder')"
-                                :pickup-date="form.start_date"
-                                :return-date="form.end_date"
-                                :required="true"
-                                :error="form.errors.vehicle_id"
-                                @option-selected="handleVehicleSelected"
-                            />
-
-                            <div class="p-3 bg-gray-50 rounded-md">
-                                <h4 class="font-medium text-gray-900 mb-2">{{ t('pricing_options') }}</h4>
-                                <div class="grid grid-cols-3 gap-2 text-sm">
-                                    <div>
-                                        <span class="text-gray-500">{{ t('daily') }}:</span>
-                                        <p class="font-medium">
-                                            {{ selectedVehicle ? formatCurrency(selectedVehicle.price_daily) : '-' }}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <span class="text-gray-500">{{ t('weekly') }}:</span>
-                                        <p class="font-medium">
-                                            {{ selectedVehicle ? formatCurrency(selectedVehicle.price_weekly) : '-' }}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <span class="text-gray-500">{{ t('monthly') }}:</span>
-                                        <p class="font-medium">
-                                            {{ selectedVehicle ? formatCurrency(selectedVehicle.price_monthly) : '-' }}
-                                        </p>
-                                    </div>
+                            <div class="space-y-2">
+                                <Label for="branch_id">{{ t('branch') }} *</Label>
+                                <select
+                                    id="branch_id"
+                                    v-model="form.branch_id"
+                                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                    :class="{ 'border-red-500': form.errors.branch_id }"
+                                    :required="activeStep === 1"
+                                >
+                                    <option value="">{{ t('select') || 'Select' }}</option>
+                                    <option v-for="b in (props.branches || [])" :key="b.id" :value="b.id">
+                                        {{ b.name }}{{ b.city ? ', ' + b.city : '' }}
+                                    </option>
+                                </select>
+                                <div v-if="form.errors.branch_id" class="text-sm text-red-600">
+                                    {{ form.errors.branch_id }}
                                 </div>
+                            </div>
+
+                            <div class="space-y-2">
+                                <Label for="start_date">{{ t('start_date_time') }} * <span class="text-xs text-gray-500">{{ t('dubai_time_gmt4') }}</span></Label>
+                                <Input
+                                    id="start_date"
+                                    type="datetime-local"
+                                    v-model="form.start_date"
+                                    :required="activeStep === 1"
+                                    dir="ltr"
+                                />
+                                <div v-if="form.errors.start_date" class="text-sm text-red-600">
+                                    {{ form.errors.start_date }}
+                                </div>
+                                <p class="text-xs text-gray-500">
+                                    {{ t('times_displayed_dubai_timezone') }}
+                                </p>
+                            </div>
+
+                            <div class="space-y-2">
+                                <Label for="end_date">{{ t('end_date_time') }} * <span class="text-xs text-gray-500">{{ t('dubai_time_gmt4') }}</span></Label>
+                                <Input
+                                    id="end_date"
+                                    type="datetime-local"
+                                    v-model="form.end_date"
+                                    :min="form.start_date"
+                                    :required="activeStep === 1"
+                                    dir="ltr"
+                                />
+                                <div v-if="form.errors.end_date" class="text-sm text-red-600">
+                                    {{ form.errors.end_date }}
+                                </div>
+                                <p class="text-xs text-gray-500">
+                                    {{ t('automatically_calculated_duration') }}
+                                </p>
+                            </div>
+
+                            <!-- Duration Input -->
+                            <div class="space-y-2">
+                                <Label for="duration_days">{{ t('duration_days') }} *</Label>
+                                <Input
+                                    id="duration_days"
+                                    type="number"
+                                    min="1"
+                                    max="365"
+                                    v-model.number="durationDays"
+                                    @focus="initializeStartDate"
+                                    :placeholder="t('enter_number_of_days')"
+                                    :required="activeStep === 1"
+                                />
+                                <p class="text-xs text-gray-500">
+                                    {{ t('enter_rental_days_minimum') }}
+                                </p>
+                            </div>
+
+                            <div class="p-3 bg-blue-50 rounded-md">
+                                <p class="text-sm text-blue-800">
+                                    <strong>{{ t('rental_period') }}:</strong> {{ totalDays }} {{ t('day') }}{{ totalDays !== 1 ? 's' : '' }}
+                                    <span v-if="form.start_date && form.end_date" class="block text-xs mt-1">
+                                        {{ new Date(form.start_date).toLocaleDateString('en-AE', {
+                                            weekday: 'short',
+                                            year: 'numeric',
+                                            month: 'short',
+                                            day: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        }) }}
+                                        →
+                                        {{ new Date(form.end_date).toLocaleDateString('en-AE', {
+                                            weekday: 'short',
+                                            year: 'numeric',
+                                            month: 'short',
+                                            day: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        }) }}
+                                    </span>
+                                </p>
                             </div>
                         </CardContent>
                     </Card>
                 </div>
+
+                <!-- Vehicle Selection (now below dates) -->
+                <Card v-show="activeStep === 1">
+                    <CardHeader>
+                        <CardTitle class="flex gap-2">
+                            <Car class="w-5 h-5" />
+                            {{ t('vehicle_information') }}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent class="space-y-4">
+                        <VehicleSelectionWithAvailability
+                            v-model="form.vehicle_id"
+                            :placeholder="t('search_vehicles_placeholder')"
+                            :pickup-date="form.start_date"
+                            :return-date="form.end_date"
+                            :required="true"
+                            :error="form.errors.vehicle_id"
+                            @option-selected="handleVehicleSelected"
+                        />
+
+                        <div class="p-3 bg-gray-50 rounded-md">
+                            <h4 class="font-medium text-gray-900 mb-2">{{ t('pricing_options') }}</h4>
+                            <div class="grid grid-cols-3 gap-2 text-sm">
+                                <div>
+                                    <span class="text-gray-500">{{ t('daily') }}:</span>
+                                    <p class="font-medium">
+                                        {{ selectedVehicle ? formatCurrency(selectedVehicle.price_daily) : '-' }}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">{{ t('weekly') }}:</span>
+                                    <p class="font-medium">
+                                        {{ selectedVehicle ? formatCurrency(selectedVehicle.price_weekly) : '-' }}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">{{ t('monthly') }}:</span>
+                                    <p class="font-medium">
+                                        {{ selectedVehicle ? formatCurrency(selectedVehicle.price_monthly) : '-' }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 <!-- Vehicle Conflict Warning -->
                 <div v-if="hasConflict" class="bg-red-50 border-l-4 border-red-400 p-4">
@@ -922,125 +1048,6 @@ watch(() => props.newCustomer, (customer) => {
                         </div>
                     </div>
                 </div>
-
-                <!-- Contract Details (Basics) -->
-                <Card v-show="activeStep === 1">
-                    <CardHeader>
-                        <CardTitle class="flex gap-2">
-                            <Calendar class="w-5 h-5" />
-                            {{ t('contract_details') }}
-                        </CardTitle>
-                        <CardDescription>{{ t('set_rental_period_terms') }}</CardDescription>
-                    </CardHeader>
-                    <CardContent class="space-y-6">
-                        <div class="grid gap-4 md:grid-cols-2">
-                            <div class="space-y-2">
-                                <Label for="branch_id">{{ t('branch') }} *</Label>
-                                <select
-                                    id="branch_id"
-                                    v-model="form.branch_id"
-                                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                                    :class="{ 'border-red-500': form.errors.branch_id }"
-                                    :required="activeStep === 1"
-                                >
-                                    <option value="">{{ t('select') || 'Select' }}</option>
-                                    <option v-for="b in (props.branches || [])" :key="b.id" :value="b.id">
-                                        {{ b.name }}{{ b.city ? ', ' + b.city : '' }}
-                                    </option>
-                                </select>
-                                <div v-if="form.errors.branch_id" class="text-sm text-red-600">
-                                    {{ form.errors.branch_id }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="grid gap-4 md:grid-cols-2">
-                            <div class="space-y-2">
-                                <Label for="start_date">{{ t('start_date_time') }} * <span class="text-xs text-gray-500">{{ t('dubai_time_gmt4') }}</span></Label>
-                                <Input
-                                    id="start_date"
-                                    type="datetime-local"
-                                    v-model="form.start_date"
-                                    :required="activeStep === 1"
-                                    dir="ltr"
-                                />
-                                <div v-if="form.errors.start_date" class="text-sm text-red-600">
-                                    {{ form.errors.start_date }}
-                                </div>
-                                <p class="text-xs text-gray-500">
-                                    {{ t('times_displayed_dubai_timezone') }}
-                                </p>
-                            </div>
-
-                            <div class="space-y-2">
-                                <Label for="end_date">{{ t('end_date_time') }} * <span class="text-xs text-gray-500">{{ t('dubai_time_gmt4') }}</span></Label>
-                                <Input
-                                    id="end_date"
-                                    type="datetime-local"
-                                    v-model="form.end_date"
-                                    :min="form.start_date"
-                                    :required="activeStep === 1"
-                                    dir="ltr"
-                                />
-                                <div v-if="form.errors.end_date" class="text-sm text-red-600">
-                                    {{ form.errors.end_date }}
-                                </div>
-                                <p class="text-xs text-gray-500">
-                                    {{ t('automatically_calculated_duration') }}
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- Duration Input -->
-                        <div class="space-y-3">
-                            <div class="grid gap-4 md:grid-cols-3">
-                                <div class="space-y-2">
-                                    <Label for="duration_days">{{ t('duration_days') }} *</Label>
-                                    <Input
-                                        id="duration_days"
-                                        type="number"
-                                        min="1"
-                                        max="365"
-                                        v-model.number="durationDays"
-                                        @focus="initializeStartDate"
-                                        :placeholder="t('enter_number_of_days')"
-                                        :required="activeStep === 1"
-                                    />
-                                    <p class="text-xs text-gray-500">
-                                        {{ t('enter_rental_days_minimum') }}
-                                    </p>
-                                </div>
-                                <div class="md:col-span-2 flex">
-                                    <div class="p-3 bg-blue-50 rounded-md w-full">
-                                        <p class="text-sm text-blue-800">
-                                            <strong>{{ t('rental_period') }}:</strong> {{ totalDays }} {{ t('day') }}{{ totalDays !== 1 ? 's' : '' }}
-                                            <span v-if="form.start_date && form.end_date" class="block text-xs mt-1">
-                                                {{ new Date(form.start_date).toLocaleDateString('en-AE', {
-                                                    weekday: 'short',
-                                                    year: 'numeric',
-                                                    month: 'short',
-                                                    day: 'numeric',
-                                                    hour: '2-digit',
-                                                    minute: '2-digit'
-                                                }) }}
-                                                →
-                                                {{ new Date(form.end_date).toLocaleDateString('en-AE', {
-                                                    weekday: 'short',
-                                                    year: 'numeric',
-                                                    month: 'short',
-                                                    day: 'numeric',
-                                                    hour: '2-digit',
-                                                    minute: '2-digit'
-                                                }) }}
-                                            </span>
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-
-                    </CardContent>
-                </Card>
 
                 <!-- Step 2: Pricing Details -->
                 <Card v-show="activeStep === 2">
