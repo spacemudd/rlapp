@@ -922,6 +922,20 @@ const messages = {
         current_vehicle_mileage: 'Current vehicle mileage (km/miles)',
         enter_current_odometer_reading: 'Enter current odometer reading',
         
+        // Vehicle Movement & Audit Trail
+        vehicle_movement: 'Vehicle Movement',
+        movement_history: 'Movement History',
+        event_type: 'Event Type',
+        contract_pickup: 'Contract Pickup',
+        contract_return: 'Contract Return',
+        inspection: 'Inspection',
+        relocation: 'Relocation',
+        manual_adjustment: 'Manual Adjustment',
+        last_recorded_mileage: 'Last Recorded Mileage',
+        performed_by: 'Performed By',
+        performed_at: 'Performed At',
+        recorded_on: 'Recorded On',
+        
         // Close Contract Feature
         close_contract: 'Close Contract',
         close_contract_description: 'Record vehicle return and close contract',
@@ -1942,6 +1956,20 @@ const messages = {
         // Current Vehicle Mileage
         current_vehicle_mileage: 'المسافة الحالية للمركبة (كم/ميل)',
         enter_current_odometer_reading: 'أدخل قراءة العداد الحالية',
+        
+        // Vehicle Movement & Audit Trail
+        vehicle_movement: 'حركة المركبة',
+        movement_history: 'سجل الحركات',
+        event_type: 'نوع الحدث',
+        contract_pickup: 'استلام العقد',
+        contract_return: 'إرجاع العقد',
+        inspection: 'فحص',
+        relocation: 'نقل',
+        manual_adjustment: 'تعديل يدوي',
+        last_recorded_mileage: 'آخر عداد مسجل',
+        performed_by: 'تم بواسطة',
+        performed_at: 'تم في',
+        recorded_on: 'مسجل في',
         
         // Close Contract Feature
         close_contract: 'إغلاق العقد',

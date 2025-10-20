@@ -86,6 +86,7 @@ const durationDays = ref<number>(1);
 const selectedBlockedCustomer = ref<any>(null);
 const blockedCustomerError = ref<string>('');
 const isUpdatingDates = ref<boolean>(false);
+const lastRecordedMileage = ref<any>(null);
 // Vehicle availability composable
 const {
     conflictDetails,
@@ -337,17 +338,40 @@ watch(() => form.branch_id, (newBranchId) => {
     }
 });
 
+// Fetch last recorded mileage for a vehicle
+const fetchLastMileage = async (vehicleId: string) => {
+    try {
+        const response = await axios.get(`/api/vehicles/${vehicleId}/last-mileage`);
+        if (response.data.mileage) {
+            lastRecordedMileage.value = response.data;
+            // Auto-populate the mileage field if it's empty
+            if (!form.current_mileage) {
+                form.current_mileage = response.data.mileage;
+            }
+        } else {
+            lastRecordedMileage.value = null;
+        }
+    } catch (error) {
+        console.error('Failed to fetch last mileage:', error);
+        lastRecordedMileage.value = null;
+    }
+};
+
 // Handle vehicle selection
 const handleVehicleSelected = (vehicle: any) => {
     if (!vehicle) {
         selectedVehicle.value = null;
         form.vehicle_id = '';
+        lastRecordedMileage.value = null;
         clearConflicts();
         return;
     }
     
     selectedVehicle.value = vehicle;
     form.vehicle_id = vehicle.id;
+    
+    // Fetch last recorded mileage
+    fetchLastMileage(vehicle.id);
     
     // Use composable for availability checking
     handleVehicleAvailability(vehicle, form.start_date, form.end_date);
@@ -1233,6 +1257,12 @@ watch(() => props.newCustomer, (customer) => {
                                             :placeholder="t('enter_current_odometer_reading')"
                                             class="h-9 text-sm"
                                         />
+                                        <div v-if="lastRecordedMileage" class="text-xs text-muted-foreground mt-1">
+                                            {{ t('last_recorded_mileage') }}: <span :dir="isRtl ? 'ltr' : 'ltr'" class="font-medium">{{ lastRecordedMileage.mileage }} km</span>
+                                            <span v-if="lastRecordedMileage.recorded_at"> 
+                                                - {{ t('recorded_on') }} {{ new Date(lastRecordedMileage.recorded_at).toLocaleDateString() }}
+                                            </span>
+                                        </div>
                                         <div v-if="form.errors.current_mileage" class="text-xs text-red-600 mt-1">
                                             {{ form.errors.current_mileage }}
                                         </div>

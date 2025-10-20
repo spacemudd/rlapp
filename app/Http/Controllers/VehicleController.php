@@ -257,4 +257,19 @@ class VehicleController extends Controller
 
         return back()->with('success', 'Vehicle enabled successfully.');
     }
+
+    /**
+     * Get the last recorded mileage for a vehicle (API endpoint).
+     */
+    public function getLastMileage(Vehicle $vehicle)
+    {
+        $lastMovement = $vehicle->latestMovement;
+        
+        return response()->json([
+            'mileage' => $lastMovement?->mileage ?? $vehicle->current_mileage,
+            'recorded_at' => $lastMovement?->performed_at,
+            'event_type' => $lastMovement?->event_type,
+            'event_type_label' => $lastMovement?->event_type_label ?? null,
+        ]);
+    }
 }

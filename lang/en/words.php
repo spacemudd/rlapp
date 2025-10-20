@@ -1128,6 +1128,21 @@ return [
     'current_vehicle_mileage' => 'Current vehicle mileage (km/miles)',
     'enter_current_odometer_reading' => 'Enter current odometer reading',
     
+    // Vehicle Movement & Audit Trail
+    'vehicle_movement' => 'Vehicle Movement',
+    'movement_history' => 'Movement History',
+    'event_type' => 'Event Type',
+    'contract_pickup' => 'Contract Pickup',
+    'contract_return' => 'Contract Return',
+    'inspection' => 'Inspection',
+    'relocation' => 'Relocation',
+    'manual_adjustment' => 'Manual Adjustment',
+    'other' => 'Other',
+    'last_recorded_mileage' => 'Last Recorded Mileage',
+    'performed_by' => 'Performed By',
+    'performed_at' => 'Performed At',
+    'recorded_on' => 'Recorded On',
+    
     // Close Contract Feature
     'close_contract' => 'Close Contract',
     'close_contract_description' => 'Record vehicle return and close contract',

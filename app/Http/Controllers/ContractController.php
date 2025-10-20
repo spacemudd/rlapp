@@ -10,6 +10,7 @@ use App\Models\Branch;
 use App\Models\PaymentReceipt;
 use App\Services\AccountingService;
 use App\Services\ContractClosureService;
+use App\Services\VehicleMovementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -375,6 +376,16 @@ class ContractController extends Controller
             'pickup_condition_photos' => $photosPaths,
         ]);
 
+        // Record vehicle movement for contract pickup
+        if ($contract->pickup_mileage) {
+            $movementService = new VehicleMovementService();
+            try {
+                $movementService->recordContractPickup($contract);
+            } catch (\Exception $e) {
+                Log::warning("Failed to record vehicle movement for contract pickup: " . $e->getMessage());
+            }
+        }
+
         return redirect()->route('contracts.show', $contract)
             ->with('success', 'Contract created successfully.');
     }
@@ -573,6 +584,16 @@ class ContractController extends Controller
 
         // Complete the contract
         $contract->complete();
+
+        // Record vehicle movement for contract return
+        $movementService = new VehicleMovementService();
+        try {
+            $movementService->recordContractReturn($contract, [
+                'notes' => $validated['finalization_notes'] ?? null,
+            ]);
+        } catch (\Exception $e) {
+            Log::warning("Failed to record vehicle movement for contract return: " . $e->getMessage());
+        }
 
         $additionalCharges = $contract->getTotalAdditionalCharges();
         $message = 'Contract finalized and completed successfully.';
@@ -1235,6 +1256,14 @@ class ContractController extends Controller
             'completed_at' => now(),
             'fuel_charge' => $validated['fuel_charge'] ?? 0,
         ]);
+
+        // Record vehicle movement for contract return
+        $movementService = new VehicleMovementService();
+        try {
+            $movementService->recordContractReturn($contract);
+        } catch (\Exception $e) {
+            Log::warning("Failed to record vehicle movement for contract closure: " . $e->getMessage());
+        }
         
         return redirect()->route('contracts.show', $contract)
             ->with('success', 'Contract closed successfully');

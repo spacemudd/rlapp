@@ -1101,6 +1101,21 @@ return [
     'current_vehicle_mileage' => 'المسافة الحالية للمركبة (كم/ميل)',
     'enter_current_odometer_reading' => 'أدخل قراءة العداد الحالية',
     
+    // Vehicle Movement & Audit Trail
+    'vehicle_movement' => 'حركة المركبة',
+    'movement_history' => 'سجل الحركات',
+    'event_type' => 'نوع الحدث',
+    'contract_pickup' => 'استلام العقد',
+    'contract_return' => 'إرجاع العقد',
+    'inspection' => 'فحص',
+    'relocation' => 'نقل',
+    'manual_adjustment' => 'تعديل يدوي',
+    'other' => 'أخرى',
+    'last_recorded_mileage' => 'آخر عداد مسجل',
+    'performed_by' => 'تم بواسطة',
+    'performed_at' => 'تم في',
+    'recorded_on' => 'مسجل في',
+    
     // Close Contract Feature
     'close_contract' => 'إغلاق العقد',
     'close_contract_description' => 'تسجيل إرجاع المركبة وإغلاق العقد',

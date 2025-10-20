@@ -528,4 +528,20 @@ class Vehicle extends Model
     {
         return "{$this->year} {$this->make_name} {$this->model_name}";
     }
+
+    /**
+     * Get all movements for this vehicle.
+     */
+    public function movements()
+    {
+        return $this->hasMany(VehicleMovement::class)->orderByDesc('performed_at');
+    }
+
+    /**
+     * Get the latest movement for this vehicle.
+     */
+    public function latestMovement()
+    {
+        return $this->hasOne(VehicleMovement::class)->latestOfMany('performed_at');
+    }
 }

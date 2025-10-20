@@ -44,6 +44,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('vehicles', App\Http\Controllers\VehicleController::class);
     Route::patch('/vehicles/{vehicle}/disable', [App\Http\Controllers\VehicleController::class, 'disable'])->name('vehicles.disable');
     Route::patch('/vehicles/{vehicle}/enable', [App\Http\Controllers\VehicleController::class, 'enable'])->name('vehicles.enable');
+    
+    // Vehicle movement routes
+    Route::get('/vehicles/{vehicle}/movements', [App\Http\Controllers\VehicleMovementController::class, 'index'])->name('vehicle-movements.index');
+    Route::post('/vehicles/{vehicle}/movements', [App\Http\Controllers\VehicleMovementController::class, 'store'])->name('vehicle-movements.store');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
