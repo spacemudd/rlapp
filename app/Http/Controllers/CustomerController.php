@@ -115,6 +115,45 @@ class CustomerController extends Controller
             ->limit(10)
             ->get();
 
+        // Collect all rented vehicles with their contract details
+        $rentedVehicles = $customer->contracts()
+            ->with('vehicle')
+            ->whereNotNull('vehicle_id')
+            ->orderBy('start_date', 'desc')
+            ->get()
+            ->map(function ($contract) {
+                if (!$contract->vehicle) {
+                    return null;
+                }
+                
+                $startDate = $contract->start_date;
+                $endDate = $contract->end_date;
+                $duration = null;
+                
+                if ($startDate && $endDate) {
+                    $start = \Carbon\Carbon::parse($startDate);
+                    $end = \Carbon\Carbon::parse($endDate);
+                    $duration = $start->diffInDays($end);
+                }
+                
+                return [
+                    'vehicle_id' => (string) $contract->vehicle->id,
+                    'make' => $contract->vehicle->make,
+                    'model' => $contract->vehicle->model,
+                    'year' => $contract->vehicle->year,
+                    'plate_number' => $contract->vehicle->plate_number,
+                    'color' => $contract->vehicle->color,
+                    'contract_id' => (string) $contract->id,
+                    'contract_number' => $contract->contract_number,
+                    'contract_status' => $contract->status,
+                    'start_date' => optional($startDate)->toISOString(),
+                    'end_date' => optional($endDate)->toISOString(),
+                    'duration_days' => $duration,
+                ];
+            })
+            ->filter()
+            ->values();
+
         // Totals and VIP heuristic
         $totalContracts = $customer->contracts()->count();
         $totalInvoicedAmount = (float) $customer->invoices()->sum('total_amount');
@@ -269,6 +308,7 @@ class CustomerController extends Controller
             ],
             'isVip' => $isVip,
             'timeline' => $timeline,
+            'rentedVehicles' => $rentedVehicles,
             'customerNotes' => ($customer->customerNotes ?? collect())->map(function ($note) {
                 return [
                     'id' => (string) $note->id,

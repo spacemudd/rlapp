@@ -77,6 +77,21 @@ type SimpleInvoice = {
     invoice_date?: string;
 };
 
+type RentedVehicle = {
+    vehicle_id: string;
+    make: string;
+    model: string;
+    year?: number;
+    plate_number: string;
+    color?: string;
+    contract_id: string;
+    contract_number: string;
+    contract_status: string;
+    start_date?: string;
+    end_date?: string;
+    duration_days?: number;
+};
+
 interface Props {
     customer: Customer;
     openContract?: SimpleContract | null;
@@ -93,6 +108,7 @@ interface Props {
         link?: string | null;
         meta?: Record<string, any>;
     }>;
+    rentedVehicles?: RentedVehicle[];
     customerNotes?: Array<{
         id: string;
         content: string;
@@ -105,10 +121,10 @@ const props = defineProps<Props>();
 
 const { t } = useI18n();
 const { isRtl } = useDirection();
-const activeTab = ref<'timeline' | 'overview' | 'contracts' | 'invoices' | 'notes' | 'block'>('overview');
+const activeTab = ref<'timeline' | 'overview' | 'contracts' | 'vehicles' | 'invoices' | 'notes' | 'block'>('overview');
 
 // Sync tab with URL (?tab=...) and history state
-const validTabs = new Set(['timeline','overview','contracts','invoices','notes','block']);
+const validTabs = new Set(['timeline','overview','contracts','vehicles','invoices','notes','block']);
 const setTab = (tab: typeof activeTab.value) => {
     if (!validTabs.has(tab)) return;
     activeTab.value = tab;
@@ -306,6 +322,16 @@ const handleCustomerUnblocked = () => {
     // Reload the page to get updated customer data
     window.location.reload();
 };
+
+const getContractStatusClass = (status: string) => {
+    const classes = {
+        'active': 'bg-blue-100 text-blue-800 border border-blue-200',
+        'completed': 'bg-green-100 text-green-800 border border-green-200',
+        'draft': 'bg-yellow-100 text-yellow-800 border border-yellow-200',
+        'void': 'bg-gray-100 text-gray-800 border border-gray-200'
+    };
+    return classes[status as keyof typeof classes] || 'bg-gray-100 text-gray-800 border border-gray-200';
+};
 </script>
 
 <template>
@@ -408,6 +434,7 @@ const handleCustomerUnblocked = () => {
                     <div class="flex  gap-2 p-1 bg-muted rounded-lg w-fit md:hidden" >
                         <Button size="sm" variant="ghost" :class="{ 'bg-background shadow-sm': activeTab === 'overview' }" @click="setTab('overview')">{{ t('overview') }}</Button>
                         <Button size="sm" variant="ghost" :class="{ 'bg-background shadow-sm': activeTab === 'contracts' }" @click="setTab('contracts')">{{ t('contracts') }} <span class="font-normal">({{ (previousContracts?.length || 0) + (openContract ? 1 : 0) }})</span></Button>
+                        <Button size="sm" variant="ghost" :class="{ 'bg-background shadow-sm': activeTab === 'vehicles' }" @click="setTab('vehicles')">{{ t('vehicles') }} <span class="font-normal">({{ rentedVehicles?.length || 0 }})</span></Button>
                         <Button size="sm" variant="ghost" :class="{ 'bg-background shadow-sm': activeTab === 'invoices' }" @click="setTab('invoices')">{{ t('invoices') }} <span class="font-normal">({{ invoices?.length || 0 }})</span></Button>
                         <Button size="sm" variant="ghost" :class="{ 'bg-background shadow-sm': activeTab === 'notes' }" @click="setTab('notes')">{{ t('notes') }} <span class="font-normal">({{ customerNotes?.length || 0 }})</span></Button>
                         <Button size="sm" variant="ghost" :class="{ 'bg-background shadow-sm': activeTab === 'timeline' }" @click="setTab('timeline')">{{ t('timeline') }}</Button>
@@ -422,6 +449,7 @@ const handleCustomerUnblocked = () => {
                                     <div class="flex flex-col">
                                         <Button variant="ghost" :class="{ 'bg-muted': activeTab === 'overview' }" class="justify-start" @click="setTab('overview')">{{ t('overview') }}</Button>
                                         <Button variant="ghost" :class="{ 'bg-muted': activeTab === 'contracts' }" class="justify-start" @click="setTab('contracts')">{{ t('contracts') }} <span class="font-normal">({{ (previousContracts?.length || 0) + (openContract ? 1 : 0) }})</span></Button>
+                                        <Button variant="ghost" :class="{ 'bg-muted': activeTab === 'vehicles' }" class="justify-start" @click="setTab('vehicles')">{{ t('vehicles') }} <span class="font-normal">({{ rentedVehicles?.length || 0 }})</span></Button>
                                         <Button variant="ghost" :class="{ 'bg-muted': activeTab === 'invoices' }" class="justify-start" @click="setTab('invoices')">{{ t('invoices') }} <span class="font-normal">({{ invoices?.length || 0 }})</span></Button>
                                         <Button variant="ghost" :class="{ 'bg-muted': activeTab === 'notes' }" class="justify-start" @click="setTab('notes')">{{ t('notes') }} <span class="font-normal">({{ customerNotes?.length || 0 }})</span></Button>
                                         <Button variant="ghost" :class="{ 'bg-muted': activeTab === 'timeline' }" class="justify-start" @click="setTab('timeline')">{{ t('timeline') }}</Button>
@@ -924,6 +952,77 @@ const handleCustomerUnblocked = () => {
                                 </Card>
 
                                 
+                            </div>
+
+                            <!-- Vehicles Tab -->
+                            <div v-if="activeTab === 'vehicles'" class="grid gap-6">
+                                <Card v-if="rentedVehicles && rentedVehicles.length">
+                                    <CardHeader>
+                                        <CardTitle>{{ t('rented_vehicles') }} ({{ rentedVehicles.length }})</CardTitle>
+                                        <CardDescription>{{ t('rented_vehicles_description') }}</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div class="space-y-3">
+                                            <div v-for="vehicle in rentedVehicles" :key="vehicle.vehicle_id + '-' + vehicle.contract_id" class="p-4 border rounded-md hover:bg-muted/50 transition-colors">
+                                                <div class="flex justify-between gap-4">
+                                                    <div class="flex-1">
+                                                        <div class="font-medium text-lg mb-1">
+                                                            {{ vehicle.make }} {{ vehicle.model }}
+                                                            <span v-if="vehicle.year" class="text-muted-foreground text-sm">({{ vehicle.year }})</span>
+                                                        </div>
+                                                        <div class="text-sm text-muted-foreground space-y-1">
+                                                            <div class="flex gap-2">
+                                                                <span class="font-medium">{{ t('plate_number') }}:</span>
+                                                                <span>{{ vehicle.plate_number }}</span>
+                                                            </div>
+                                                            <div v-if="vehicle.color" class="flex gap-2">
+                                                                <span class="font-medium">{{ t('color') }}:</span>
+                                                                <span>{{ vehicle.color }}</span>
+                                                            </div>
+                                                            <div class="flex gap-2">
+                                                                <span class="font-medium">{{ t('contract') }}:</span>
+                                                                <Link :href="`/contracts/${vehicle.contract_id}`" class="text-primary hover:underline">
+                                                                    {{ vehicle.contract_number }}
+                                                                </Link>
+                                                                <Badge :class="`text-xs ml-1 ${getContractStatusClass(vehicle.contract_status)}`">
+                                                                    {{ vehicle.contract_status }}
+                                                                </Badge>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="text-right">
+                                                        <div v-if="vehicle.start_date && vehicle.end_date" class="text-sm space-y-1">
+                                                            <div class="text-muted-foreground">
+                                                                <Calendar class="inline h-3 w-3 mr-1" />
+                                                                <span dir="ltr">{{ formatDate(vehicle.start_date) }}</span>
+                                                            </div>
+                                                            <div class="text-muted-foreground">
+                                                                <Calendar class="inline h-3 w-3 mr-1" />
+                                                                <span dir="ltr">{{ formatDate(vehicle.end_date) }}</span>
+                                                            </div>
+                                                            <div v-if="vehicle.duration_days" class="font-medium text-primary mt-2">
+                                                                <span dir="ltr">{{ vehicle.duration_days }}</span> {{ t('days') }}
+                                                            </div>
+                                                        </div>
+                                                        <div class="mt-3">
+                                                            <Link :href="`/vehicles/${vehicle.vehicle_id}`">
+                                                                <Button size="sm" variant="outline">{{ t('view_vehicle') }}</Button>
+                                                            </Link>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                                <Card v-else>
+                                    <CardContent>
+                                        <div class="flex flex-col justify-center text-center py-12 gap-3">
+                                            <div class="text-lg font-medium">{{ t('no_rented_vehicles') }}</div>
+                                            <div class="text-sm text-muted-foreground">{{ t('vehicles') }}: {{ t('no_data') }}</div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
                             </div>
 
                             <!-- Invoices Tab -->
