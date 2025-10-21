@@ -10,6 +10,7 @@ use App\Models\Branch;
 use App\Models\PaymentReceipt;
 use App\Services\AccountingService;
 use App\Services\ContractClosureService;
+use App\Services\VehicleMovementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -276,6 +277,7 @@ class ContractController extends Controller
             'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
             'daily_rate' => 'required|numeric|min:0',
+            'is_vat_inclusive' => 'nullable|boolean',
             'mileage_limit' => 'nullable|integer|min:0',
             'excess_mileage_rate' => 'nullable|numeric|min:0',
             // 'terms_and_conditions' removed from create flow
@@ -358,6 +360,7 @@ class ContractController extends Controller
             'daily_rate' => $dailyRate,
             'total_days' => $totalDays,
             'total_amount' => $totalAmount,
+            'is_vat_inclusive' => $validated['is_vat_inclusive'] ?? true,
             'mileage_limit' => $validated['mileage_limit'] ?? null,
             'excess_mileage_rate' => $validated['excess_mileage_rate'] ?? null,
             // 'terms_and_conditions' removed from create flow
@@ -374,6 +377,16 @@ class ContractController extends Controller
             'pickup_fuel_level' => $validated['fuel_level'] ?? null,
             'pickup_condition_photos' => $photosPaths,
         ]);
+
+        // Record vehicle movement for contract pickup
+        if ($contract->pickup_mileage) {
+            $movementService = new VehicleMovementService();
+            try {
+                $movementService->recordContractPickup($contract);
+            } catch (\Exception $e) {
+                Log::warning("Failed to record vehicle movement for contract pickup: " . $e->getMessage());
+            }
+        }
 
         return redirect()->route('contracts.show', $contract)
             ->with('success', 'Contract created successfully.');
@@ -573,6 +586,16 @@ class ContractController extends Controller
 
         // Complete the contract
         $contract->complete();
+
+        // Record vehicle movement for contract return
+        $movementService = new VehicleMovementService();
+        try {
+            $movementService->recordContractReturn($contract, [
+                'notes' => $validated['finalization_notes'] ?? null,
+            ]);
+        } catch (\Exception $e) {
+            Log::warning("Failed to record vehicle movement for contract return: " . $e->getMessage());
+        }
 
         $additionalCharges = $contract->getTotalAdditionalCharges();
         $message = 'Contract finalized and completed successfully.';
@@ -963,7 +986,7 @@ class ContractController extends Controller
             ]);
         }
 
-        // Calculate consumed rental income to date (accrued)
+        // Calculate consumed rental income to date (accrued) and split VAT
         try {
             $tz = config('app.timezone', 'UTC');
             $start = \Carbon\Carbon::parse($contract->start_date)->timezone($tz)->startOfDay();
@@ -989,6 +1012,22 @@ class ContractController extends Controller
             }
             $consumedAmount = round($perDay * $daysConsumed, 2);
 
+            // Split into net rental and VAT based on contract setting
+            $isVatInclusive = $contract->is_vat_inclusive ?? true;
+            $vatRate = 0.05; // 5% VAT
+            
+            if ($isVatInclusive) {
+                // Price includes VAT: split backwards
+                // e.g., 105 AED = 100 AED net + 5 AED VAT
+                $netRentalAmount = round($consumedAmount / 1.05, 2);
+                $vatAmount = round($consumedAmount - $netRentalAmount, 2);
+            } else {
+                // Price excludes VAT: calculate forwards
+                // e.g., 100 AED net + 5 AED VAT = 105 AED
+                $netRentalAmount = $consumedAmount;
+                $vatAmount = round($consumedAmount * $vatRate, 2);
+            }
+
             // Sum of amounts allocated to rental_income via Quick Pay receipts
             $paidToRental = (float) \App\Models\PaymentReceiptAllocation::query()
                 ->where('row_id', 'rental_income')
@@ -998,18 +1037,30 @@ class ContractController extends Controller
                 })
                 ->sum('amount');
 
-            $remaining = max(0, $consumedAmount - $paidToRental);
+            // Sum of amounts allocated to vat_collection via Quick Pay receipts
+            $paidToVAT = (float) \App\Models\PaymentReceiptAllocation::query()
+                ->where('row_id', 'vat_collection')
+                ->whereHas('paymentReceipt', function ($q) use ($contract) {
+                    $q->where('contract_id', $contract->id)
+                      ->where('status', 'completed');
+                })
+                ->sum('amount');
 
-            // Inject values into the response for the rental_income row
-            // Note: rental_income is in the 'liability' section, not 'income'
+            $remainingRental = max(0, $netRentalAmount - $paidToRental);
+            $remainingVAT = max(0, $vatAmount - $paidToVAT);
+
+            // Inject values into the response for rental_income and vat_collection rows
             foreach ($response['sections'] as &$section) {
                 if (($section['key'] ?? null) === 'liability') {
                     foreach ($section['rows'] as &$row) {
                         if (($row['id'] ?? null) === 'rental_income') {
-                            $row['total'] = $consumedAmount;
+                            $row['total'] = $netRentalAmount;
                             $row['paid'] = round($paidToRental, 2);
-                            $row['remaining'] = round($remaining, 2);
-                            break;
+                            $row['remaining'] = round($remainingRental, 2);
+                        } elseif (($row['id'] ?? null) === 'vat_collection') {
+                            $row['total'] = $vatAmount;
+                            $row['paid'] = round($paidToVAT, 2);
+                            $row['remaining'] = round($remainingVAT, 2);
                         }
                     }
                 }
@@ -1235,6 +1286,14 @@ class ContractController extends Controller
             'completed_at' => now(),
             'fuel_charge' => $validated['fuel_charge'] ?? 0,
         ]);
+
+        // Record vehicle movement for contract return
+        $movementService = new VehicleMovementService();
+        try {
+            $movementService->recordContractReturn($contract);
+        } catch (\Exception $e) {
+            Log::warning("Failed to record vehicle movement for contract closure: " . $e->getMessage());
+        }
         
         return redirect()->route('contracts.show', $contract)
             ->with('success', 'Contract closed successfully');

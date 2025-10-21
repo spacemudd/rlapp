@@ -39,6 +39,7 @@ class Contract extends Model
         'daily_rate',
         'total_days',
         'currency',
+        'is_vat_inclusive',
         'mileage_limit',
         'excess_mileage_rate',
         'terms_and_conditions',
@@ -81,6 +82,7 @@ class Contract extends Model
         'excess_mileage_rate' => 'decimal:2',
         'total_days' => 'integer',
         'mileage_limit' => 'integer',
+        'is_vat_inclusive' => 'boolean',
         // Vehicle condition casts
         'pickup_mileage' => 'integer',
         'return_mileage' => 'integer',

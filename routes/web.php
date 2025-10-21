@@ -44,6 +44,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('vehicles', App\Http\Controllers\VehicleController::class);
     Route::patch('/vehicles/{vehicle}/disable', [App\Http\Controllers\VehicleController::class, 'disable'])->name('vehicles.disable');
     Route::patch('/vehicles/{vehicle}/enable', [App\Http\Controllers\VehicleController::class, 'enable'])->name('vehicles.enable');
+    
+    // Vehicle movement routes
+    Route::get('/vehicles/{vehicle}/movements', [App\Http\Controllers\VehicleMovementController::class, 'index'])->name('vehicle-movements.index');
+    Route::post('/vehicles/{vehicle}/movements', [App\Http\Controllers\VehicleMovementController::class, 'store'])->name('vehicle-movements.store');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -97,6 +101,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/api/pricing/calculate', [App\Http\Controllers\ContractController::class, 'calculatePricing'])->name('api.pricing.calculate');
     Route::get('/api/customers/search', [App\Http\Controllers\ContractController::class, 'searchCustomers'])->name('api.customers.search');
     Route::get('/api/vehicle-search', [App\Http\Controllers\ContractController::class, 'searchVehicles'])->name('api.vehicles.search');
+    
+    // Recent vehicles endpoints
+    Route::get('/api/recent-vehicles', [App\Http\Controllers\RecentVehicleController::class, 'index'])->name('api.recent-vehicles.index');
+    Route::post('/api/recent-vehicles', [App\Http\Controllers\RecentVehicleController::class, 'store'])->name('api.recent-vehicles.store');
     
     // Enhanced reservation API endpoints (moved outside middleware group for testing)
     

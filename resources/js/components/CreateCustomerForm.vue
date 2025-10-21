@@ -12,7 +12,7 @@ import { watch, ref, computed, onMounted } from 'vue';
 import { CreditCard, BookOpen, IdCard, User, Building, FileText, UserCheck, Shield } from 'lucide-vue-next';
 import { countryOptions, nationalityOptions } from '../lib/countries';
 import { useI18n } from 'vue-i18n';
-import axios from 'axios';
+import axios from '@/lib/axios';
 
 interface Props {
     editingCustomer?: any;

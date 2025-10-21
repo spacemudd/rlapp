@@ -86,6 +86,12 @@ Route::middleware(['web', 'auth'])->group(function () {
         }
         return response()->json(['vat_account' => $vatAccount]);
     });
+    
+    // Vehicle movement endpoints
+    Route::get('/vehicles/{vehicle}/last-mileage', [\App\Http\Controllers\VehicleController::class, 'getLastMileage'])
+        ->name('api.vehicles.last-mileage');
+    Route::get('/vehicles/{vehicle}/movements', [\App\Http\Controllers\VehicleMovementController::class, 'getHistory'])
+        ->name('api.vehicles.movements');
 });
 
 Route::middleware(['api.key'])->group(function () {

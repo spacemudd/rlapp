@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle, Clock, AlertTriangle } from 'lucide-vue-next';
 import { useI18n } from 'vue-i18n';
-import axios from 'axios';
+import axios from '@/lib/axios';
 
 const { t } = useI18n();
 

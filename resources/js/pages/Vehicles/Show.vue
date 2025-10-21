@@ -49,6 +49,7 @@ interface Vehicle {
     price_daily?: number;
     price_weekly?: number;
     price_monthly?: number;
+    price_yearly?: number;
     seats?: number;
     doors?: number;
     odometer: number;
@@ -339,7 +340,7 @@ const isExpired = (dateString: string) => {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                                     <div class="text-center">
                                         <dt class="text-sm font-medium text-gray-500">{{ t('daily_rate') }}</dt>
                                         <dd class="mt-1 text-lg font-semibold text-gray-900" dir="ltr">{{ formatCurrency(vehicle.price_daily) }}</dd>
@@ -351,6 +352,10 @@ const isExpired = (dateString: string) => {
                                     <div class="text-center">
                                         <dt class="text-sm font-medium text-gray-500">{{ t('monthly_rate') }}</dt>
                                         <dd class="mt-1 text-lg font-semibold text-gray-900" dir="ltr">{{ formatCurrency(vehicle.price_monthly) }}</dd>
+                                    </div>
+                                    <div class="text-center">
+                                        <dt class="text-sm font-medium text-gray-500">{{ t('yearly_rate') }}</dt>
+                                        <dd class="mt-1 text-lg font-semibold text-gray-900" dir="ltr">{{ formatCurrency(vehicle.price_yearly) }}</dd>
                                     </div>
                                 </div>
                             </CardContent>
