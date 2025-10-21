@@ -447,7 +447,7 @@
                 </tr>
                 <tr>
                     <td style="width:33.33%">Departure Km:</td>
-                    <td style="width:33.33%; text-decoration: underline">{{ $contract->mileage_limit ?? '0' }}</td>
+                    <td style="width:33.33%; text-decoration: underline">{{ $contract->pickup_mileage ?? '0' }}</td>
                     <td style="width:33.33%; text-align: right;" dir="rtl">كم المغادرة:</td>
                 </tr>
                 <tr>
@@ -462,7 +462,7 @@
                 </tr>
                 <tr>
                     <td style="width:33.33%">Departure Petrol:</td>
-                    <td style="width:33.33%; text-decoration: underline">50</td>
+                    <td style="width:33.33%; text-decoration: underline">{{ $contract->pickup_fuel_level ?? 'N/A' }}</td>
                     <td style="width:33.33%; text-align: right;" dir="rtl">الوقود عند المغادرة:</td>
                 </tr>
                 <tr>
