@@ -124,8 +124,10 @@ const toggleVehicleStatus = () => {
 };
 
 const formatCurrency = (amount?: number) => {
-    if (!amount) return 'Not set';
-    return `AED ${amount.toFixed(2)}`;
+    if (amount === null || amount === undefined) return 'Not set';
+    const numAmount = Number(amount);
+    if (isNaN(numAmount)) return 'Not set';
+    return `AED ${numAmount.toFixed(2)}`;
 };
 
 const formatDate = (dateString: string) => {
