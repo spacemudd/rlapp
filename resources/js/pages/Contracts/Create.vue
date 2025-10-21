@@ -64,8 +64,8 @@ const form = useForm({
     start_date: '',
     end_date: '',
     daily_rate: 0,
-    mileage_limit: '' as string | number,
-    excess_mileage_rate: '' as string | number,
+    mileage_limit: 250 as string | number,
+    excess_mileage_rate: 1 as string | number,
     notes: '',
     // Override fields
     override_daily_rate: false as boolean,
@@ -76,7 +76,7 @@ const form = useForm({
     is_vat_inclusive: true as boolean,
     // New vehicle condition fields
     current_mileage: '',
-    fuel_level: '',
+    fuel_level: 'full',
     condition_photos: null as File[] | null,
 });
 
