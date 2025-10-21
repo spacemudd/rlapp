@@ -70,6 +70,7 @@ class RecognizeContractRevenue extends Command
             $skippedCount = 0;
             $errorCount = 0;
             $totalRevenueRecognized = 0;
+            $totalVATRecognized = 0;
 
             foreach ($contracts as $contract) {
                 try {
@@ -78,8 +79,14 @@ class RecognizeContractRevenue extends Command
                     if ($result['processed']) {
                         $processedCount++;
                         $totalRevenueRecognized += $result['amount'];
+                        $totalVATRecognized += $result['vat_amount'] ?? 0;
                         
-                        $this->line("✅ Contract {$contract->contract_number}: Recognized {$result['days']} day(s) = {$contract->currency} " . number_format($result['amount'], 2));
+                        $revenueMsg = "Revenue: {$result['days']} day(s) = {$contract->currency} " . number_format($result['amount'], 2);
+                        $vatMsg = isset($result['vat_amount']) && $result['vat_amount'] > 0 
+                            ? ", VAT: {$result['vat_days']} day(s) = {$contract->currency} " . number_format($result['vat_amount'], 2)
+                            : '';
+                        
+                        $this->line("✅ Contract {$contract->contract_number}: {$revenueMsg}{$vatMsg}");
                     } else {
                         $skippedCount++;
                         $this->line("⏭️  Contract {$contract->contract_number}: {$result['reason']}");
@@ -103,6 +110,7 @@ class RecognizeContractRevenue extends Command
             $this->line("   - Skipped: {$skippedCount} contract(s)");
             $this->line("   - Errors: {$errorCount} contract(s)");
             $this->line("   - Total Revenue Recognized: AED " . number_format($totalRevenueRecognized, 2));
+            $this->line("   - Total VAT Recognized: AED " . number_format($totalVATRecognized, 2));
             $this->newLine();
 
             if ($errorCount > 0) {
@@ -163,12 +171,31 @@ class RecognizeContractRevenue extends Command
             ];
         }
 
-        // Calculate daily rate
+        // Calculate daily rate and split into net rental and VAT
         $totalDays = max(1, (int) $contract->total_days);
         $dailyRate = round($contract->total_amount / $totalDays, 2);
+        
+        // Split into net rental and VAT based on contract setting
+        $isVatInclusive = $contract->is_vat_inclusive ?? true;
+        $vatRate = 0.05; // 5% VAT
+        
+        if ($isVatInclusive) {
+            // Price includes VAT: split backwards
+            $dailyNetRental = round($dailyRate / 1.05, 2);
+            $dailyVAT = round($dailyRate - $dailyNetRental, 2);
+        } else {
+            // Price excludes VAT: calculate forwards
+            $dailyNetRental = $dailyRate;
+            $dailyVAT = round($dailyRate * $vatRate, 2);
+        }
+
+        // Check how many days have already been recognized for VAT
+        $recognizedVATDays = $this->getRecognizedVATDays($contract);
+        $vatDaysToRecognize = $daysElapsed - $recognizedVATDays;
 
         // Process each unrecognized day
-        $totalAmount = 0;
+        $totalRevenueAmount = 0;
+        $totalVATAmount = 0;
         DB::beginTransaction();
 
         try {
@@ -176,22 +203,48 @@ class RecognizeContractRevenue extends Command
                 $dayNumber = $recognizedDays + $i + 1;
                 $recognitionDate = $startDate->copy()->addDays($dayNumber - 1);
 
-                $transaction = $this->accountingService->recordDailyRevenueRecognition(
+                // Record revenue recognition
+                $revenueTransaction = $this->accountingService->recordDailyRevenueRecognition(
                     $contract,
                     $recognitionDate,
                     $dayNumber,
-                    $dailyRate
+                    $dailyNetRental
                 );
 
-                $totalAmount += $dailyRate;
+                $totalRevenueAmount += $dailyNetRental;
 
                 Log::info('Revenue recognized for contract', [
                     'contract_id' => $contract->id,
                     'contract_number' => $contract->contract_number,
                     'day_number' => $dayNumber,
                     'recognition_date' => $recognitionDate->toDateString(),
-                    'amount' => $dailyRate,
-                    'transaction_id' => $transaction->id,
+                    'amount' => $dailyNetRental,
+                    'transaction_id' => $revenueTransaction->id,
+                ]);
+            }
+
+            // Process VAT recognition for unrecognized days
+            for ($i = 0; $i < $vatDaysToRecognize; $i++) {
+                $dayNumber = $recognizedVATDays + $i + 1;
+                $recognitionDate = $startDate->copy()->addDays($dayNumber - 1);
+
+                // Record VAT recognition
+                $vatTransaction = $this->accountingService->recordDailyVATRecognition(
+                    $contract,
+                    $recognitionDate,
+                    $dayNumber,
+                    $dailyVAT
+                );
+
+                $totalVATAmount += $dailyVAT;
+
+                Log::info('VAT recognized for contract', [
+                    'contract_id' => $contract->id,
+                    'contract_number' => $contract->contract_number,
+                    'day_number' => $dayNumber,
+                    'recognition_date' => $recognitionDate->toDateString(),
+                    'amount' => $dailyVAT,
+                    'transaction_id' => $vatTransaction->id,
                 ]);
             }
 
@@ -200,7 +253,9 @@ class RecognizeContractRevenue extends Command
             return [
                 'processed' => true,
                 'days' => $daysToRecognize,
-                'amount' => $totalAmount,
+                'amount' => $totalRevenueAmount,
+                'vat_days' => $vatDaysToRecognize,
+                'vat_amount' => $totalVATAmount,
             ];
 
         } catch (\Exception $e) {
@@ -215,6 +270,15 @@ class RecognizeContractRevenue extends Command
     private function getRecognizedDays(Contract $contract): int
     {
         return Transaction::where('narration', 'LIKE', "Revenue recognition for Contract {$contract->contract_number} - Day %")
+            ->count();
+    }
+
+    /**
+     * Get the number of VAT days already recognized for a contract.
+     */
+    private function getRecognizedVATDays(Contract $contract): int
+    {
+        return Transaction::where('narration', 'LIKE', "VAT recognition for Contract {$contract->contract_number} - Day %")
             ->count();
     }
 }

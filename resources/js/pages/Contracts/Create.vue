@@ -72,6 +72,8 @@ const form = useForm({
     override_final_price: false as boolean,
     final_price_override: 0,
     override_reason: '',
+    // VAT configuration
+    is_vat_inclusive: true as boolean,
     // New vehicle condition fields
     current_mileage: '',
     fuel_level: '',
@@ -1142,6 +1144,21 @@ watch(() => props.newCustomer, (customer) => {
                                         </div>
                                         <div v-if="form.override_daily_rate && !form.override_final_price" class="text-[11px] text-blue-600 mt-1">
                                             {{ t('rate_manually_adjusted') }}
+                                        </div>
+                                        
+                                        <!-- VAT Configuration -->
+                                        <div class="mt-3 pt-3 border-t border-gray-200">
+                                            <div class="flex items-center gap-2">
+                                                <Checkbox
+                                                    id="is_vat_inclusive"
+                                                    v-model="form.is_vat_inclusive"
+                                                />
+                                                <Label for="is_vat_inclusive" class="text-xs font-medium">{{ t('price_is_vat_inclusive') }}</Label>
+                                            </div>
+                                            <div class="text-[11px] text-gray-500 mt-1">
+                                                <span v-if="form.is_vat_inclusive">{{ t('vat_inclusive_explanation') }}</span>
+                                                <span v-else>{{ t('vat_exclusive_explanation') }}</span>
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>

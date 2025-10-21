@@ -1835,4 +1835,151 @@ class AccountingService
         return $account;
     }
 
+    /**
+     * Record daily VAT recognition for a contract.
+     * Moves VAT from Collection (temporary holding) to Payable (official liability to tax authority).
+     */
+    public function recordDailyVATRecognition(\App\Models\Contract $contract, \Carbon\Carbon $recognitionDate, int $dayNumber, float $amount): Transaction
+    {
+        DB::beginTransaction();
+
+        try {
+            $entity = $this->getCurrentEntity();
+            $currency = $this->getDefaultCurrency();
+
+            // Get the VAT Collection account (temporary holding liability)
+            $vatCollectionAccount = $this->getVATCollectionAccount($contract);
+
+            // Get the VAT Payable account (official liability to tax authority)
+            $vatPayableAccount = $this->getVATPayableAccount($contract);
+
+            // Create the VAT recognition transaction
+            $transaction = Transaction::create([
+                'transaction_type' => Transaction::JN, // Journal Entry
+                'transaction_date' => $recognitionDate->toDateString(),
+                'narration' => "VAT recognition for Contract {$contract->contract_number} - Day {$dayNumber}",
+                'entity_id' => $entity->id,
+                'currency_id' => $currency->id,
+                'account_id' => $vatCollectionAccount->id,
+            ]);
+
+            // Debit: VAT Collection (reduce temporary holding liability)
+            LineItem::create([
+                'transaction_id' => $transaction->id,
+                'account_id' => $vatCollectionAccount->id,
+                'narration' => "VAT earned - Day {$dayNumber} of rental period",
+                'amount' => $amount,
+                'quantity' => 1,
+                'vat_inclusive' => false,
+                'entity_id' => $entity->id,
+                'credited' => false, // Debit
+            ]);
+
+            // Credit: VAT Payable (increase official tax liability)
+            LineItem::create([
+                'transaction_id' => $transaction->id,
+                'account_id' => $vatPayableAccount->id,
+                'narration' => "VAT payable - Contract {$contract->contract_number} Day {$dayNumber}",
+                'amount' => $amount,
+                'quantity' => 1,
+                'vat_inclusive' => false,
+                'entity_id' => $entity->id,
+                'credited' => true, // Credit
+            ]);
+
+            DB::commit();
+
+            Log::info("Daily VAT recognized in IFRS system", [
+                'contract_id' => $contract->id,
+                'contract_number' => $contract->contract_number,
+                'transaction_id' => $transaction->id,
+                'day_number' => $dayNumber,
+                'recognition_date' => $recognitionDate->toDateString(),
+                'amount' => $amount,
+            ]);
+
+            return $transaction;
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error("Failed to record daily VAT recognition", [
+                'contract_id' => $contract->id,
+                'contract_number' => $contract->contract_number,
+                'day_number' => $dayNumber,
+                'recognition_date' => $recognitionDate->toDateString(),
+                'amount' => $amount,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Get the VAT Collection account for a contract.
+     * This is where customer VAT payments are held temporarily.
+     */
+    private function getVATCollectionAccount(\App\Models\Contract $contract): Account
+    {
+        $entity = $this->getCurrentEntity();
+        $branch = $contract->branch ?? $contract->vehicle->branch;
+
+        // Try to get from branch Quick Pay mappings first
+        if ($branch && isset($branch->quick_pay_accounts['liability']['vat_collection'])) {
+            $accountId = $branch->quick_pay_accounts['liability']['vat_collection'];
+            $account = Account::find($accountId);
+            if ($account) {
+                return $account;
+            }
+        }
+
+        // Fallback to general VAT Collection account
+        $account = Account::where('entity_id', $entity->id)
+            ->where('name', 'VAT Collection')
+            ->where('account_type', Account::CURRENT_LIABILITY)
+            ->first();
+
+        if (!$account) {
+            $account = Account::create([
+                'name' => 'VAT Collection',
+                'account_type' => Account::CURRENT_LIABILITY,
+                'code' => '2103',
+                'currency_id' => $this->getDefaultCurrency()->id,
+                'entity_id' => $entity->id,
+            ]);
+        }
+
+        return $account;
+    }
+
+    /**
+     * Get the VAT Payable account.
+     * This is the official liability to the tax authority (FTA).
+     */
+    private function getVATPayableAccount(\App\Models\Contract $contract): Account
+    {
+        $entity = $this->getCurrentEntity();
+
+        // Try to use standard VAT Payable account
+        $account = Account::where('entity_id', $entity->id)
+            ->where('account_type', Account::CURRENT_LIABILITY)
+            ->where(function ($q) {
+                $q->where('name', 'VAT Payable')
+                  ->orWhere('name', 'Output VAT')
+                  ->orWhere('code', '2200');
+            })
+            ->first();
+
+        if (!$account) {
+            $account = Account::create([
+                'name' => 'VAT Payable',
+                'account_type' => Account::CURRENT_LIABILITY,
+                'code' => '2200',
+                'currency_id' => $this->getDefaultCurrency()->id,
+                'entity_id' => $entity->id,
+            ]);
+        }
+
+        return $account;
+    }
+
 }
