@@ -572,7 +572,9 @@ const toggleExpandAll = async () => {
                         </CardHeader>
                         <CardContent class="space-y-4">
                             <div>
-                                <h3 class="font-semibold text-lg">{{ contract.customer.first_name }} {{ contract.customer.last_name }}</h3>
+                                <Link :href="route('customers.show', contract.customer.id)">
+                                    <h3 class="font-semibold text-lg text-blue-600 hover:text-blue-800 hover:underline cursor-pointer">{{ contract.customer.first_name }} {{ contract.customer.last_name }}</h3>
+                                </Link>
                                 <div class="grid grid-cols-1 gap-2 mt-2 text-sm">
                                     <div class="flex justify-between">
                                         <span class="text-gray-500">{{ t('email') }}:</span>
@@ -609,7 +611,9 @@ const toggleExpandAll = async () => {
                     </CardHeader>
                         <CardContent class="space-y-4">
                             <div>
-                                <h3 class="font-semibold text-lg">{{ contract.vehicle.year }} {{ contract.vehicle.make }} {{ contract.vehicle.model }}</h3>
+                                <Link :href="route('vehicles.show', contract.vehicle.id)">
+                                    <h3 class="font-semibold text-lg text-blue-600 hover:text-blue-800 hover:underline cursor-pointer">{{ contract.vehicle.year }} {{ contract.vehicle.make }} {{ contract.vehicle.model }}</h3>
+                                </Link>
                                 <div class="grid grid-cols-1 gap-2 mt-2 text-sm">
                                     <div class="flex justify-between">
                                         <span class="text-gray-500">{{ t('plate_number') }}:</span>
