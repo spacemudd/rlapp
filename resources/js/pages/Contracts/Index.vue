@@ -28,6 +28,7 @@ interface Contract {
     start_date: string;
     end_date: string;
     total_amount: number;
+    balance: number;
     daily_rate: number;
     total_days: number;
     currency: string;
@@ -174,22 +175,41 @@ function viewContract(contract: Contract) {
                             <div v-if="filteredContracts.length === 0" class="text-center py-8 text-sm text-gray-500">
                                 {{ t('no_contracts_in_range') }}
                             </div>
-                            <ul v-else class="divide-y">
-                                <li v-for="c in filteredContracts" :key="c.id" class="py-3 flex justify-between">
-                                    <div>
-                                        <div class="flex gap-2">
-                                            <span class="font-medium">{{ c.contract_number }}</span>
-                                            <Badge :class="getStatusColor(c.status)" class="text-xs">{{ t(c.status) }}</Badge>
-                                        </div>
-                                        <div class="text-xs text-gray-500 mt-1">
-                                            {{ c.customer.first_name }} {{ c.customer.last_name }} · {{ formatDate(c.start_date) }} - {{ formatDate(c.end_date) }}
-                                        </div>
-                                    </div>
-                                    <Button variant="ghost" size="sm" @click="viewContract(c)">
-                                        <Eye class="w-4 h-4" />
-                                    </Button>
-                                </li>
-                            </ul>
+                            <div v-else class="overflow-x-auto">
+                                <table class="w-full text-xs border-collapse">
+                                    <thead>
+                                        <tr class="bg-gray-50 border-b border-gray-200">
+                                            <th class="p-1 text-start font-semibold text-gray-700">{{ t('contract_number') }}</th>
+                                            <th class="p-1 text-end font-semibold text-gray-700">{{ t('contract_value') }} / {{ t('balance') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr
+                                            v-for="c in filteredContracts"
+                                            :key="c.id"
+                                            class="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+                                            @click="viewContract(c)"
+                                        >
+                                            <td class="p-1">
+                                                <div class="flex flex-col gap-0.5">
+                                                    <span class="text-gray-700 font-medium">{{ c.customer.first_name }} {{ c.customer.last_name }}</span>
+                                                    <span class="text-gray-600 text-xs">{{ c.vehicle.year }} {{ c.vehicle.make }} {{ c.vehicle.model }} - {{ c.vehicle.plate_number }}</span>
+                                                    <span class="font-semibold text-gray-900">{{ c.contract_number }}</span>
+                                                    <Badge :class="getStatusColor(c.status)" class="text-xs w-fit">{{ t(c.status) }}</Badge>
+                                                </div>
+                                            </td>
+                                            <td class="p-1 text-end" dir="ltr">
+                                                <div class="flex flex-col gap-0.5">
+                                                    <span class="font-medium text-gray-900 text-right">{{ c.total_amount.toLocaleString() }}</span>
+                                                    <span class="font-semibold text-right" :class="c.balance > 0 ? 'text-red-600' : 'text-green-600'">
+                                                        {{ c.balance.toLocaleString() }}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </CardContent>
                     </Card>
 
@@ -203,15 +223,41 @@ function viewContract(contract: Contract) {
                             <div v-if="upcomingContracts.length === 0" class="text-center py-8 text-sm text-gray-500">
                                 {{ t('no_upcoming_contracts') }}
                             </div>
-                            <ul v-else class="divide-y">
-                                <li v-for="c in upcomingContracts" :key="c.id" class="py-3 flex justify-between">
-                                    <div>
-                                        <div class="font-medium">{{ c.contract_number }}</div>
-                                        <div class="text-xs text-gray-500 mt-1">{{ t('starts') }} {{ formatDate(c.start_date) }}</div>
-                                    </div>
-                                    <Badge :class="getStatusColor(c.status)" class="text-xs">{{ t(c.status) }}</Badge>
-                                </li>
-                            </ul>
+                            <div v-else class="overflow-x-auto">
+                                <table class="w-full text-xs border-collapse">
+                                    <thead>
+                                        <tr class="bg-gray-50 border-b border-gray-200">
+                                            <th class="p-1 text-start font-semibold text-gray-700">{{ t('contract_number') }}</th>
+                                            <th class="p-1 text-end font-semibold text-gray-700">{{ t('contract_value') }} / {{ t('balance') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr
+                                            v-for="c in upcomingContracts"
+                                            :key="c.id"
+                                            class="border-b border-gray-100 hover:bg-blue-50/30 transition-colors duration-150 cursor-pointer"
+                                            @click="viewContract(c)"
+                                        >
+                                            <td class="p-1">
+                                                <div class="flex flex-col gap-0.5">
+                                                    <span class="text-gray-700 font-medium">{{ c.customer.first_name }} {{ c.customer.last_name }}</span>
+                                                    <span class="text-gray-600 text-xs">{{ c.vehicle.year }} {{ c.vehicle.make }} {{ c.vehicle.model }} - {{ c.vehicle.plate_number }}</span>
+                                                    <span class="font-semibold text-gray-900">{{ c.contract_number }}</span>
+                                                    <Badge :class="getStatusColor(c.status)" class="text-xs w-fit">{{ t(c.status) }}</Badge>
+                                                </div>
+                                            </td>
+                                            <td class="p-1 text-end" dir="ltr">
+                                                <div class="flex flex-col gap-0.5">
+                                                    <span class="font-medium text-gray-900 text-right">{{ c.total_amount.toLocaleString() }}</span>
+                                                    <span class="font-semibold text-right" :class="c.balance > 0 ? 'text-red-600' : 'text-green-600'">
+                                                        {{ c.balance.toLocaleString() }}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </CardContent>
                     </Card>
 
@@ -225,15 +271,41 @@ function viewContract(contract: Contract) {
                             <div v-if="endingSoonContracts.length === 0" class="text-center py-8 text-sm text-gray-500">
                                 {{ t('no_contracts_ending_soon') }}
                             </div>
-                            <ul v-else class="divide-y">
-                                <li v-for="c in endingSoonContracts" :key="c.id" class="py-3 flex justify-between">
-                                    <div>
-                                        <div class="font-medium">{{ c.contract_number }}</div>
-                                        <div class="text-xs text-gray-500 mt-1">{{ t('ends') }} {{ formatDate(c.end_date) }}</div>
-                                    </div>
-                                    <Badge :class="getStatusColor(c.status)" class="text-xs">{{ t(c.status) }}</Badge>
-                                </li>
-                            </ul>
+                            <div v-else class="overflow-x-auto">
+                                <table class="w-full text-xs border-collapse">
+                                    <thead>
+                                        <tr class="bg-gray-50 border-b border-gray-200">
+                                            <th class="p-1 text-start font-semibold text-gray-700">{{ t('contract_number') }}</th>
+                                            <th class="p-1 text-end font-semibold text-gray-700">{{ t('contract_value') }} / {{ t('balance') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr
+                                            v-for="c in endingSoonContracts"
+                                            :key="c.id"
+                                            class="border-b border-gray-100 hover:bg-orange-50/30 transition-colors duration-150 cursor-pointer"
+                                            @click="viewContract(c)"
+                                        >
+                                            <td class="p-1">
+                                                <div class="flex flex-col gap-0.5">
+                                                    <span class="text-gray-700 font-medium">{{ c.customer.first_name }} {{ c.customer.last_name }}</span>
+                                                    <span class="text-gray-600 text-xs">{{ c.vehicle.year }} {{ c.vehicle.make }} {{ c.vehicle.model }} - {{ c.vehicle.plate_number }}</span>
+                                                    <span class="font-semibold text-gray-900">{{ c.contract_number }}</span>
+                                                    <Badge :class="getStatusColor(c.status)" class="text-xs w-fit">{{ t(c.status) }}</Badge>
+                                                </div>
+                                            </td>
+                                            <td class="p-1 text-end" dir="ltr">
+                                                <div class="flex flex-col gap-0.5">
+                                                    <span class="font-medium text-gray-900 text-right">{{ c.total_amount.toLocaleString() }}</span>
+                                                    <span class="font-semibold text-right" :class="c.balance > 0 ? 'text-red-600' : 'text-green-600'">
+                                                        {{ c.balance.toLocaleString() }}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
