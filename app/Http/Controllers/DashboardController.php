@@ -15,6 +15,22 @@ use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
 {
+    /**
+     * Calculate contract balance (total - paid allocations)
+     */
+    private function calculateContractBalance($contract): float
+    {
+        $totalAmount = (float) $contract->total_amount;
+        $paidAmount = (float) \App\Models\PaymentReceiptAllocation::query()
+            ->whereHas('paymentReceipt', function ($q) use ($contract) {
+                $q->where('contract_id', $contract->id)
+                  ->where('status', 'completed');
+            })
+            ->sum('amount');
+        
+        return $totalAmount - $paidAmount;
+    }
+
     public function index()
     {
         $lateInvoices = Invoice::where('due_date', '<', now())
@@ -137,6 +153,8 @@ class DashboardController extends Controller
                     'id' => $contract->id,
                     'contract_number' => $contract->contract_number,
                     'start_date' => $contract->start_date,
+                    'total_amount' => (float) $contract->total_amount,
+                    'balance' => $this->calculateContractBalance($contract),
                     'customer' => $contract->customer ? [
                         'id' => $contract->customer->id,
                         'first_name' => $contract->customer->first_name,
@@ -157,6 +175,8 @@ class DashboardController extends Controller
                     'id' => $contract->id,
                     'contract_number' => $contract->contract_number,
                     'end_date' => $contract->end_date,
+                    'total_amount' => (float) $contract->total_amount,
+                    'balance' => $this->calculateContractBalance($contract),
                     'customer' => $contract->customer ? [
                         'id' => $contract->customer->id,
                         'first_name' => $contract->customer->first_name,

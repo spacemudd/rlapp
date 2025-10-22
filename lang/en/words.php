@@ -262,6 +262,7 @@ return [
     'create_contract' => 'Create Contract',
     'contract_details' => 'Contract Details',
     'contract_number' => 'Contract Number',
+    'contract_value' => 'Contract Value',
     'start_date' => 'Start Date',
     'end_date' => 'End Date',
     'start' => 'Start',

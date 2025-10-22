@@ -70,6 +70,8 @@ interface VehicleDelivery {
   id: number | string;
   contract_number: string;
   start_date: string;
+  total_amount: number;
+  balance: number;
   customer: {
     id: number | string;
     first_name: string;
@@ -89,6 +91,8 @@ interface VehiclePickup {
   id: number | string;
   contract_number: string;
   end_date: string;
+  total_amount: number;
+  balance: number;
   customer: {
     id: number | string;
     first_name: string;
@@ -440,58 +444,57 @@ function isReservationTomorrow(pickupDate: string) {
 
                     <!-- Main Dashboard Grid -->
                     <div class="grid grid-cols-1 xl:grid-cols-12 gap-8">
-                        <!-- Left Sidebar - Upcoming Reservations -->
+                        <!-- Left Sidebar - Vehicles to Deliver Today -->
                         <div class="xl:col-span-3">
                             <Card class="border border-gray-100 h-fit">
                                 <div class="p-4">
                                     <div class="flex gap-2 mb-4">
-                                        <div class="p-2 rounded-lg bg-green-50">
-                                            <Clock class="w-4 h-4 text-green-600" />
+                                        <div class="p-2 rounded-lg bg-blue-50">
+                                            <ArrowUpRight class="w-4 h-4 text-blue-600" />
                                         </div>
                                         <div>
-                                            <h3 class="text-sm font-semibold text-gray-900">{{ t('upcoming_reservations') }}</h3>
-                                            <p class="text-xs text-gray-500">(24hrs)</p>
+                                            <h3 class="text-sm font-semibold text-gray-900">{{ t('vehicles_to_deliver_today') }}</h3>
+                                            <p class="text-xs text-gray-500">({{ t('today') }})</p>
                                         </div>
                                     </div>
                                     
-                                    <div class="space-y-3">
-                                        <div v-if="upcomingReservations.length === 0" class="text-center py-4">
-                                            <Clock class="w-8 h-8 mx-auto text-gray-400 mb-2" />
-                                            <p class="text-xs text-center text-gray-500">{{ t('no_upcoming_reservations') }}</p>
-                                        </div>
-                                        
-                                        <div
-                                            v-for="reservation in upcomingReservations"
-                                            :key="reservation.id"
-                                            class="p-3 bg-white rounded-lg border border-gray-100 hover:border-green-200 hover:bg-green-50/30 transition-all duration-200"
-                                        >
-                                            <div class="space-y-2">
-                                                <div class="flex justify-between">
-                                                    <span class="text-xs font-medium text-gray-600">{{ reservation.uid }}</span>
-                                                    <span 
-                                                        class="text-xs font-medium px-1.5 py-0.5 rounded"
-                                                        :class="isReservationToday(reservation.pickup_date) ? 'text-green-600 bg-green-100' : 'text-blue-600 bg-blue-100'"
-                                                    >
-                                                        {{ isReservationToday(reservation.pickup_date) ? t('today') : t('tomorrow') }}
-                                                    </span>
-                                                </div>
-                                                <p class="text-xs font-medium text-gray-900 truncate">{{ getCustomerName(reservation.customer) }}</p>
-                                                <p class="text-xs text-gray-500 truncate">{{ getVehicleInfo(reservation.vehicle) }}</p>
-                                                <div class="flex justify-between">
-                                                    <span class="text-xs text-gray-400" dir="ltr">{{ formatTime(reservation.pickup_date) }}</span>
-                                                    <span 
-                                                        class="text-xs font-medium px-1.5 py-0.5 rounded"
-                                                        :class="getReservationStatusColor(reservation.status)"
-                                                    >
-                                                        {{ getReservationStatusText(reservation.status) }}
-                                                    </span>
-                                                </div>
-                                                <div class="flex justify-between text-xs">
-                                                    <span class="text-gray-500">{{ reservation.duration_days }} {{ t('days') }}</span>
-                                                    <span class="font-medium text-gray-900">{{ formatCurrency(reservation.total_amount) }}</span>
-                                                </div>
-                                            </div>
-                                        </div>
+                                    <div v-if="vehiclesToDeliverToday.length === 0" class="text-center py-4">
+                                        <Truck class="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                                        <p class="text-xs text-center text-gray-500">{{ t('no_deliveries_today') }}</p>
+                                    </div>
+                                    
+                                    <div v-else class="overflow-x-auto">
+                                        <table class="w-full text-xs border-collapse">
+                                            <thead>
+                                                <tr class="bg-gray-50 border-b border-gray-200">
+                                                    <th class="p-1 text-start font-semibold text-gray-700">{{ t('contract_number') }}</th>
+                                                    <th class="p-1 text-end font-semibold text-gray-700">{{ t('contract_value') }} / {{ t('balance') }}</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr
+                                                    v-for="delivery in vehiclesToDeliverToday"
+                                                    :key="delivery.id"
+                                                    class="border-b border-gray-100 hover:bg-blue-50/30 transition-colors duration-150 cursor-pointer"
+                                                >
+                                                    <td class="p-1">
+                                                        <div class="flex flex-col gap-0.5">
+                                                            <span class="text-gray-700 font-medium">{{ getCustomerName(delivery.customer) }}</span>
+                                                            <span class="text-gray-600 text-xs">{{ getVehicleInfo(delivery.vehicle) }}</span>
+                                                            <span class="font-semibold text-gray-900">{{ delivery.contract_number }}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td class="p-1 text-end" dir="ltr">
+                                                        <div class="flex flex-col gap-0.5">
+                                                            <span class="font-medium text-gray-900 text-right">{{ delivery.total_amount.toLocaleString() }}</span>
+                                                            <span class="font-semibold text-right" :class="delivery.balance > 0 ? 'text-red-600' : 'text-green-600'">
+                                                                {{ delivery.balance.toLocaleString() }}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
                             </Card>
@@ -694,7 +697,7 @@ function isReservationTomorrow(pickupDate: string) {
                             </div>
                         </div>
 
-                        <!-- Right Sidebar - Vehicle Pickups -->
+                        <!-- Right Sidebar - Vehicles to Receive -->
                         <div class="xl:col-span-3">
                             <Card class="border border-gray-100 h-fit">
                                 <div class="p-4">
@@ -702,35 +705,49 @@ function isReservationTomorrow(pickupDate: string) {
                                         <div class="p-2 rounded-lg bg-orange-50">
                                             <ArrowDownLeft class="w-4 h-4 text-orange-600" />
                                         </div>
-                                        <h3 class="text-sm font-semibold text-gray-900">{{ t('vehicles_to_receive') }}</h3>
+                                        <div>
+                                            <h3 class="text-sm font-semibold text-gray-900">{{ t('vehicles_to_receive') }}</h3>
+                                            <p class="text-xs text-gray-500">({{ t('today') }}/{{ t('tomorrow') }})</p>
+                                        </div>
                                     </div>
                                     
-                                    <div class="space-y-3">
-                                        <div v-if="vehiclesToReceive.length === 0" class="text-center py-4">
-                                            <Truck class="w-8 h-8 mx-auto text-gray-400 mb-2" />
-                                            <p class="text-xs text-gray-500 text-center">{{ t('no_pickups_scheduled') }}</p>
-                                        </div>
-                                        
-                                        <div
-                                            v-for="pickup in vehiclesToReceive"
-                                            :key="pickup.id"
-                                            class="p-3 bg-white rounded-lg border border-gray-100 hover:border-orange-200 hover:bg-orange-50/30 transition-all duration-200"
-                                        >
-                                            <div class="space-y-2">
-                                                <div class="flex justify-between">
-                                                    <span class="text-xs font-medium text-gray-600">{{ pickup.contract_number }}</span>
-                                                    <span 
-                                                        class="text-xs font-medium px-1.5 py-0.5 rounded"
-                                                        :class="isToday(pickup.end_date) ? 'text-orange-600 bg-orange-100' : 'text-gray-600 bg-gray-100'"
-                                                    >
-                                                        {{ isToday(pickup.end_date) ? t('contracts_ending_today') : t('contracts_ending_tomorrow') }}
-                                                    </span>
-                                                </div>
-                                                <p class="text-xs font-medium text-gray-900 truncate">{{ getCustomerName(pickup.customer) }}</p>
-                                                <p class="text-xs text-gray-500 truncate">{{ getVehicleInfo(pickup.vehicle) }}</p>
-                                                <p class="text-xs text-gray-400" dir="ltr">{{ formatTime(pickup.end_date) }}</p>
-                                            </div>
-                                        </div>
+                                    <div v-if="vehiclesToReceive.length === 0" class="text-center py-4">
+                                        <Truck class="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                                        <p class="text-xs text-center text-gray-500">{{ t('no_pickups_scheduled') }}</p>
+                                    </div>
+                                    
+                                    <div v-else class="overflow-x-auto">
+                                        <table class="w-full text-xs border-collapse">
+                                            <thead>
+                                                <tr class="bg-gray-50 border-b border-gray-200">
+                                                    <th class="p-1 text-start font-semibold text-gray-700">{{ t('contract_number') }}</th>
+                                                    <th class="p-1 text-end font-semibold text-gray-700">{{ t('contract_value') }} / {{ t('balance') }}</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr
+                                                    v-for="pickup in vehiclesToReceive"
+                                                    :key="pickup.id"
+                                                    class="border-b border-gray-100 hover:bg-orange-50/30 transition-colors duration-150 cursor-pointer"
+                                                >
+                                                    <td class="p-1">
+                                                        <div class="flex flex-col gap-0.5">
+                                                            <span class="text-gray-700 font-medium">{{ getCustomerName(pickup.customer) }}</span>
+                                                            <span class="text-gray-600 text-xs">{{ getVehicleInfo(pickup.vehicle) }}</span>
+                                                            <span class="font-semibold text-gray-900">{{ pickup.contract_number }}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td class="p-1 text-end" dir="ltr">
+                                                        <div class="flex flex-col gap-0.5">
+                                                            <span class="font-medium text-gray-900 text-right">{{ pickup.total_amount.toLocaleString() }}</span>
+                                                            <span class="font-semibold text-right" :class="pickup.balance > 0 ? 'text-red-600' : 'text-green-600'">
+                                                                {{ pickup.balance.toLocaleString() }}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
                             </Card>

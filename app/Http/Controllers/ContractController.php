@@ -24,6 +24,22 @@ use Illuminate\Support\Facades\App;
 class ContractController extends Controller
 {
     /**
+     * Calculate contract balance (total - paid allocations)
+     */
+    private function calculateContractBalance($contract): float
+    {
+        $totalAmount = (float) $contract->total_amount;
+        $paidAmount = (float) \App\Models\PaymentReceiptAllocation::query()
+            ->whereHas('paymentReceipt', function ($q) use ($contract) {
+                $q->where('contract_id', $contract->id)
+                  ->where('status', 'completed');
+            })
+            ->sum('amount');
+        
+        return $totalAmount - $paidAmount;
+    }
+
+    /**
      * Display a listing of the resource.
      */
     public function index(Request $request): Response
@@ -58,6 +74,12 @@ class ContractController extends Controller
         $query->latest();
 
         $contracts = $query->paginate(10)->withQueryString();
+        
+        // Add balance calculation to each contract
+        $contracts->getCollection()->transform(function ($contract) {
+            $contract->balance = $this->calculateContractBalance($contract);
+            return $contract;
+        });
 
         return Inertia::render('Contracts/Index', [
             'contracts' => $contracts,
