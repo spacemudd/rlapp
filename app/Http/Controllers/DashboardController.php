@@ -16,16 +16,25 @@ use Illuminate\Support\Facades\Log;
 class DashboardController extends Controller
 {
     /**
-     * Calculate contract balance (total - paid allocations)
+     * Calculate contract balance (rental total - rental payments only)
      */
     private function calculateContractBalance($contract): float
     {
+        // Base rental amount only (exclude additional fees from balance calculation)
         $totalAmount = (float) $contract->total_amount;
+        
+        // Calculate paid amount from rental-related allocations only (exclude additional fees)
         $paidAmount = (float) \App\Models\PaymentReceiptAllocation::query()
             ->whereHas('paymentReceipt', function ($q) use ($contract) {
                 $q->where('contract_id', $contract->id)
                   ->where('status', 'completed');
             })
+            ->whereNotIn('row_id', function ($query) {
+                $query->select('id')
+                      ->from('contract_additional_fees')
+                      ->whereColumn('contract_additional_fees.id', 'payment_receipt_allocations.row_id');
+            })
+            ->where('row_id', 'not like', 'additional_fee_%')
             ->sum('amount');
         
         return $totalAmount - $paidAmount;

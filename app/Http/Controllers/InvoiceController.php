@@ -232,6 +232,30 @@ class InvoiceController extends Controller
         return $pdf->stream('invoice-' . $invoice->invoice_number . '.pdf');
     }
 
+    public function downloadSimplePdf($id)
+    {
+        $invoice = Invoice::with(['customer', 'vehicle', 'items'])->findOrFail($id);
+        $customer = $invoice->customer;
+        $vehicle = $invoice->vehicle;
+        
+        // Calculate amounts without applied credits for display
+        $appliedCreditsTotal = 0; // Don't fetch applied credits
+        $amountDue = max(0, (float) $invoice->total_amount - (float) $invoice->paid_amount);
+
+        // Format vehicle name
+        if ($vehicle) {
+            $vehicle->name = "{$vehicle->year} {$vehicle->make} {$vehicle->model} - {$vehicle->plate_number}";
+        }
+
+        $pdf = Pdf::loadView('pdf.invoice-simple', [
+            'invoice' => $invoice,
+            'customer' => $customer,
+            'vehicle' => $vehicle,
+            'amountDue' => $amountDue,
+        ]);
+        return $pdf->stream('invoice-simple-' . $invoice->invoice_number . '.pdf');
+    }
+
     public function destroy($id)
     {
         $invoice = \App\Models\Invoice::findOrFail($id);

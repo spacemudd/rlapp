@@ -193,6 +193,7 @@ return [
     'invoice_deleted' => 'تم حذف الفاتورة بنجاح',
     'delete_invoice_confirm' => 'هل أنت متأكد من رغبتك في حذف هذه الفاتورة؟',
     'download_pdf' => 'تحميل PDF',
+    'download_pdf_simple' => 'تحميل PDF (بسيط)',
     'send_invoice' => 'إرسال الفاتورة',
     'contract_already_has_invoice' => 'هذا العقد لديه فاتورة بالفعل. يمكن أن يكون للعقد فاتورة واحدة فقط.',
     'invoice_must_be_fully_paid' => 'لا يمكن إنهاء العقد. يجب دفع الفاتورة بالكامل. المبلغ المستحق: :amount',

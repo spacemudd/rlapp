@@ -186,6 +186,10 @@ function downloadPdf() {
     window.open(`/invoices/${props.invoice.id}/pdf`, '_blank');
 }
 
+function downloadSimplePdf() {
+    window.open(`/invoices/${props.invoice.id}/pdf-simple`, '_blank');
+}
+
 function printPaymentReceipt(paymentId: string) {
     window.open(`/payments/${paymentId}/receipt`, '_blank');
 }
@@ -279,6 +283,10 @@ async function sendEmail() {
                     <Button variant="outline" class="flex items-center gap-2" @click="downloadPdf">
                         <Download class="h-4 w-4" />
                         {{ t('download_pdf') }}
+                    </Button>
+                    <Button variant="outline" class="flex items-center gap-2" @click="downloadSimplePdf">
+                        <Download class="h-4 w-4" />
+                        {{ t('download_pdf_simple') }}
                     </Button>
                     <DropdownMenu>
                         <DropdownMenuTrigger as-child>

@@ -220,6 +220,7 @@ return [
     'invoice_deleted' => 'Invoice deleted successfully',
     'delete_invoice_confirm' => 'Are you sure you want to delete this invoice?',
     'download_pdf' => 'Download PDF',
+    'download_pdf_simple' => 'Download PDF (Simple)',
     'send_invoice' => 'Send Invoice',
     'contract_already_has_invoice' => 'This contract already has an invoice. A contract can only have one invoice.',
     'invoice_must_be_fully_paid' => 'Cannot finalize contract. Invoice must be fully paid. Amount due: :amount',

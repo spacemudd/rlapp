@@ -24,16 +24,25 @@ use Illuminate\Support\Facades\App;
 class ContractController extends Controller
 {
     /**
-     * Calculate contract balance (total - paid allocations)
+     * Calculate contract balance (rental total - rental payments only)
      */
     private function calculateContractBalance($contract): float
     {
+        // Base rental amount only (exclude additional fees from balance calculation)
         $totalAmount = (float) $contract->total_amount;
+        
+        // Calculate paid amount from rental-related allocations only (exclude additional fees)
         $paidAmount = (float) \App\Models\PaymentReceiptAllocation::query()
             ->whereHas('paymentReceipt', function ($q) use ($contract) {
                 $q->where('contract_id', $contract->id)
                   ->where('status', 'completed');
             })
+            ->whereNotIn('row_id', function ($query) {
+                $query->select('id')
+                      ->from('contract_additional_fees')
+                      ->whereColumn('contract_additional_fees.id', 'payment_receipt_allocations.row_id');
+            })
+            ->where('row_id', 'not like', 'additional_fee_%')
             ->sum('amount');
         
         return $totalAmount - $paidAmount;
@@ -75,8 +84,15 @@ class ContractController extends Controller
 
         $contracts = $query->paginate(10)->withQueryString();
         
-        // Add balance calculation to each contract
+        // Add balance calculation and update total_amount to include additional fees
         $contracts->getCollection()->transform(function ($contract) {
+            // Calculate additional fees total
+            $additionalFeesTotal = (float) $contract->additionalFees()->sum('total');
+            
+            // Update total_amount to include additional fees for display
+            $contract->total_amount = (float) $contract->total_amount + $additionalFeesTotal;
+            
+            // Calculate balance (rental only - excludes additional fees from balance calculation)
             $contract->balance = $this->calculateContractBalance($contract);
             return $contract;
         });
@@ -1565,6 +1581,9 @@ class ContractController extends Controller
             $invoice->items()->create([
                 'description' => 'Base Rental',
                 'amount' => $summary['rental']['base']['net_amount'],
+                'subtotal' => $summary['rental']['base']['net_amount'],
+                'vat_amount' => $summary['rental']['base']['vat_amount'],
+                'total' => $summary['rental']['base']['total'],
                 'discount' => 0,
             ]);
         }
@@ -1575,6 +1594,9 @@ class ContractController extends Controller
                 $invoice->items()->create([
                     'description' => 'Extension #' . $extension['extension_number'],
                     'amount' => $extension['net_amount'],
+                    'subtotal' => $extension['net_amount'],
+                    'vat_amount' => $extension['vat_amount'],
+                    'total' => $extension['total'],
                     'discount' => 0,
                 ]);
             }
@@ -1586,6 +1608,9 @@ class ContractController extends Controller
                 $invoice->items()->create([
                     'description' => $charge['description'],
                     'amount' => $charge['net_amount'],
+                    'subtotal' => $charge['net_amount'],
+                    'vat_amount' => $charge['vat_amount'],
+                    'total' => $charge['total'],
                     'discount' => 0,
                 ]);
             }
@@ -1598,6 +1623,9 @@ class ContractController extends Controller
                     $invoice->items()->create([
                         'description' => $fee['fee_type_name'],
                         'amount' => $fee['subtotal'],
+                        'subtotal' => $fee['subtotal'],
+                        'vat_amount' => $fee['vat_amount'],
+                        'total' => $fee['total'],
                         'discount' => 0,
                     ]);
                 }
