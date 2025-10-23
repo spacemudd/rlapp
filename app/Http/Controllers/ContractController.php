@@ -49,6 +49,31 @@ class ContractController extends Controller
     }
 
     /**
+     * Calculate contract balance including additional fees (total amount + additional fees - all payments)
+     */
+    private function calculateContractBalanceWithAdditionalFees($contract): float
+    {
+        // Base rental amount
+        $rentalAmount = (float) $contract->total_amount;
+        
+        // Calculate additional fees total
+        $additionalFeesTotal = (float) $contract->additionalFees()->sum('total');
+        
+        // Total amount including additional fees
+        $totalAmount = $rentalAmount + $additionalFeesTotal;
+        
+        // Calculate paid amount from ALL allocations (rental + additional fees)
+        $paidAmount = (float) \App\Models\PaymentReceiptAllocation::query()
+            ->whereHas('paymentReceipt', function ($q) use ($contract) {
+                $q->where('contract_id', $contract->id)
+                  ->where('status', 'completed');
+            })
+            ->sum('amount');
+        
+        return $totalAmount - $paidAmount;
+    }
+
+    /**
      * Display a listing of the resource.
      */
     public function index(Request $request): Response
@@ -86,14 +111,13 @@ class ContractController extends Controller
         
         // Add balance calculation and update total_amount to include additional fees
         $contracts->getCollection()->transform(function ($contract) {
-            // Calculate additional fees total
-            $additionalFeesTotal = (float) $contract->additionalFees()->sum('total');
+            // Calculate balance FIRST with original amounts
+            $contract->balance = $this->calculateContractBalanceWithAdditionalFees($contract);
             
-            // Update total_amount to include additional fees for display
+            // THEN update total_amount for display
+            $additionalFeesTotal = (float) $contract->additionalFees()->sum('total');
             $contract->total_amount = (float) $contract->total_amount + $additionalFeesTotal;
             
-            // Calculate balance (rental only - excludes additional fees from balance calculation)
-            $contract->balance = $this->calculateContractBalance($contract);
             return $contract;
         });
 

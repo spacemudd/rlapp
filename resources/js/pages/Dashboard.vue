@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
-import { Head, usePage } from '@inertiajs/vue3';
+import { Head, usePage, router } from '@inertiajs/vue3';
 import { ref, onMounted } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -428,6 +428,11 @@ function isReservationTomorrow(pickupDate: string) {
     tomorrow.setDate(tomorrow.getDate() + 1);
     return date.toDateString() === tomorrow.toDateString();
 }
+
+// Navigation functions
+function viewContract(contractId: number | string) {
+    router.get(route('contracts.show', contractId));
+}
 </script>
 
 <template>
@@ -476,6 +481,7 @@ function isReservationTomorrow(pickupDate: string) {
                                                     v-for="delivery in vehiclesToDeliverToday"
                                                     :key="delivery.id"
                                                     class="border-b border-gray-100 hover:bg-blue-50/30 transition-colors duration-150 cursor-pointer"
+                                                    @click="viewContract(delivery.id)"
                                                 >
                                                     <td class="p-1">
                                                         <div class="flex flex-col gap-0.5">
@@ -729,6 +735,7 @@ function isReservationTomorrow(pickupDate: string) {
                                                     v-for="pickup in vehiclesToReceive"
                                                     :key="pickup.id"
                                                     class="border-b border-gray-100 hover:bg-orange-50/30 transition-colors duration-150 cursor-pointer"
+                                                    @click="viewContract(pickup.id)"
                                                 >
                                                     <td class="p-1">
                                                         <div class="flex flex-col gap-0.5">
