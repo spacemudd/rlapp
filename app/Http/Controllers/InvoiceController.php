@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Customer;
 use App\Models\Vehicle;
 use Inertia\Inertia;
-use Barryvdh\DomPDF\Facade\Pdf;
+use Barryvdh\Snappy\Facades\SnappyPdf as PDF;
 use App\Models\InvoiceItem;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -221,7 +221,7 @@ class InvoiceController extends Controller
             $vehicle->name = "{$vehicle->year} {$vehicle->make} {$vehicle->model} - {$vehicle->plate_number}";
         }
 
-        $pdf = Pdf::loadView('pdf.invoice', [
+        $pdf = PDF::loadView('pdf.invoice', [
             'invoice' => $invoice,
             'customer' => $customer,
             'vehicle' => $vehicle,
@@ -229,6 +229,20 @@ class InvoiceController extends Controller
             'appliedCreditsTotal' => $appliedCreditsTotal,
             'amountDue' => $amountDue,
         ]);
+
+        // Set options for better Arabic support
+        $pdf->setOptions([
+            'page-size' => 'A4',
+            'margin-top' => '0.75in',
+            'margin-right' => '0.75in',
+            'margin-bottom' => '0.75in',
+            'margin-left' => '0.75in',
+            'encoding' => 'UTF-8',
+            'enable-local-file-access' => true,
+            'no-outline' => true,
+            'disable-smart-shrinking' => true,
+        ]);
+
         return $pdf->stream('invoice-' . $invoice->invoice_number . '.pdf');
     }
 
@@ -247,12 +261,26 @@ class InvoiceController extends Controller
             $vehicle->name = "{$vehicle->year} {$vehicle->make} {$vehicle->model} - {$vehicle->plate_number}";
         }
 
-        $pdf = Pdf::loadView('pdf.invoice-simple', [
+        $pdf = PDF::loadView('pdf.invoice-simple', [
             'invoice' => $invoice,
             'customer' => $customer,
             'vehicle' => $vehicle,
             'amountDue' => $amountDue,
         ]);
+
+        // Set options for better Arabic support
+        $pdf->setOptions([
+            'page-size' => 'A4',
+            'margin-top' => '0.75in',
+            'margin-right' => '0.75in',
+            'margin-bottom' => '0.75in',
+            'margin-left' => '0.75in',
+            'encoding' => 'UTF-8',
+            'enable-local-file-access' => true,
+            'no-outline' => true,
+            'disable-smart-shrinking' => true,
+        ]);
+
         return $pdf->stream('invoice-simple-' . $invoice->invoice_number . '.pdf');
     }
 
@@ -286,13 +314,26 @@ class InvoiceController extends Controller
             ->get();
         $appliedCreditsTotal = (float) $appliedCredits->sum('amount');
         $amountDue = max(0, (float) $invoice->total_amount - (float) $invoice->paid_amount - $appliedCreditsTotal);
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.invoice', [
+        $pdf = PDF::loadView('pdf.invoice', [
             'invoice' => $invoice,
             'customer' => $customer,
             'vehicle' => $vehicle,
             'appliedCredits' => $appliedCredits,
             'appliedCreditsTotal' => $appliedCreditsTotal,
             'amountDue' => $amountDue,
+        ]);
+
+        // Set options for better Arabic support
+        $pdf->setOptions([
+            'page-size' => 'A4',
+            'margin-top' => '0.75in',
+            'margin-right' => '0.75in',
+            'margin-bottom' => '0.75in',
+            'margin-left' => '0.75in',
+            'encoding' => 'UTF-8',
+            'enable-local-file-access' => true,
+            'no-outline' => true,
+            'disable-smart-shrinking' => true,
         ]);
         $pdfContent = $pdf->output();
 
@@ -323,13 +364,26 @@ class InvoiceController extends Controller
                 ->get();
             $appliedCreditsTotal = (float) $appliedCredits->sum('amount');
             $amountDue = max(0, (float) $invoice->total_amount - (float) $invoice->paid_amount - $appliedCreditsTotal);
-            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.invoice', [
+            $pdf = PDF::loadView('pdf.invoice', [
                 'invoice' => $invoice,
                 'customer' => $customer,
                 'vehicle' => $vehicle,
                 'appliedCredits' => $appliedCredits,
                 'appliedCreditsTotal' => $appliedCreditsTotal,
                 'amountDue' => $amountDue,
+            ]);
+
+            // Set options for better Arabic support
+            $pdf->setOptions([
+                'page-size' => 'A4',
+                'margin-top' => '0.75in',
+                'margin-right' => '0.75in',
+                'margin-bottom' => '0.75in',
+                'margin-left' => '0.75in',
+                'encoding' => 'UTF-8',
+                'enable-local-file-access' => true,
+                'no-outline' => true,
+                'disable-smart-shrinking' => true,
             ]);
             Storage::disk('public')->put($pdfPath, $pdf->output());
         }

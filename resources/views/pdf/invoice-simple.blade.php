@@ -4,11 +4,61 @@
     <meta charset="utf-8">
     <title>Invoice {{ $invoice->invoice_number }}</title>
     <style>
+        @font-face {
+            font-family: 'ArialArabic';
+            src: url({{ storage_path('fonts/arial-ar.ttf') }}) format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        * {
+            font-family: 'ArialArabic', Arial !important;
+        }
+
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'ArialArabic', Arial, sans-serif;
             font-size: 13px;
             color: #222;
             background: #fff;
+        }
+
+        .arabic-text {
+            direction: rtl;
+            text-align: right;
+            word-wrap: break-word;
+            word-break: normal;
+            white-space: normal;
+            line-height: 1.4;
+        }
+
+        .arabic-inline {
+            direction: rtl;
+            display: inline-block;
+        }
+
+        .arabic-terms {
+            direction: rtl;
+            text-align: right;
+            word-wrap: break-word;
+            word-break: normal;
+            white-space: normal;
+            line-height: 1.4;
+            hyphens: none;
+            -webkit-hyphens: none;
+            -moz-hyphens: none;
+            -ms-hyphens: none;
+        }
+
+        .arabic-terms p {
+            margin: 5px 0;
+            word-wrap: break-word;
+            word-break: normal;
+            white-space: normal;
+            line-height: 1.4;
+            hyphens: none;
+            -webkit-hyphens: none;
+            -moz-hyphens: none;
+            -ms-hyphens: none;
         }
         .header {
             border-bottom: 2px solid #222;
