@@ -687,7 +687,7 @@ onMounted(() => {
                                     Contract can be finalized. Invoice is fully paid.
                                 </p>
                                 <p v-else class="text-red-600 font-medium">
-                                    Cannot finalize contract. Amount due: {{ formatCurrency(amountDue) }}
+                                    {{ t('cannot_finalize_contract_amount_due', { amount: formatCurrency(amountDue) }) }}
                                 </p>
                             </div>
                         </CardContent>

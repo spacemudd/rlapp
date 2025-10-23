@@ -146,9 +146,21 @@ class InvoiceController extends Controller
                     'plate_number' => $invoice->vehicle->plate_number,
                 ],
                 'items' => $invoice->items->map(function ($item) {
+                    $amount = (float) $item->amount;
+                    $vatAmount = (float) ($item->vat_amount ?? 0);
+                    $vatRate = (float) ($item->vat_rate ?? 5.0); // Default 5% VAT
+                    $subtotal = (float) ($item->amount_excluding_vat ?? $amount);
+                    $total = (float) ($item->amount_including_vat ?? ($subtotal + $vatAmount));
+                    
                     return [
                         'description' => $item->description,
-                        'amount' => (float) $item->amount,
+                        'quantity' => 1, // Default quantity for now
+                        'unit_price' => $subtotal,
+                        'subtotal' => $subtotal,
+                        'vat_amount' => $vatAmount,
+                        'vat_rate' => $vatRate,
+                        'total' => $total,
+                        'amount' => $amount,
                         'discount' => (float) $item->discount,
                     ];
                 }),
