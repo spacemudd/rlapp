@@ -252,9 +252,17 @@ class InvoiceController extends Controller
         $customer = $invoice->customer;
         $vehicle = $invoice->vehicle;
         
-        // Calculate amounts without applied credits for display
-        $appliedCreditsTotal = 0; // Don't fetch applied credits
-        $amountDue = max(0, (float) $invoice->total_amount - (float) $invoice->paid_amount);
+        // Applied credits for PDF - same calculation as full invoice
+        $appliedCredits = \App\Models\PaymentReceiptAllocation::query()
+            ->where('invoice_id', $invoice->id)
+            ->where(function ($q) {
+                $q->where('allocation_type', 'advance_payment')
+                  ->orWhere('row_id', 'prepayment')
+                  ->orWhere('row_id', 'like', 'additional_fee_%');
+            })
+            ->get();
+        $appliedCreditsTotal = (float) $appliedCredits->sum('amount');
+        $amountDue = max(0, (float) $invoice->total_amount - (float) $invoice->paid_amount - $appliedCreditsTotal);
 
         // Format vehicle name
         if ($vehicle) {
@@ -265,6 +273,8 @@ class InvoiceController extends Controller
             'invoice' => $invoice,
             'customer' => $customer,
             'vehicle' => $vehicle,
+            'appliedCredits' => $appliedCredits,
+            'appliedCreditsTotal' => $appliedCreditsTotal,
             'amountDue' => $amountDue,
         ]);
 
