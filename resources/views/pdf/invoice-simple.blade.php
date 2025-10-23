@@ -263,7 +263,7 @@
         </tr>
         <tr>
             <td class="label">Paid Amount</td>
-            <td class="value">{{ number_format($invoice->paid_amount, 2) }}</td>
+            <td class="value">{{ number_format($invoice->paid_amount + $appliedCreditsTotal, 2) }}</td>
         </tr>
         <tr class="total-row">
             <td class="label">Amount Due</td>
