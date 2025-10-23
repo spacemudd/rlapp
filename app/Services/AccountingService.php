@@ -30,29 +30,117 @@ class AccountingService
      */
     public function createCustomerReceivableAccount(Customer $customer): Account
     {
+        Log::info("Starting createCustomerReceivableAccount", [
+            'customer_id' => $customer->id,
+            'customer_name' => $customer->full_name,
+        ]);
+
         $entity = $this->getCurrentEntity();
         if (!$entity) {
+            Log::error("Failed to get IFRS entity for customer receivable account creation");
             throw new \RuntimeException('Failed to get IFRS entity for customer receivable account creation');
         }
 
+        Log::info("Entity retrieved for createCustomerReceivableAccount", [
+            'entity_id' => $entity->id,
+            'entity_name' => $entity->name,
+        ]);
+
         $currency = $this->getDefaultCurrency();
         if (!$currency) {
+            Log::error("Failed to get default currency for customer receivable account creation");
             throw new \RuntimeException('Failed to get default currency for customer receivable account creation');
         }
+
+        Log::info("Currency retrieved for createCustomerReceivableAccount", [
+            'currency_id' => $currency->id,
+            'currency_code' => $currency->currency_code,
+        ]);
+
+        $accountCode = $this->generateAccountCode(Account::RECEIVABLE, $customer->id);
+        
+        Log::info("About to create customer receivable account", [
+            'customer_id' => $customer->id,
+            'account_name' => "Accounts Receivable - {$customer->full_name}",
+            'account_type' => Account::RECEIVABLE,
+            'account_code' => $accountCode,
+            'currency_id' => $currency->id,
+            'entity_id' => $entity->id,
+        ]);
 
         // Create receivable account for this customer
         $account = Account::create([
             'name' => "Accounts Receivable - {$customer->full_name}",
             'account_type' => Account::RECEIVABLE,
-            'code' => $this->generateAccountCode(Account::RECEIVABLE, $customer->id),
+            'code' => $accountCode,
             'currency_id' => $currency->id,
             'entity_id' => $entity->id,
+        ]);
+
+        Log::info("Customer receivable account created successfully", [
+            'created_account_id' => $account->id,
+            'created_account_name' => $account->name,
+            'created_account_type' => $account->account_type,
         ]);
 
         // Update customer with the IFRS account ID
         $customer->update(['ifrs_receivable_account_id' => $account->id]);
 
+        Log::info("Updated customer with receivable account ID", [
+            'customer_id' => $customer->id,
+            'ifrs_receivable_account_id' => $account->id,
+        ]);
+
         return $account;
+    }
+
+    /**
+     * Get or create IFRS receivable account for a customer.
+     */
+    public function getOrCreateCustomerReceivableAccount(Customer $customer): Account
+    {
+        Log::info("Starting getOrCreateCustomerReceivableAccount", [
+            'customer_id' => $customer->id,
+            'customer_name' => $customer->full_name,
+            'customer_ifrs_receivable_account_id' => $customer->ifrs_receivable_account_id,
+        ]);
+
+        // If customer already has a receivable account, return it
+        if ($customer->ifrs_receivable_account_id) {
+            Log::info("Customer has existing ifrs_receivable_account_id, looking it up", [
+                'ifrs_receivable_account_id' => $customer->ifrs_receivable_account_id,
+            ]);
+            
+            $account = Account::find($customer->ifrs_receivable_account_id);
+            if ($account) {
+                Log::info("Found existing customer receivable account", [
+                    'account_id' => $account->id,
+                    'account_name' => $account->name,
+                    'account_type' => $account->account_type,
+                ]);
+                return $account;
+            } else {
+                Log::warning("Customer's ifrs_receivable_account_id points to non-existent account", [
+                    'customer_id' => $customer->id,
+                    'missing_account_id' => $customer->ifrs_receivable_account_id,
+                ]);
+            }
+        }
+
+        Log::info("Creating new customer receivable account", [
+            'customer_id' => $customer->id,
+        ]);
+
+        // Otherwise, create a new one
+        $newAccount = $this->createCustomerReceivableAccount($customer);
+        
+        Log::info("Created new customer receivable account", [
+            'new_account_id' => $newAccount->id,
+            'new_account_name' => $newAccount->name,
+            'new_account_type' => $newAccount->account_type,
+        ]);
+        
+        return $newAccount;
     }
 
     /**
@@ -553,7 +641,16 @@ class AccountingService
      */
     private function getDefaultGlAccountForRowId(string $rowId): Account
     {
+        Log::info("Starting getDefaultGlAccountForRowId", [
+            'row_id' => $rowId,
+        ]);
+
         $entity = $this->getCurrentEntity();
+        
+        Log::info("Entity retrieved for getDefaultGlAccountForRowId", [
+            'entity_id' => $entity->id,
+            'entity_name' => $entity->name,
+        ]);
         
         // Define default account types and names for each row_id
         $defaultAccounts = [
@@ -592,28 +689,94 @@ class AccountingService
                 'account_type' => Account::CURRENT_LIABILITY,
                 'code' => '2100',
             ],
+            // Add specific handling for additional fee patterns
+            'additional_fee_salik_fees' => [
+                'name' => 'Salik Fees',
+                'account_type' => Account::OPERATING_REVENUE,
+                'code' => '4010',
+            ],
         ];
 
-        $accountConfig = $defaultAccounts[$rowId] ?? [
-            'name' => ucfirst(str_replace('_', ' ', $rowId)),
-            'account_type' => Account::OPERATING_REVENUE,
-            'code' => '4999',
-        ];
+        // Check if row_id starts with 'additional_fee_' and handle dynamically
+        if (str_starts_with($rowId, 'additional_fee_')) {
+            $feeType = str_replace('additional_fee_', '', $rowId);
+            $accountConfig = $defaultAccounts[$rowId] ?? [
+                'name' => ucfirst(str_replace('_', ' ', $feeType)),
+                'account_type' => Account::OPERATING_REVENUE,
+                'code' => '4999',
+            ];
+        } else {
+            $accountConfig = $defaultAccounts[$rowId] ?? [
+                'name' => ucfirst(str_replace('_', ' ', $rowId)),
+                'account_type' => Account::OPERATING_REVENUE,
+                'code' => '4999',
+            ];
+        }
 
-        // Try to find existing account
+        Log::info("Account config determined", [
+            'row_id' => $rowId,
+            'account_config' => $accountConfig,
+        ]);
+
+        // Try to find existing account by name first
         $account = Account::where('entity_id', $entity->id)
             ->where('name', $accountConfig['name'])
             ->first();
 
         if (!$account) {
+            // Try to find by code as fallback
+            $account = Account::where('entity_id', $entity->id)
+                ->where('code', $accountConfig['code'])
+                ->first();
+        }
+
+        if (!$account) {
+            Log::info("Account not found, creating new account", [
+                'entity_id' => $entity->id,
+                'account_name' => $accountConfig['name'],
+                'account_type' => $accountConfig['account_type'],
+                'account_code' => $accountConfig['code'],
+            ]);
+
+            $currency = $this->getDefaultCurrency();
+            
+            Log::info("Currency retrieved for account creation", [
+                'currency_id' => $currency->id,
+                'currency_code' => $currency->currency_code,
+            ]);
+
             $account = Account::create([
                 'name' => $accountConfig['name'],
                 'account_type' => $accountConfig['account_type'],
                 'code' => $accountConfig['code'],
-                'currency_id' => $this->getDefaultCurrency()->id,
+                'currency_id' => $currency->id,
                 'entity_id' => $entity->id,
             ]);
+
+            Log::info("New account created", [
+                'new_account_id' => $account->id,
+                'new_account_name' => $account->name,
+                'new_account_type' => $account->account_type,
+            ]);
+        } else {
+            Log::info("Found existing account", [
+                'existing_account_id' => $account->id,
+                'existing_account_name' => $account->name,
+                'existing_account_type' => $account->account_type,
+            ]);
         }
+
+        // Final null check
+        if (!$account) {
+            Log::error("Failed to create or find GL account for row_id: {$rowId}");
+            throw new \RuntimeException("Failed to create or find GL account for row_id: {$rowId}");
+        }
+
+        Log::info("Returning account from getDefaultGlAccountForRowId", [
+            'returned_account_id' => $account->id,
+            'returned_account_name' => $account->name,
+            'returned_account_type' => $account->account_type,
+        ]);
 
         return $account;
     }
@@ -1350,7 +1513,7 @@ class AccountingService
     private function getCustomerReceivableAccount(Customer $customer)
     {
         // First try to find a customer-specific receivable account
-        $customerReceivable = Account::where('name', 'like', '%' . $customer->name . '%')
+        $customerReceivable = Account::where('name', 'like', '%' . $customer->full_name . '%')
             ->where('account_type', Account::RECEIVABLE)
             ->first();
 
@@ -1364,7 +1527,7 @@ class AccountingService
             ->first();
 
         if (!$generalReceivable) {
-            throw new \Exception("No accounts receivable account found for customer {$customer->name}");
+            throw new \Exception("No accounts receivable account found for customer {$customer->full_name}");
         }
 
         return $generalReceivable;
@@ -1529,6 +1692,14 @@ class AccountingService
      */
     public function applyAdvanceToInvoice(Invoice $invoice, PaymentReceiptAllocation $allocation): void
     {
+        Log::info("Starting applyAdvanceToInvoice", [
+            'invoice_id' => $invoice->id,
+            'allocation_id' => $allocation->id,
+            'allocation_row_id' => $allocation->row_id,
+            'allocation_gl_account_id' => $allocation->gl_account_id,
+            'allocation_amount' => $allocation->amount,
+        ]);
+
         $entity = $this->getCurrentEntity();
         $currency = $this->getDefaultCurrency();
         
@@ -1536,17 +1707,108 @@ class AccountingService
             throw new \RuntimeException('Failed to get IFRS entity or currency for advance application');
         }
 
+        Log::info("Entity and currency retrieved", [
+            'entity_id' => $entity->id,
+            'entity_name' => $entity->name,
+            'currency_id' => $currency->id,
+            'currency_code' => $currency->currency_code,
+        ]);
+
         // Get the advance liability account
-        $advanceAccount = Account::find($allocation->gl_account_id);
-        if (!$advanceAccount) {
-            throw new \RuntimeException("Advance account not found for allocation {$allocation->id}");
+        if (!$allocation->gl_account_id) {
+            Log::warning("Payment allocation missing gl_account_id", [
+                'allocation_id' => $allocation->id,
+                'row_id' => $allocation->row_id,
+            ]);
+            
+            // Try to get the account based on row_id
+            $advanceAccount = $this->getDefaultGlAccountForRowId($allocation->row_id);
+            
+            Log::info("Created/found advance account via getDefaultGlAccountForRowId", [
+                'advance_account_id' => $advanceAccount->id,
+                'advance_account_name' => $advanceAccount->name,
+                'advance_account_type' => $advanceAccount->account_type,
+            ]);
+            
+            // Update the allocation with the account ID for future use
+            $allocation->update(['gl_account_id' => $advanceAccount->id]);
+        } else {
+            Log::info("Looking up advance account by gl_account_id", [
+                'gl_account_id' => $allocation->gl_account_id,
+            ]);
+            
+            $advanceAccount = Account::find($allocation->gl_account_id);
+            
+            if (!$advanceAccount) {
+                Log::error("Advance account not found in database", [
+                    'allocation_id' => $allocation->id,
+                    'missing_gl_account_id' => $allocation->gl_account_id,
+                    'row_id' => $allocation->row_id,
+                ]);
+                
+                // Try to create/find a replacement account
+                Log::info("Attempting to create/find replacement account via getDefaultGlAccountForRowId", [
+                    'row_id' => $allocation->row_id,
+                ]);
+                
+                $advanceAccount = $this->getDefaultGlAccountForRowId($allocation->row_id);
+                
+                Log::info("Created/found replacement advance account", [
+                    'replacement_account_id' => $advanceAccount->id,
+                    'replacement_account_name' => $advanceAccount->name,
+                    'replacement_account_type' => $advanceAccount->account_type,
+                ]);
+                
+                // Update the allocation with the correct account ID
+                $allocation->update(['gl_account_id' => $advanceAccount->id]);
+            } else {
+                Log::info("Found existing advance account", [
+                    'advance_account_id' => $advanceAccount->id,
+                    'advance_account_name' => $advanceAccount->name,
+                    'advance_account_type' => $advanceAccount->account_type,
+                ]);
+            }
         }
 
         // Get customer receivable account
+        Log::info("Getting customer receivable account", [
+            'customer_id' => $invoice->customer->id,
+            'customer_name' => $invoice->customer->full_name,
+            'customer_ifrs_receivable_account_id' => $invoice->customer->ifrs_receivable_account_id,
+        ]);
+        
         $customerReceivableAccount = $this->getOrCreateCustomerReceivableAccount($invoice->customer);
+        
+        Log::info("Customer receivable account retrieved", [
+            'customer_receivable_account_id' => $customerReceivableAccount->id,
+            'customer_receivable_account_name' => $customerReceivableAccount->name,
+            'customer_receivable_account_type' => $customerReceivableAccount->account_type,
+        ]);
+
+        // Validate accounts before creating transaction
+        if (!$advanceAccount) {
+            Log::error("Advance account is null before transaction creation");
+            throw new \RuntimeException("Advance account is null before transaction creation");
+        }
+        
+        if (!$customerReceivableAccount) {
+            Log::error("Customer receivable account is null before transaction creation");
+            throw new \RuntimeException("Customer receivable account is null before transaction creation");
+        }
+
+        Log::info("Creating IFRS transaction", [
+            'transaction_type' => 'JN',
+            'transaction_date' => now()->toDateString(),
+            'entity_id' => $entity->id,
+            'currency_id' => $currency->id,
+            'advance_account_id' => $advanceAccount->id,
+            'customer_receivable_account_id' => $customerReceivableAccount->id,
+        ]);
 
         // Create transaction to apply advance to invoice
+        // Following IFRS documentation pattern: main account is Customer Receivable (credit side)
         $transaction = Transaction::create([
+            'account_id' => $customerReceivableAccount->id, // Main account - credit side
             'transaction_type' => 'JN',
             'transaction_date' => now()->toDateString(),
             'narration' => "Apply advance payment to invoice {$invoice->invoice_number}",
@@ -1554,27 +1816,36 @@ class AccountingService
             'currency_id' => $currency->id,
         ]);
 
-        // Debit: Advance Liability Account (reduce liability)
-        LineItem::create([
+        Log::info("Transaction created successfully", [
             'transaction_id' => $transaction->id,
+        ]);
+
+        // Create Line Item for Advance Account (debit side)
+        // Following IFRS pattern: Line Items represent the opposite side from main account
+        Log::info("Creating line item for advance account", [
+            'transaction_id' => $transaction->id,
+            'account_id' => $advanceAccount->id,
+            'amount' => $allocation->amount,
+        ]);
+
+        $lineItem = LineItem::create([
             'account_id' => $advanceAccount->id,
             'description' => "Apply advance to invoice {$invoice->invoice_number}",
             'amount' => $allocation->amount,
-            'credited' => false, // Debit
         ]);
 
-        // Credit: Customer Receivable Account (reduce receivable)
-        LineItem::create([
-            'transaction_id' => $transaction->id,
-            'account_id' => $customerReceivableAccount->id,
-            'description' => "Apply advance to invoice {$invoice->invoice_number}",
-            'amount' => $allocation->amount,
-            'credited' => true, // Credit
-        ]);
+        // Associate line item with transaction and post
+        $transaction->addLineItem($lineItem);
+        $transaction->post();
 
         // Update allocation with transaction reference
         $allocation->update([
             'ifrs_line_item_id' => $transaction->id,
+        ]);
+
+        Log::info("Successfully completed applyAdvanceToInvoice", [
+            'transaction_id' => $transaction->id,
+            'allocation_id' => $allocation->id,
         ]);
     }
 
@@ -1591,10 +1862,20 @@ class AccountingService
         }
 
         // Get security deposit liability account
-        $securityDepositAccount = $this->getSecurityDepositLiabilityAccount($contract->vehicle->branch);
+        $branch = $contract->vehicle?->branch;
+        if (!$branch) {
+            throw new \RuntimeException("Contract vehicle or branch not found for deposit refund");
+        }
+        $securityDepositAccount = $this->getSecurityDepositLiabilityAccount($branch);
+        if (!$securityDepositAccount) {
+            throw new \RuntimeException("Failed to get security deposit liability account");
+        }
         
         // Get cash account based on refund method
         $cashAccount = $this->getCashAccountForRefund($method);
+        if (!$cashAccount) {
+            throw new \RuntimeException("Failed to get cash account for refund method: {$method}");
+        }
 
         // Create transaction for deposit refund
         $transaction = Transaction::create([

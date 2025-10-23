@@ -1362,7 +1362,7 @@ class ContractController extends Controller
     /**
      * Finalize contract closure and create invoice with IFRS entries.
      */
-    public function finalizeClosure(Contract $contract, Request $request): RedirectResponse
+    public function finalizeClosure(Contract $contract, Request $request, AccountingService $accountingService): RedirectResponse
     {
         // Validate request
         $validated = $request->validate([
@@ -1376,7 +1376,6 @@ class ContractController extends Controller
         DB::beginTransaction();
 
         try {
-            $accountingService = new AccountingService();
             $closureService = new ContractClosureService();
 
             // 1. Create final invoice
@@ -1425,14 +1424,27 @@ class ContractController extends Controller
     private function createFinalInvoice(Contract $contract, array $invoiceItems): Invoice
     {
         $totalAmount = array_sum(array_column($invoiceItems, 'amount'));
+        
+        // Calculate subtotal and VAT (assuming 5% VAT rate)
+        $vatRate = 0.05;
+        $subTotal = round($totalAmount / (1 + $vatRate), 2);
+        $vatAmount = round($totalAmount - $subTotal, 2);
 
         $invoice = Invoice::create([
             'contract_id' => $contract->id,
             'customer_id' => $contract->customer_id,
+            'vehicle_id' => $contract->vehicle_id,
             'invoice_number' => $this->generateInvoiceNumber(),
-            'invoice_date' => now()->toDateString(),
-            'due_date' => now()->addDays(30)->toDateString(),
+            'invoice_date' => now(),
+            'due_date' => now()->addDays(30),
+            'total_days' => $contract->total_days,
+            'start_datetime' => $contract->start_date,
+            'end_datetime' => $contract->end_date,
+            'sub_total' => $subTotal,
+            'total_discount' => 0,
             'total_amount' => $totalAmount,
+            'vat_amount' => $vatAmount,
+            'vat_rate' => 5,
             'currency' => $contract->currency ?? 'AED',
             'status' => 'pending',
             'team_id' => $contract->team_id,
@@ -1442,9 +1454,8 @@ class ContractController extends Controller
         foreach ($invoiceItems as $item) {
             $invoice->items()->create([
                 'description' => $item['description'],
-                'quantity' => $item['quantity'] ?? 1,
-                'unit_price' => $item['amount'],
-                'total_amount' => $item['amount'],
+                'amount' => $item['amount'],
+                'discount' => 0,
             ]);
         }
 

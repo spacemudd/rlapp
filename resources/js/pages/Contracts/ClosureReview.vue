@@ -345,13 +345,11 @@ const submitFinalize = () => {
 
     const combined = [...autoItems, ...customItems];
 
+    // Update form fields before posting
+    finalizeForm.invoice_items = combined;
+
     finalizeForm.post(route('contracts.finalize-closure', props.contract.id), {
         preserveScroll: true,
-        data: {
-            invoice_items: combined,
-            refund_deposit: finalizeForm.refund_deposit,
-            refund_method: finalizeForm.refund_method,
-        },
     });
 };
 

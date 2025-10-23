@@ -47,7 +47,7 @@ class ContractClosureService
         // This ensures consistency with the contract's actual duration
         $days = (int) $contract->total_days;
         $total = $days * $contract->daily_rate;
-        $vatSplit = $this->splitVATAmount($total, $contract->is_vat_inclusive ?? true);
+        $vatSplit = $this->splitVATAmount((float) $total, $contract->is_vat_inclusive ?? true);
         
         return [
             'days' => $days,
@@ -77,7 +77,7 @@ class ContractClosureService
         foreach ($extensions as $extension) {
             if ($extension->status === 'approved') {
                 $extensionTotal = $extension->extension_days * $extension->daily_rate;
-                $vatSplit = $this->splitVATAmount($extensionTotal, $contract->is_vat_inclusive ?? true);
+                $vatSplit = $this->splitVATAmount((float) $extensionTotal, $contract->is_vat_inclusive ?? true);
                 $total += $extensionTotal;
                 $totalNet += $vatSplit['net'];
                 $totalVat += $vatSplit['vat'];
@@ -153,7 +153,7 @@ class ContractClosureService
 
         // Excess mileage charge
         if ($contract->excess_mileage_charge && $contract->excess_mileage_charge > 0) {
-            $vatSplit = $this->splitVATAmount($contract->excess_mileage_charge, $contract->is_vat_inclusive ?? true);
+            $vatSplit = $this->splitVATAmount((float) $contract->excess_mileage_charge, $contract->is_vat_inclusive ?? true);
             $charges[] = [
                 'type' => 'excess_mileage',
                 'description' => __('words.excess_mileage_charge'),
@@ -168,7 +168,7 @@ class ContractClosureService
 
         // Fuel charge
         if ($contract->fuel_charge && $contract->fuel_charge > 0) {
-            $vatSplit = $this->splitVATAmount($contract->fuel_charge, $contract->is_vat_inclusive ?? true);
+            $vatSplit = $this->splitVATAmount((float) $contract->fuel_charge, $contract->is_vat_inclusive ?? true);
             $charges[] = [
                 'type' => 'fuel_charge',
                 'description' => __('words.fuel_charge'),
@@ -189,7 +189,7 @@ class ContractClosureService
             if ($completedAt->gt($endDate)) {
                 $lateDays = $endDate->diffInDays($completedAt);
                 $lateCharge = $lateDays * $contract->daily_rate;
-                $vatSplit = $this->splitVATAmount($lateCharge, $contract->is_vat_inclusive ?? true);
+                $vatSplit = $this->splitVATAmount((float) $lateCharge, $contract->is_vat_inclusive ?? true);
                 
                 $charges[] = [
                     'type' => 'late_return',
