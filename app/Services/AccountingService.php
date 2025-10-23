@@ -1838,15 +1838,69 @@ class AccountingService
         $transaction->addLineItem($lineItem);
         $transaction->post();
 
-        // Update allocation with transaction reference
+        // Update allocation with transaction reference and invoice ID
         $allocation->update([
             'ifrs_line_item_id' => $transaction->id,
+            'invoice_id' => $invoice->id,
         ]);
 
         Log::info("Successfully completed applyAdvanceToInvoice", [
             'transaction_id' => $transaction->id,
             'allocation_id' => $allocation->id,
         ]);
+    }
+
+    /**
+     * Fix existing PaymentReceiptAllocation records by linking them to their corresponding invoices.
+     * This method should be called to fix records that were created before the invoice_id linking was implemented.
+     */
+    public function fixPaymentReceiptAllocationInvoiceLinks(): array
+    {
+        $fixedCount = 0;
+        $errors = [];
+        
+        try {
+            // Get all PaymentReceiptAllocation records without invoice_id
+            $allocations = \App\Models\PaymentReceiptAllocation::whereNull('invoice_id')
+                ->with(['paymentReceipt.contract.invoices'])
+                ->get();
+            
+            foreach ($allocations as $allocation) {
+                $paymentReceipt = $allocation->paymentReceipt;
+                if (!$paymentReceipt || !$paymentReceipt->contract) {
+                    continue;
+                }
+                
+                $contract = $paymentReceipt->contract;
+                
+                // Find the most recent invoice for this contract
+                $invoice = $contract->invoices()
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+                
+                if ($invoice) {
+                    $allocation->update(['invoice_id' => $invoice->id]);
+                    $fixedCount++;
+                }
+            }
+            
+            Log::info("Fixed PaymentReceiptAllocation invoice links", [
+                'fixed_count' => $fixedCount,
+                'total_allocations_checked' => $allocations->count(),
+            ]);
+            
+        } catch (\Exception $e) {
+            $errors[] = $e->getMessage();
+            Log::error("Failed to fix PaymentReceiptAllocation invoice links", [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+        
+        return [
+            'fixed_count' => $fixedCount,
+            'errors' => $errors,
+        ];
     }
 
     /**

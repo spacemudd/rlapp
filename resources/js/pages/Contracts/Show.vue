@@ -480,8 +480,17 @@ const hasTermsOrNotes = computed(() =>
                                 </DropdownMenuContent>
                             </DropdownMenu>
 
+                            <!-- Show invoice link if invoice exists, otherwise show create button -->
+                            <div v-if="contract.invoices && contract.invoices.length > 0" class="flex items-center gap-2">
+                                <Link :href="route('invoices.show', contract.invoices[0].id)" class="btn btn-primary bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-md text-sm font-medium">
+                                    View Invoice #{{ contract.invoices[0].invoice_number }}
+                                </Link>
+                                <span class="text-sm text-gray-600">
+                                    (Contract can have only one invoice)
+                                </span>
+                            </div>
                             <Button
-                                v-if="contract.status === 'active' || contract.status === 'completed'"
+                                v-else-if="contract.status === 'active' || contract.status === 'completed'"
                                 variant="default"
                                 class="bg-indigo-600 text-white hover:bg-indigo-700"
                                 @click="$inertia.visit(route('contracts.prepare-closure', contract.id))"
@@ -514,7 +523,10 @@ const hasTermsOrNotes = computed(() =>
                         <Button v-if="contract.status === 'active'" size="sm" class="h-6 px-2 py-0 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="showCloseDialog = true">
                             {{ t('close_contract') }}
                         </Button>
-                        <Button v-if="contract.status !== 'void'" size="sm" class="h-6 px-2 py-0 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="$inertia.visit(route('contracts.prepare-closure', contract.id))">
+                        <Link v-if="contract.invoices && contract.invoices.length > 0" :href="route('invoices.show', contract.invoices[0].id)" size="sm" class="h-6 px-2 py-0 text-xs bg-blue-600 text-white hover:bg-blue-700 inline-flex items-center rounded">
+                            View Invoice
+                        </Link>
+                        <Button v-else-if="contract.status !== 'void'" size="sm" class="h-6 px-2 py-0 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="$inertia.visit(route('contracts.prepare-closure', contract.id))">
                             {{ t('create_invoice') }}
                         </Button>
                         <Button v-if="contract.status === 'active'" size="sm" class="h-6 px-2 py-0 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="openExtendDialog">

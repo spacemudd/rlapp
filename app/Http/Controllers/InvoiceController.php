@@ -69,19 +69,52 @@ class InvoiceController extends Controller
 
     public function show($id)
     {
-        $invoice = Invoice::with(['customer', 'vehicle', 'items', 'payments'])->findOrFail($id);
+        $invoice = Invoice::with([
+            'customer', 
+            'vehicle', 
+            'items', 
+            'payments',
+            'contract'
+        ])->findOrFail($id);
 
-        // Fetch applied advances (Quick Pay allocations applied to this invoice)
+        // Fetch all applied advances (Quick Pay allocations)
         $appliedCredits = \App\Models\PaymentReceiptAllocation::query()
+            ->with(['paymentReceipt'])
             ->where('invoice_id', $invoice->id)
-            ->where(function ($q) {
-                $q->where('allocation_type', 'advance_payment')
-                  ->orWhere('row_id', 'prepayment');
-            })
-            ->get(['id', 'description', 'amount', 'memo', 'payment_receipt_id']);
+            ->whereIn('row_id', ['prepayment', 'rental_income', 'vat_collection', 'security_deposit'])
+            ->get()
+            ->map(function ($allocation) {
+                return [
+                    'id' => $allocation->id,
+                    'description' => $allocation->description,
+                    'row_id' => $allocation->row_id,
+                    'amount' => (float) $allocation->amount,
+                    'memo' => $allocation->memo,
+                    'payment_receipt_id' => $allocation->payment_receipt_id,
+                    'payment_date' => $allocation->paymentReceipt?->payment_date,
+                    'payment_method' => $allocation->paymentReceipt?->payment_method,
+                ];
+            });
 
         $appliedCreditsTotal = (float) $appliedCredits->sum('amount');
-        $amountDue = (float) $invoice->total_amount - (float) $invoice->paid_amount - $appliedCreditsTotal;
+        
+        // Calculate amounts
+        $totalAmount = (float) $invoice->total_amount;
+        $paidAmount = (float) $invoice->paid_amount;
+        $amountDue = max(0, $totalAmount - $paidAmount - $appliedCreditsTotal);
+
+        // Payment breakdown
+        $paymentBreakdown = [
+            'invoice_total' => $totalAmount,
+            'sub_total' => (float) $invoice->sub_total,
+            'vat_amount' => (float) ($invoice->vat_amount ?? 0),
+            'vat_rate' => (float) ($invoice->vat_rate ?? 0),
+            'total_discount' => (float) $invoice->total_discount,
+            'direct_payments' => $paidAmount,
+            'applied_advances' => $appliedCreditsTotal,
+            'total_paid' => $paidAmount + $appliedCreditsTotal,
+            'amount_due' => $amountDue,
+        ];
 
         return Inertia::render('Invoices/Show', [
             'invoice' => [
@@ -90,27 +123,14 @@ class InvoiceController extends Controller
                 'invoice_date' => $invoice->invoice_date,
                 'due_date' => $invoice->due_date,
                 'status' => $invoice->payment_status,
+                'contract_number' => $invoice->contract?->contract_number,
                 'total_days' => $invoice->total_days,
                 'start_datetime' => $invoice->start_datetime,
                 'end_datetime' => $invoice->end_datetime,
-                'sub_total' => (float) $invoice->sub_total,
-                'total_discount' => (float) $invoice->total_discount,
-                'total_amount' => (float) $invoice->total_amount,
-                'paid_amount' => (float) $invoice->paid_amount,
-                'remaining_amount' => (float) $invoice->remaining_amount,
-                'applied_credits_total' => $appliedCreditsTotal,
-                'applied_credits' => $appliedCredits->map(function ($c) {
-                    return [
-                        'id' => (string) $c->id,
-                        'description' => $c->description,
-                        'amount' => (float) $c->amount,
-                        'memo' => $c->memo,
-                        'payment_receipt_id' => $c->payment_receipt_id,
-                    ];
-                }),
-                'amount_due' => $amountDue,
                 'customer' => [
                     'id' => $invoice->customer->id,
+                    'first_name' => $invoice->customer->first_name,
+                    'last_name' => $invoice->customer->last_name,
                     'name' => $invoice->customer->first_name . ' ' . $invoice->customer->last_name,
                     'email' => $invoice->customer->email,
                     'phone' => $invoice->customer->phone_number,
@@ -145,145 +165,23 @@ class InvoiceController extends Controller
                         'created_at' => $payment->created_at,
                     ];
                 }),
+                'applied_credits' => $appliedCredits,
+                'payment_breakdown' => $paymentBreakdown,
             ],
         ]);
     }
 
     public function create(Request $request)
     {
-        $lastInvoice = Invoice::orderBy('created_at', 'desc')->first();
-        $nextNumber = 10001; // Start from 10001
-
-        if ($lastInvoice && preg_match('/INV-(\d+)/', $lastInvoice->invoice_number, $matches)) {
-            $nextNumber = intval($matches[1]) + 1;
-        }
-
-        $nextInvoiceNumber = 'INV-' . $nextNumber;
-
-        $contracts = \App\Models\Contract::with(['vehicle', 'customer'])->get()->map(function($contract) {
-            return [
-                'id' => $contract->id,
-                'contract_number' => $contract->contract_number,
-                'vehicle_id' => $contract->vehicle_id,
-                'vehicle' => $contract->vehicle ? [
-                    'make' => $contract->vehicle->make,
-                    'model' => $contract->vehicle->model,
-                    'year' => $contract->vehicle->year,
-                    'plate_number' => $contract->vehicle->plate_number,
-                ] : null,
-                'start_date' => $contract->start_date,
-                'end_date' => $contract->end_date,
-                'total_days' => $contract->total_days,
-                'customer_id' => $contract->customer_id,
-                'customer' => $contract->customer ? [
-                    'id' => $contract->customer->id,
-                    'first_name' => $contract->customer->first_name,
-                    'last_name' => $contract->customer->last_name,
-                    'business_name' => $contract->customer->business_name,
-                    'email' => $contract->customer->email,
-                    'phone_number' => $contract->customer->phone_number,
-                    'nationality' => $contract->customer->nationality,
-                    'city' => $contract->customer->city,
-                ] : null,
-                'daily_rate' => $contract->daily_rate,
-                'total_amount' => $contract->total_amount,
-            ];
-        });
-
-        return Inertia::render('Invoices/Create', [
-            'contracts' => $contracts,
-            'nextInvoiceNumber' => $nextInvoiceNumber,
-        ]);
+        return redirect()->route('contracts.index')
+            ->with('error', 'Invoices can only be created through contract finalization.');
     }
 
     public function store(Request $request)
     {
-        try {
-            $validated = $request->validate([
-                'invoice_date' => 'required|date',
-                'due_date' => 'required|date',
-                'total_days' => 'required|integer|min:1',
-                'start_datetime' => 'required|date',
-                'end_datetime' => 'required|date|after:start_datetime',
-                'vehicle_id' => 'required|exists:vehicles,id',
-                'customer_id' => 'required|exists:customers,id',
-                'sub_total' => 'required|numeric|min:0',
-                'total_discount' => 'required|numeric|min:0',
-                'total_amount' => 'required|numeric|min:0',
-                'vat_rate' => 'nullable|numeric|min:0|max:100',
-                'items' => 'required|array|min:1',
-                'items.*.description' => 'nullable|string',
-                'items.*.amount' => 'nullable|numeric|min:0',
-                'items.*.discount' => 'nullable|numeric|min:0',
-            ]);
-
-            // Calculate VAT
-            $vatRate = $validated['vat_rate'] ?? 5.0; // Default UAE VAT rate
-            $netAmount = $validated['sub_total'] - $validated['total_discount'];
-            $vatAmount = $this->accountingService->calculateVAT($netAmount, $vatRate);
-
-            // Generate invoice number
-            $lastInvoice = Invoice::orderBy('created_at', 'desc')->first();
-            $nextNumber = 10001;
-            if ($lastInvoice && preg_match('/INV-(\d+)/', $lastInvoice->invoice_number, $matches)) {
-                $nextNumber = intval($matches[1]) + 1;
-            }
-            $invoiceNumber = 'INV-' . $nextNumber;
-
-            DB::beginTransaction();
-
-            $invoice = Invoice::create([
-                'invoice_number' => $invoiceNumber,
-                'invoice_date' => $validated['invoice_date'],
-                'due_date' => $validated['due_date'],
-                'total_days' => $validated['total_days'],
-                'start_datetime' => $validated['start_datetime'],
-                'end_datetime' => $validated['end_datetime'],
-                'vehicle_id' => $validated['vehicle_id'],
-                'customer_id' => $validated['customer_id'],
-                'sub_total' => $validated['sub_total'],
-                'total_discount' => $validated['total_discount'],
-                'total_amount' => $validated['total_amount'],
-                'vat_rate' => $vatRate,
-                'vat_amount' => $vatAmount,
-            ]);
-
-            // Create invoice items
-            foreach ($request->items as $item) {
-                if (!empty($item['description'])) {
-                    $invoice->items()->create([
-                        'description' => $item['description'],
-                        'amount' => $item['amount'] ?? 0,
-                        'discount' => $item['discount'] ?? 0,
-                    ]);
-                }
-            }
-
-            // Record invoice in IFRS system
-            try {
-                $this->accountingService->recordInvoice($invoice);
-                Log::info("Invoice {$invoice->invoice_number} successfully recorded in accounting system");
-            } catch (Exception $e) {
-                // Log the error but don't fail the invoice creation
-                Log::error("Failed to record invoice {$invoice->invoice_number} in accounting system", [
-                    'error' => $e->getMessage(),
-                    'invoice_id' => $invoice->id,
-                ]);
-                // You might want to add a flag to indicate accounting sync is needed
-            }
-
-            DB::commit();
-
-            return redirect()->route('invoices')
-                ->with('success', 'Invoice created successfully.');
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            DB::rollBack();
-            return back()->withErrors($e->errors())->withInput();
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Invoice creation failed: ' . $e->getMessage());
-            return back()->with('error', 'Failed to create invoice: ' . $e->getMessage())->withInput();
-        }
+        return back()->withErrors([
+            'error' => 'Invoices can only be created through contract finalization.'
+        ]);
     }
 
     public function downloadPdf($id)

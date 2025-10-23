@@ -1366,12 +1366,19 @@ class ContractController extends Controller
     {
         // Validate request
         $validated = $request->validate([
-            'invoice_items' => 'required|array',
+            'invoice_items' => 'array', // Allow empty array since fixed items are handled separately
             'invoice_items.*.description' => 'required|string',
             'invoice_items.*.amount' => 'required|numeric|min:0',
             'refund_deposit' => 'boolean',
             'refund_method' => 'nullable|string|in:cash,transfer,credit',
         ]);
+
+        // Check if contract already has an invoice
+        if ($contract->invoices()->exists()) {
+            return back()->withErrors([
+                'error' => 'This contract already has an invoice. A contract can only have one invoice.'
+            ]);
+        }
 
         DB::beginTransaction();
 
@@ -1387,12 +1394,30 @@ class ContractController extends Controller
             // 3. Record revenue recognition
             $accountingService->recordInvoice($invoice);
 
-            // 4. Handle security deposit refund if applicable
+            // 4. Validate that invoice is fully paid before completing contract
+            $invoice->refresh();
+            
+            // Calculate if invoice is fully paid
+            $appliedCreditsTotal = \App\Models\PaymentReceiptAllocation::where('invoice_id', $invoice->id)
+                ->sum('amount');
+            $totalPaid = $invoice->paid_amount + $appliedCreditsTotal;
+            $amountDue = $invoice->total_amount - $totalPaid;
+
+            if ($amountDue > 0.01) { // Allow small rounding differences
+                // Rollback the transaction
+                DB::rollBack();
+                
+                return back()->withErrors([
+                    'error' => "Cannot finalize contract closure. Invoice must be fully paid. Amount due: " . number_format($amountDue, 2) . " " . $invoice->currency
+                ])->with('invoice_id', $invoice->id); // Pass invoice ID so user can make payment
+            }
+
+            // 5. Handle security deposit refund if applicable
             if ($validated['refund_deposit'] ?? false) {
                 $this->processDepositRefund($contract, $accountingService, $validated['refund_method'] ?? 'cash');
             }
 
-            // 5. Complete contract if not already completed
+            // 6. Complete contract if not already completed
             if ($contract->status !== 'completed') {
                 $contract->update([
                     'status' => 'completed',
@@ -1421,11 +1446,23 @@ class ContractController extends Controller
     /**
      * Create final invoice with all line items.
      */
-    private function createFinalInvoice(Contract $contract, array $invoiceItems): Invoice
+    private function createFinalInvoice(Contract $contract, array $customInvoiceItems): Invoice
     {
-        $totalAmount = array_sum(array_column($invoiceItems, 'amount'));
+        // Get contract closure summary to calculate proper totals
+        $closureService = new ContractClosureService();
+        $summary = $closureService->getContractSummary($contract);
         
-        // Calculate subtotal and VAT (assuming 5% VAT rate)
+        // Calculate total from contract summary (base rental, extensions, charges, fees, etc.)
+        $contractTotal = $summary['rental']['base']['total'] + 
+                        $summary['rental']['extensions']['total'] + 
+                        $summary['additional_charges']['total'] +
+                        ($summary['additional_fees']['total'] ?? 0);
+        
+        // Add custom items total
+        $customItemsTotal = array_sum(array_column($customInvoiceItems, 'amount'));
+        
+        // Calculate final totals
+        $totalAmount = $contractTotal + $customItemsTotal;
         $vatRate = 0.05;
         $subTotal = round($totalAmount / (1 + $vatRate), 2);
         $vatAmount = round($totalAmount - $subTotal, 2);
@@ -1450,8 +1487,11 @@ class ContractController extends Controller
             'team_id' => $contract->team_id,
         ]);
 
-        // Create invoice items
-        foreach ($invoiceItems as $item) {
+        // Create invoice items from contract summary (base rental, extensions, charges, fees)
+        $this->createContractInvoiceItems($invoice, $summary);
+        
+        // Create custom invoice items
+        foreach ($customInvoiceItems as $item) {
             $invoice->items()->create([
                 'description' => $item['description'],
                 'amount' => $item['amount'],
@@ -1460,6 +1500,56 @@ class ContractController extends Controller
         }
 
         return $invoice;
+    }
+
+    /**
+     * Create invoice items from contract summary data.
+     */
+    private function createContractInvoiceItems(Invoice $invoice, array $summary): void
+    {
+        // Base rental
+        if ($summary['rental']['base']['total'] > 0) {
+            $invoice->items()->create([
+                'description' => 'Base Rental',
+                'amount' => $summary['rental']['base']['total'],
+                'discount' => 0,
+            ]);
+        }
+
+        // Extensions
+        foreach ($summary['rental']['extensions']['extensions'] as $extension) {
+            if ($extension['total'] > 0) {
+                $invoice->items()->create([
+                    'description' => 'Extension #' . $extension['extension_number'],
+                    'amount' => $extension['total'],
+                    'discount' => 0,
+                ]);
+            }
+        }
+
+        // Additional charges
+        foreach ($summary['additional_charges']['charges'] as $charge) {
+            if ($charge['amount'] > 0) {
+                $invoice->items()->create([
+                    'description' => $charge['description'],
+                    'amount' => $charge['amount'],
+                    'discount' => 0,
+                ]);
+            }
+        }
+
+        // Additional fees
+        if (isset($summary['additional_fees']['fees'])) {
+            foreach ($summary['additional_fees']['fees'] as $fee) {
+                if ($fee['total'] > 0) {
+                    $invoice->items()->create([
+                        'description' => $fee['fee_type_name'],
+                        'amount' => $fee['total'],
+                        'discount' => 0,
+                    ]);
+                }
+            }
+        }
     }
 
     /**

@@ -152,6 +152,20 @@ const formatNumber = (amount: number) => {
     }).format(amount);
 };
 
+// Calculate amount due to determine if finalize button should be disabled
+const amountDue = computed(() => {
+    // Calculate total invoice amount including fixed lines and custom items
+    const fixedLinesTotal = grandTotal.value; // This includes base rental, extensions, charges, fees, etc.
+    const customItemsTotal = finalizeForm.invoice_items.reduce((sum, item) => sum + item.amount, 0);
+    const totalInvoiceAmount = fixedLinesTotal + customItemsTotal;
+    const totalPaid = props.summary.payments.total;
+    return totalInvoiceAmount - totalPaid;
+});
+
+const isFullyPaid = computed(() => {
+    return amountDue.value <= 0.01; // Allow small rounding differences
+});
+
 const formatDate = (date: string) => {
     const d = new Date(date);
     const day = String(d.getDate()).padStart(2, '0');
@@ -333,9 +347,14 @@ const buildAutoInvoiceItems = () => {
 };
 
 const submitFinalize = () => {
-    const autoItems = buildAutoInvoiceItems();
+    // Only send custom items from the form, not the auto-generated items
+    // The auto-generated items (base rental, extensions, etc.) are handled separately by the backend
     const customItems = (finalizeForm.invoice_items || [])
-        .filter((i) => (i?.description || '').toString().trim().length > 0 && Number(i?.amount) > 0)
+        .filter((i) => {
+            // Only include items that have a description and amount
+            const hasContent = (i?.description || '').toString().trim().length > 0 && Number(i?.amount) > 0;
+            return hasContent;
+        })
         .map((i) => ({
             description: i.description,
             quantity: Number(i.quantity) || 1,
@@ -343,10 +362,8 @@ const submitFinalize = () => {
             amount: round2(Number(i.amount) || 0),
         }));
 
-    const combined = [...autoItems, ...customItems];
-
-    // Update form fields before posting
-    finalizeForm.invoice_items = combined;
+    // Update form fields before posting - only send custom items
+    finalizeForm.invoice_items = customItems;
 
     finalizeForm.post(route('contracts.finalize-closure', props.contract.id), {
         preserveScroll: true,
@@ -654,13 +671,24 @@ onMounted(() => {
                                 </Button>
                                 <Button 
                                     @click="submitFinalize"
-                                    :disabled="finalizeForm.processing"
-                                    class="flex-1 bg-green-600 hover:bg-green-700"
+                                    :disabled="finalizeForm.processing || !isFullyPaid"
+                                    :class="[
+                                        'flex-1',
+                                        isFullyPaid ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'
+                                    ]"
                                     size="sm"
                                 >
                                     <Save class="w-4 h-4 mr-1" />
                                     {{ finalizeForm.processing ? t('finalizing') : t('finalize_invoice') }}
                                 </Button>
+                            </div>
+                            <div class="text-sm mt-2 text-center">
+                                <p v-if="isFullyPaid" class="text-gray-600">
+                                    Contract can be finalized. Invoice is fully paid.
+                                </p>
+                                <p v-else class="text-red-600 font-medium">
+                                    Cannot finalize contract. Amount due: {{ formatCurrency(amountDue) }}
+                                </p>
                             </div>
                         </CardContent>
                     </Card>

@@ -220,6 +220,9 @@ return [
     'delete_invoice_confirm' => 'Are you sure you want to delete this invoice?',
     'download_pdf' => 'Download PDF',
     'send_invoice' => 'Send Invoice',
+    'contract_already_has_invoice' => 'This contract already has an invoice. A contract can only have one invoice.',
+    'invoice_must_be_fully_paid' => 'Cannot finalize contract. Invoice must be fully paid. Amount due: :amount',
+    'invoices_only_via_contract_finalization' => 'Invoices can only be created through contract finalization.',
 
     // Vehicles
     'manage_vehicles' => 'Manage your vehicle fleet',
