@@ -17,12 +17,25 @@ class InvoiceItem extends Model
         'invoice_id',
         'description',
         'amount',
-        'discount'
+        'discount',
+        'vat_treatment',
+        'vat_rate',
+        'amount_excluding_vat',
+        'vat_amount',
+        'amount_including_vat',
+        'item_category',
+        'vat_exempt_reason',
+        'vat_notes'
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
-        'discount' => 'decimal:2'
+        'discount' => 'decimal:2',
+        'vat_rate' => 'decimal:2',
+        'amount_excluding_vat' => 'decimal:2',
+        'vat_amount' => 'decimal:2',
+        'amount_including_vat' => 'decimal:2',
+        'vat_exempt_reason' => 'boolean'
     ];
 
     public function invoice()

@@ -265,39 +265,11 @@
             <td class="label">Paid Amount</td>
             <td class="value">{{ number_format($invoice->paid_amount, 2) }}</td>
         </tr>
-        @if(isset($appliedCreditsTotal) && $appliedCreditsTotal > 0)
-        <tr>
-            <td class="label">Applied Credits</td>
-            <td class="value">-{{ number_format($appliedCreditsTotal, 2) }}</td>
-        </tr>
-        @endif
         <tr class="total-row">
             <td class="label">Amount Due</td>
             <td class="value">{{ number_format(isset($amountDue) ? $amountDue : ($invoice->total_amount - $invoice->paid_amount), 2) }}</td>
         </tr>
     </table>
-
-    @if(isset($appliedCredits) && count($appliedCredits))
-        <div class="section-title">Applied Credits</div>
-        <table class="items-table">
-            <thead>
-                <tr>
-                    <th>Description</th>
-                    <th>Memo</th>
-                    <th class="right">Amount</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($appliedCredits as $credit)
-                    <tr>
-                        <td>{{ $credit->description }}</td>
-                        <td>{{ $credit->memo ?? '-' }}</td>
-                        <td class="right">{{ number_format($credit->amount, 2) }}</td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-    @endif
 
     <div class="footer">
         Luxuria Cars Rental &mdash; Abu Dhabi, UAE &mdash; info@luxuriacars.com &mdash; +971 50 123 4567

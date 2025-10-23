@@ -128,11 +128,20 @@ class Invoice extends Model
     }
 
     /**
-     * Boot method to sync payment fields when payments are added.
+     * Boot method to sync payment fields when payments are added and prevent duplicate invoices per contract.
      */
     protected static function boot()
     {
         parent::boot();
+        
+        static::creating(function ($invoice) {
+            if ($invoice->contract_id) {
+                $existing = static::where('contract_id', $invoice->contract_id)->exists();
+                if ($existing) {
+                    throw new \RuntimeException('A contract can only have one invoice.');
+                }
+            }
+        });
         
         static::saved(function ($invoice) {
             // Only sync if the total_amount changed to avoid infinite loops

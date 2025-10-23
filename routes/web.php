@@ -34,6 +34,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/invoices/{invoice}', [InvoiceController::class, 'update'])->name('invoices.update');
     Route::delete('/invoices/{invoice}', [InvoiceController::class, 'destroy'])->name('invoices.destroy');
     Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'downloadPdf'])->name('invoices.generatePdf');
+    Route::get('/invoices/{invoice}/pdf-simple', [InvoiceController::class, 'downloadSimplePdf'])->name('invoices.generateSimplePdf');
     Route::post('/payments/{invoice}', [\App\Http\Controllers\PaymentController::class, 'store'])->name('payments.store');
     Route::get('/payments/{id}/receipt', [PaymentController::class, 'downloadReceipt'])->name('payments.receipt');
     Route::post('/invoices/{invoice}/send', [InvoiceController::class, 'sendToCustomer'])->name('invoices.send');

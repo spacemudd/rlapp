@@ -16,11 +16,45 @@ use Illuminate\Support\Facades\Log;
 class DashboardController extends Controller
 {
     /**
-     * Calculate contract balance (total - paid allocations)
+     * Calculate contract balance (rental total - rental payments only)
      */
     private function calculateContractBalance($contract): float
     {
+        // Base rental amount only (exclude additional fees from balance calculation)
         $totalAmount = (float) $contract->total_amount;
+        
+        // Calculate paid amount from rental-related allocations only (exclude additional fees)
+        $paidAmount = (float) \App\Models\PaymentReceiptAllocation::query()
+            ->whereHas('paymentReceipt', function ($q) use ($contract) {
+                $q->where('contract_id', $contract->id)
+                  ->where('status', 'completed');
+            })
+            ->whereNotIn('row_id', function ($query) {
+                $query->select('id')
+                      ->from('contract_additional_fees')
+                      ->whereColumn('contract_additional_fees.id', 'payment_receipt_allocations.row_id');
+            })
+            ->where('row_id', 'not like', 'additional_fee_%')
+            ->sum('amount');
+        
+        return $totalAmount - $paidAmount;
+    }
+
+    /**
+     * Calculate contract balance including additional fees (total amount + additional fees - all payments)
+     */
+    private function calculateContractBalanceWithAdditionalFees($contract): float
+    {
+        // Base rental amount
+        $rentalAmount = (float) $contract->total_amount;
+        
+        // Calculate additional fees total
+        $additionalFeesTotal = (float) $contract->additionalFees()->sum('total');
+        
+        // Total amount including additional fees
+        $totalAmount = $rentalAmount + $additionalFeesTotal;
+        
+        // Calculate paid amount from ALL allocations (rental + additional fees)
         $paidAmount = (float) \App\Models\PaymentReceiptAllocation::query()
             ->whereHas('paymentReceipt', function ($q) use ($contract) {
                 $q->where('contract_id', $contract->id)
@@ -149,12 +183,18 @@ class DashboardController extends Controller
                 ];
             }),
             'vehicles_to_deliver_today' => $vehiclesToDeliverToday->map(function($contract) {
+                // Calculate balance FIRST with original amounts
+                $balance = $this->calculateContractBalanceWithAdditionalFees($contract);
+                
+                // THEN calculate additional fees total for display
+                $additionalFeesTotal = (float) $contract->additionalFees()->sum('total');
+                
                 return [
                     'id' => $contract->id,
                     'contract_number' => $contract->contract_number,
                     'start_date' => $contract->start_date,
-                    'total_amount' => (float) $contract->total_amount,
-                    'balance' => $this->calculateContractBalance($contract),
+                    'total_amount' => (float) $contract->total_amount + $additionalFeesTotal,
+                    'balance' => $balance,
                     'customer' => $contract->customer ? [
                         'id' => $contract->customer->id,
                         'first_name' => $contract->customer->first_name,
@@ -171,12 +211,18 @@ class DashboardController extends Controller
                 ];
             }),
             'vehicles_to_receive' => $vehiclesToReceive->map(function($contract) {
+                // Calculate balance FIRST with original amounts
+                $balance = $this->calculateContractBalanceWithAdditionalFees($contract);
+                
+                // THEN calculate additional fees total for display
+                $additionalFeesTotal = (float) $contract->additionalFees()->sum('total');
+                
                 return [
                     'id' => $contract->id,
                     'contract_number' => $contract->contract_number,
                     'end_date' => $contract->end_date,
-                    'total_amount' => (float) $contract->total_amount,
-                    'balance' => $this->calculateContractBalance($contract),
+                    'total_amount' => (float) $contract->total_amount + $additionalFeesTotal,
+                    'balance' => $balance,
                     'customer' => $contract->customer ? [
                         'id' => $contract->customer->id,
                         'first_name' => $contract->customer->first_name,

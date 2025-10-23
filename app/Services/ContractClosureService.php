@@ -10,6 +10,23 @@ use Carbon\Carbon;
 
 class ContractClosureService
 {
+    private function splitVATAmount(float $amount, bool $isVatInclusive, float $vatRate = 0.05): array
+    {
+        if ($isVatInclusive) {
+            $netAmount = round($amount / (1 + $vatRate), 2);
+            $vatAmount = round($amount - $netAmount, 2);
+        } else {
+            $netAmount = $amount;
+            $vatAmount = round($amount * $vatRate, 2);
+        }
+        
+        return [
+            'net' => $netAmount,
+            'vat' => $vatAmount,
+            'total' => $netAmount + $vatAmount,
+        ];
+    }
+
     public function calculateFinancialSummary(Contract $contract): array
     {
         return [
@@ -26,14 +43,20 @@ class ContractClosureService
 
     private function calculateBaseRental(Contract $contract): array
     {
-        $startDate = Carbon::parse($contract->start_date);
-        $endDate = Carbon::parse($contract->end_date);
-        $days = $startDate->diffInDays($endDate) + 1; // Include both start and end dates
+        // Use the contract's total_days field instead of calculating from dates
+        // This ensures consistency with the contract's actual duration
+        $days = (int) $contract->total_days;
+        $total = $days * $contract->daily_rate;
+        $vatSplit = $this->splitVATAmount((float) $total, $contract->is_vat_inclusive ?? true);
         
         return [
             'days' => $days,
             'daily_rate' => $contract->daily_rate,
-            'total' => $days * $contract->daily_rate,
+            'total' => $total,
+            'net_amount' => $vatSplit['net'],
+            'vat_amount' => $vatSplit['vat'],
+            'unit_price_net' => round($vatSplit['net'] / max(1, $days), 2),
+            'is_vat_inclusive' => $contract->is_vat_inclusive ?? true,
             'currency' => $contract->currency ?? 'AED',
         ];
     }
@@ -47,18 +70,26 @@ class ContractClosureService
         
         $extensions = $contract->extensions ?? collect();
         $total = 0;
+        $totalNet = 0;
+        $totalVat = 0;
         $extensionDetails = [];
 
         foreach ($extensions as $extension) {
             if ($extension->status === 'approved') {
                 $extensionTotal = $extension->extension_days * $extension->daily_rate;
+                $vatSplit = $this->splitVATAmount((float) $extensionTotal, $contract->is_vat_inclusive ?? true);
                 $total += $extensionTotal;
+                $totalNet += $vatSplit['net'];
+                $totalVat += $vatSplit['vat'];
                 
                 $extensionDetails[] = [
                     'extension_number' => $extension->extension_number,
                     'days' => $extension->extension_days,
                     'daily_rate' => $extension->daily_rate,
                     'total' => $extensionTotal,
+                    'net_amount' => $vatSplit['net'],
+                    'vat_amount' => $vatSplit['vat'],
+                    'unit_price_net' => round($vatSplit['net'] / max(1, $extension->extension_days), 2),
                     'reason' => $extension->reason ?? null,
                 ];
             }
@@ -67,6 +98,8 @@ class ContractClosureService
         return [
             'extensions' => $extensionDetails,
             'total' => $total,
+            'net_amount' => $totalNet,
+            'vat_amount' => $totalVat,
             'currency' => $contract->currency ?? 'AED',
         ];
     }
@@ -115,25 +148,47 @@ class ContractClosureService
     {
         $charges = [];
         $total = 0;
+        $totalNet = 0;
+        $totalVat = 0;
 
-        // Excess mileage charge
-        if ($contract->excess_mileage_charge && $contract->excess_mileage_charge > 0) {
+        // Check if there are ContractAdditionalFee records for these charges
+        // If so, don't include them in additional_charges to avoid duplication
+        $hasFuelFee = $contract->additionalFees()
+            ->where('description', __('words.fuel_charge_description'))
+            ->exists();
+        
+        $hasExcessMileageFee = $contract->additionalFees()
+            ->where('description', __('words.excess_mileage_charge_description'))
+            ->exists();
+
+        // Excess mileage charge - only include if no ContractAdditionalFee exists
+        if ($contract->excess_mileage_charge && $contract->excess_mileage_charge > 0 && !$hasExcessMileageFee) {
+            $vatSplit = $this->splitVATAmount((float) $contract->excess_mileage_charge, $contract->is_vat_inclusive ?? true);
             $charges[] = [
                 'type' => 'excess_mileage',
                 'description' => __('words.excess_mileage_charge'),
                 'amount' => $contract->excess_mileage_charge,
+                'net_amount' => $vatSplit['net'],
+                'vat_amount' => $vatSplit['vat'],
             ];
             $total += $contract->excess_mileage_charge;
+            $totalNet += $vatSplit['net'];
+            $totalVat += $vatSplit['vat'];
         }
 
-        // Fuel charge
-        if ($contract->fuel_charge && $contract->fuel_charge > 0) {
+        // Fuel charge - only include if no ContractAdditionalFee exists
+        if ($contract->fuel_charge && $contract->fuel_charge > 0 && !$hasFuelFee) {
+            $vatSplit = $this->splitVATAmount((float) $contract->fuel_charge, $contract->is_vat_inclusive ?? true);
             $charges[] = [
                 'type' => 'fuel_charge',
                 'description' => __('words.fuel_charge'),
                 'amount' => $contract->fuel_charge,
+                'net_amount' => $vatSplit['net'],
+                'vat_amount' => $vatSplit['vat'],
             ];
             $total += $contract->fuel_charge;
+            $totalNet += $vatSplit['net'];
+            $totalVat += $vatSplit['vat'];
         }
 
         // Late return charge (if contract is completed and there's a late return)
@@ -144,20 +199,27 @@ class ContractClosureService
             if ($completedAt->gt($endDate)) {
                 $lateDays = $endDate->diffInDays($completedAt);
                 $lateCharge = $lateDays * $contract->daily_rate;
+                $vatSplit = $this->splitVATAmount((float) $lateCharge, $contract->is_vat_inclusive ?? true);
                 
                 $charges[] = [
                     'type' => 'late_return',
                     'description' => __('words.late_return_charge'),
                     'amount' => $lateCharge,
+                    'net_amount' => $vatSplit['net'],
+                    'vat_amount' => $vatSplit['vat'],
                     'details' => "{$lateDays} " . __('words.days') . " × " . number_format($contract->daily_rate, 2) . " AED",
                 ];
                 $total += $lateCharge;
+                $totalNet += $vatSplit['net'];
+                $totalVat += $vatSplit['vat'];
             }
         }
 
         return [
             'charges' => $charges,
             'total' => $total,
+            'net_amount' => $totalNet,
+            'vat_amount' => $totalVat,
             'currency' => $contract->currency ?? 'AED',
         ];
     }
@@ -337,5 +399,96 @@ class ContractClosureService
                 'currency' => $contract->currency ?? 'AED',
             ],
         ];
+    }
+
+    public function buildInvoiceItems(Contract $contract): array
+    {
+        $items = [];
+        $summary = $this->calculateFinancialSummary($contract);
+        
+        // Base rental
+        if ($summary['base_rental']['total'] > 0) {
+            $items[] = [
+                'description' => 'Base Rental',
+                'quantity' => $summary['base_rental']['days'],
+                'unit_price' => $summary['base_rental']['unit_price_net'],
+                'amount' => $summary['base_rental']['net_amount'],
+            ];
+        }
+        
+        // Extensions
+        foreach ($summary['extensions']['extensions'] as $ext) {
+            $items[] = [
+                'description' => "Extension #{$ext['extension_number']}",
+                'quantity' => $ext['days'],
+                'unit_price' => $ext['unit_price_net'],
+                'amount' => $ext['net_amount'],
+            ];
+        }
+        
+        // Additional charges
+        foreach ($summary['additional_charges']['charges'] as $charge) {
+            $items[] = [
+                'description' => $charge['description'],
+                'quantity' => 1,
+                'unit_price' => $charge['net_amount'],
+                'amount' => $charge['net_amount'],
+            ];
+        }
+        
+        // Additional fees (already have VAT included in total)
+        foreach ($summary['additional_fees']['fees'] as $fee) {
+            $items[] = [
+                'description' => $fee['fee_type_name'] . 
+                    ($fee['description'] ? " - {$fee['description']}" : '') .
+                    ($fee['discount'] > 0 ? " (Discount: " . number_format($fee['discount'], 2) . ")" : ''),
+                'quantity' => $fee['quantity'],
+                'unit_price' => $fee['unit_price'],
+                'amount' => $fee['total'],
+            ];
+        }
+        
+        // Insurance fee (from Quick Pay)
+        $insuranceAmount = $this->getInsuranceFeeAmount($contract);
+        if ($insuranceAmount > 0) {
+            $items[] = [
+                'description' => 'Insurance Fee',
+                'quantity' => 1,
+                'unit_price' => $insuranceAmount,
+                'amount' => $insuranceAmount,
+            ];
+        }
+        
+        // Security deposit (if included as line)
+        $securityDepositAmount = $summary['security_deposit']['amount'];
+        if ($securityDepositAmount > 0) {
+            $items[] = [
+                'description' => 'Security Deposit',
+                'quantity' => 1,
+                'unit_price' => $securityDepositAmount,
+                'amount' => $securityDepositAmount,
+            ];
+        }
+        
+        return $items;
+    }
+
+    private function getInsuranceFeeAmount(Contract $contract): float
+    {
+        $payments = $contract->paymentReceipts()
+            ->with('allocations')
+            ->get();
+
+        $total = 0;
+        foreach ($payments as $payment) {
+            foreach ($payment->allocations as $allocation) {
+                if (str_contains($allocation->description, 'تأمين') || 
+                    str_contains(strtolower($allocation->description), 'insurance')) {
+                    $total += $allocation->amount;
+                }
+            }
+        }
+        
+        return $total;
     }
 }

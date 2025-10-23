@@ -24,11 +24,45 @@ use Illuminate\Support\Facades\App;
 class ContractController extends Controller
 {
     /**
-     * Calculate contract balance (total - paid allocations)
+     * Calculate contract balance (rental total - rental payments only)
      */
     private function calculateContractBalance($contract): float
     {
+        // Base rental amount only (exclude additional fees from balance calculation)
         $totalAmount = (float) $contract->total_amount;
+        
+        // Calculate paid amount from rental-related allocations only (exclude additional fees)
+        $paidAmount = (float) \App\Models\PaymentReceiptAllocation::query()
+            ->whereHas('paymentReceipt', function ($q) use ($contract) {
+                $q->where('contract_id', $contract->id)
+                  ->where('status', 'completed');
+            })
+            ->whereNotIn('row_id', function ($query) {
+                $query->select('id')
+                      ->from('contract_additional_fees')
+                      ->whereColumn('contract_additional_fees.id', 'payment_receipt_allocations.row_id');
+            })
+            ->where('row_id', 'not like', 'additional_fee_%')
+            ->sum('amount');
+        
+        return $totalAmount - $paidAmount;
+    }
+
+    /**
+     * Calculate contract balance including additional fees (total amount + additional fees - all payments)
+     */
+    private function calculateContractBalanceWithAdditionalFees($contract): float
+    {
+        // Base rental amount
+        $rentalAmount = (float) $contract->total_amount;
+        
+        // Calculate additional fees total
+        $additionalFeesTotal = (float) $contract->additionalFees()->sum('total');
+        
+        // Total amount including additional fees
+        $totalAmount = $rentalAmount + $additionalFeesTotal;
+        
+        // Calculate paid amount from ALL allocations (rental + additional fees)
         $paidAmount = (float) \App\Models\PaymentReceiptAllocation::query()
             ->whereHas('paymentReceipt', function ($q) use ($contract) {
                 $q->where('contract_id', $contract->id)
@@ -75,9 +109,15 @@ class ContractController extends Controller
 
         $contracts = $query->paginate(10)->withQueryString();
         
-        // Add balance calculation to each contract
+        // Add balance calculation and update total_amount to include additional fees
         $contracts->getCollection()->transform(function ($contract) {
-            $contract->balance = $this->calculateContractBalance($contract);
+            // Calculate balance FIRST with original amounts
+            $contract->balance = $this->calculateContractBalanceWithAdditionalFees($contract);
+            
+            // THEN update total_amount for display
+            $additionalFeesTotal = (float) $contract->additionalFees()->sum('total');
+            $contract->total_amount = (float) $contract->total_amount + $additionalFeesTotal;
+            
             return $contract;
         });
 
@@ -1288,11 +1328,21 @@ class ContractController extends Controller
             'return_fuel_level' => 'required|string|in:full,3/4,1/2,1/4,low,empty',
             'return_condition_photos' => 'nullable|array',
             'fuel_charge' => 'nullable|numeric|min:0',
+            'fuel_charge_fee_type' => 'required_if:fuel_charge,>,0|string',
+            'excess_mileage_fee_type' => 'nullable|string',
         ]);
         
         // Ensure contract is active
         if ($contract->status !== 'active') {
             return back()->withErrors(['error' => 'Only active contracts can be closed.']);
+        }
+        
+        // Calculate excess mileage charge
+        $excessMileageCharge = 0;
+        if ($contract->mileage_limit && $contract->excess_mileage_rate) {
+            $actualMileage = $validated['return_mileage'] - $contract->pickup_mileage;
+            $excessMileage = max(0, $actualMileage - $contract->mileage_limit);
+            $excessMileageCharge = $excessMileage * $contract->excess_mileage_rate;
         }
         
         // Record vehicle return using existing model method
@@ -1302,12 +1352,16 @@ class ContractController extends Controller
             returnPhotos: $validated['return_condition_photos'] ?? []
         );
         
-        // Update contract with manual fuel charge if provided
+        // Update contract with charges
         $contract->update([
             'status' => 'completed',
             'completed_at' => now(),
             'fuel_charge' => $validated['fuel_charge'] ?? 0,
+            'excess_mileage_charge' => $excessMileageCharge,
         ]);
+
+        // Create ContractAdditionalFee records for charges
+        $this->createAdditionalFeesFromCharges($contract, $validated, $excessMileageCharge);
 
         // Record vehicle movement for contract return
         $movementService = new VehicleMovementService();
@@ -1319,6 +1373,43 @@ class ContractController extends Controller
         
         return redirect()->route('contracts.show', $contract)
             ->with('success', 'Contract closed successfully');
+    }
+
+    /**
+     * Create ContractAdditionalFee records from closure charges.
+     * These fees are VAT-exempt as they represent direct charges to the customer.
+     */
+    private function createAdditionalFeesFromCharges(Contract $contract, array $validated, float $excessMileageCharge): void
+    {
+        // Create fuel charge additional fee if applicable
+        if (($validated['fuel_charge'] ?? 0) > 0 && !empty($validated['fuel_charge_fee_type'])) {
+            \App\Models\ContractAdditionalFee::create([
+                'contract_id' => $contract->id,
+                'fee_type' => $validated['fuel_charge_fee_type'],
+                'description' => __('words.fuel_charge_description'),
+                'quantity' => 1,
+                'unit_price' => $validated['fuel_charge'],
+                'discount' => 0,
+                'vat_account_id' => null, // No VAT account needed for exempt fees
+                'is_vat_exempt' => true, // No VAT on closure charges
+                'created_by' => auth()->id(),
+            ]);
+        }
+
+        // Create excess mileage charge additional fee if applicable
+        if ($excessMileageCharge > 0 && !empty($validated['excess_mileage_fee_type'])) {
+            \App\Models\ContractAdditionalFee::create([
+                'contract_id' => $contract->id,
+                'fee_type' => $validated['excess_mileage_fee_type'],
+                'description' => __('words.excess_mileage_charge_description'),
+                'quantity' => 1,
+                'unit_price' => $excessMileageCharge,
+                'discount' => 0,
+                'vat_account_id' => null, // No VAT account needed for exempt fees
+                'is_vat_exempt' => true, // No VAT on closure charges
+                'created_by' => auth()->id(),
+            ]);
+        }
     }
 
     /**
@@ -1334,10 +1425,12 @@ class ContractController extends Controller
 
         $closureService = new ContractClosureService();
         $summary = $closureService->getContractSummary($contract);
+        $invoiceItems = $closureService->buildInvoiceItems($contract);
 
         return Inertia::render('Contracts/ClosureReview', [
             'contract' => $contract->load(['customer', 'vehicle', 'paymentReceipts.allocations', 'extensions', 'additionalFees']),
             'summary' => $summary,
+            'invoiceItems' => $invoiceItems,
         ]);
     }
 
@@ -1360,21 +1453,27 @@ class ContractController extends Controller
     /**
      * Finalize contract closure and create invoice with IFRS entries.
      */
-    public function finalizeClosure(Contract $contract, Request $request): RedirectResponse
+    public function finalizeClosure(Contract $contract, Request $request, AccountingService $accountingService): RedirectResponse
     {
         // Validate request
         $validated = $request->validate([
-            'invoice_items' => 'required|array',
+            'invoice_items' => 'array', // Allow empty array since fixed items are handled separately
             'invoice_items.*.description' => 'required|string',
             'invoice_items.*.amount' => 'required|numeric|min:0',
             'refund_deposit' => 'boolean',
             'refund_method' => 'nullable|string|in:cash,transfer,credit',
         ]);
 
+        // Check if contract already has an invoice
+        if ($contract->invoices()->exists()) {
+            return back()->withErrors([
+                'error' => 'This contract already has an invoice. A contract can only have one invoice.'
+            ]);
+        }
+
         DB::beginTransaction();
 
         try {
-            $accountingService = new AccountingService();
             $closureService = new ContractClosureService();
 
             // 1. Create final invoice
@@ -1386,12 +1485,30 @@ class ContractController extends Controller
             // 3. Record revenue recognition
             $accountingService->recordInvoice($invoice);
 
-            // 4. Handle security deposit refund if applicable
+            // 4. Validate that invoice is fully paid before completing contract
+            $invoice->refresh();
+            
+            // Calculate if invoice is fully paid
+            $appliedCreditsTotal = \App\Models\PaymentReceiptAllocation::where('invoice_id', $invoice->id)
+                ->sum('amount');
+            $totalPaid = $invoice->paid_amount + $appliedCreditsTotal;
+            $amountDue = $invoice->total_amount - $totalPaid;
+
+            if ($amountDue > 0.01) { // Allow small rounding differences
+                // Rollback the transaction
+                DB::rollBack();
+                
+                return back()->withErrors([
+                    'error' => "Cannot finalize contract closure. Invoice must be fully paid. Amount due: " . number_format($amountDue, 2) . " " . $invoice->currency
+                ])->with('invoice_id', $invoice->id); // Pass invoice ID so user can make payment
+            }
+
+            // 5. Handle security deposit refund if applicable
             if ($validated['refund_deposit'] ?? false) {
                 $this->processDepositRefund($contract, $accountingService, $validated['refund_method'] ?? 'cash');
             }
 
-            // 5. Complete contract if not already completed
+            // 6. Complete contract if not already completed
             if ($contract->status !== 'completed') {
                 $contract->update([
                     'status' => 'completed',
@@ -1420,33 +1537,124 @@ class ContractController extends Controller
     /**
      * Create final invoice with all line items.
      */
-    private function createFinalInvoice(Contract $contract, array $invoiceItems): Invoice
+    private function createFinalInvoice(Contract $contract, array $customInvoiceItems): Invoice
     {
-        $totalAmount = array_sum(array_column($invoiceItems, 'amount'));
+        // Get contract closure summary to calculate proper totals
+        $closureService = new ContractClosureService();
+        $summary = $closureService->getContractSummary($contract);
+        
+        // Use proper totals from closure service (already has VAT split)
+        $subTotal = $summary['rental']['base']['net_amount'] + 
+                    $summary['rental']['extensions']['net_amount'] + 
+                    $summary['additional_charges']['net_amount'] +
+                    ($summary['additional_fees']['subtotal'] ?? 0);
+        
+        $vatAmount = $summary['rental']['base']['vat_amount'] + 
+                     $summary['rental']['extensions']['vat_amount'] + 
+                     $summary['additional_charges']['vat_amount'] +
+                     ($summary['additional_fees']['vat'] ?? 0);
+        
+        // Add custom items total (custom items are treated as net amounts)
+        $customItemsTotal = array_sum(array_column($customInvoiceItems, 'amount'));
+        
+        // Calculate final totals
+        $totalAmount = $subTotal + $vatAmount + $customItemsTotal;
 
         $invoice = Invoice::create([
             'contract_id' => $contract->id,
             'customer_id' => $contract->customer_id,
+            'vehicle_id' => $contract->vehicle_id,
             'invoice_number' => $this->generateInvoiceNumber(),
-            'invoice_date' => now()->toDateString(),
-            'due_date' => now()->addDays(30)->toDateString(),
+            'invoice_date' => now(),
+            'due_date' => now()->addDays(30),
+            'total_days' => $contract->total_days,
+            'start_datetime' => $contract->start_date,
+            'end_datetime' => $contract->end_date,
+            'sub_total' => $subTotal,
+            'total_discount' => 0,
             'total_amount' => $totalAmount,
+            'vat_amount' => $vatAmount,
+            'vat_rate' => 5,
             'currency' => $contract->currency ?? 'AED',
             'status' => 'pending',
             'team_id' => $contract->team_id,
         ]);
 
-        // Create invoice items
-        foreach ($invoiceItems as $item) {
+        // Create invoice items from contract summary (base rental, extensions, charges, fees)
+        $this->createContractInvoiceItems($invoice, $summary);
+        
+        // Create custom invoice items
+        foreach ($customInvoiceItems as $item) {
             $invoice->items()->create([
                 'description' => $item['description'],
-                'quantity' => $item['quantity'] ?? 1,
-                'unit_price' => $item['amount'],
-                'total_amount' => $item['amount'],
+                'amount' => $item['amount'],
+                'discount' => 0,
             ]);
         }
 
         return $invoice;
+    }
+
+    /**
+     * Create invoice items from contract summary data.
+     */
+    private function createContractInvoiceItems(Invoice $invoice, array $summary): void
+    {
+        // Base rental
+        if ($summary['rental']['base']['total'] > 0) {
+            $invoice->items()->create([
+                'description' => 'Base Rental',
+                'amount' => $summary['rental']['base']['net_amount'],
+                'subtotal' => $summary['rental']['base']['net_amount'],
+                'vat_amount' => $summary['rental']['base']['vat_amount'],
+                'total' => $summary['rental']['base']['total'],
+                'discount' => 0,
+            ]);
+        }
+
+        // Extensions
+        foreach ($summary['rental']['extensions']['extensions'] as $extension) {
+            if ($extension['total'] > 0) {
+                $invoice->items()->create([
+                    'description' => 'Extension #' . $extension['extension_number'],
+                    'amount' => $extension['net_amount'],
+                    'subtotal' => $extension['net_amount'],
+                    'vat_amount' => $extension['vat_amount'],
+                    'total' => $extension['total'],
+                    'discount' => 0,
+                ]);
+            }
+        }
+
+        // Additional charges
+        foreach ($summary['additional_charges']['charges'] as $charge) {
+            if ($charge['amount'] > 0) {
+                $invoice->items()->create([
+                    'description' => $charge['description'],
+                    'amount' => $charge['net_amount'],
+                    'subtotal' => $charge['net_amount'],
+                    'vat_amount' => $charge['vat_amount'],
+                    'total' => $charge['total'],
+                    'discount' => 0,
+                ]);
+            }
+        }
+
+        // Additional fees
+        if (isset($summary['additional_fees']['fees'])) {
+            foreach ($summary['additional_fees']['fees'] as $fee) {
+                if ($fee['total'] > 0) {
+                    $invoice->items()->create([
+                        'description' => $fee['fee_type_name'],
+                        'amount' => $fee['subtotal'],
+                        'subtotal' => $fee['subtotal'],
+                        'vat_amount' => $fee['vat_amount'],
+                        'total' => $fee['total'],
+                        'discount' => 0,
+                    ]);
+                }
+            }
+        }
     }
 
     /**
