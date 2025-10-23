@@ -21,6 +21,7 @@ interface Contract {
     status: string;
     start_date: string;
     end_date: string;
+    is_vat_inclusive: boolean;
     customer: {
         first_name: string;
         last_name: string;
@@ -41,6 +42,10 @@ interface Summary {
             days: number;
             daily_rate: number;
             total: number;
+            net_amount: number;
+            vat_amount: number;
+            unit_price_net: number;
+            is_vat_inclusive: boolean;
         };
         extensions: {
             extensions: Array<{
@@ -48,8 +53,13 @@ interface Summary {
                 days: number;
                 daily_rate: number;
                 total: number;
+                net_amount: number;
+                vat_amount: number;
+                unit_price_net: number;
             }>;
             total: number;
+            net_amount: number;
+            vat_amount: number;
         };
     };
     payments: {
@@ -70,8 +80,12 @@ interface Summary {
             type: string;
             description: string;
             amount: number;
+            net_amount: number;
+            vat_amount: number;
         }>;
         total: number;
+        net_amount: number;
+        vat_amount: number;
     };
     additional_fees: {
         fees: Array<{
@@ -96,9 +110,17 @@ interface Summary {
     };
 }
 
+interface InvoiceItem {
+    description: string;
+    quantity: number;
+    unit_price: number;
+    amount: number;
+}
+
 interface Props {
     contract: Contract;
     summary: Summary;
+    invoiceItems: InvoiceItem[];
 }
 
 const props = defineProps<Props>();
@@ -138,14 +160,8 @@ const formatDate = (date: string) => {
     return `${day}-${month}-${year}`;
 };
 
-const VAT_RATE = 0.05;
-
 // Helpers
 const round2 = (amount: number) => Math.round((Number(amount) + Number.EPSILON) * 100) / 100;
-const calcVat = (amount: number) => round2(Number(amount) * VAT_RATE);
-
-// Pre-calculated VAT for base rental
-const baseRentalVat = computed(() => calcVat(props.summary.rental.base.total));
 
 // Get amount for specific allocation from payments
 const getPaymentAllocationAmount = (rowId: string): number => {
@@ -180,36 +196,21 @@ const securityDepositAmount = computed(() => {
     return props.summary.security_deposit.amount;
 });
 
-const fixedLinesSubtotal = computed(() => {
-    return props.summary.rental.base.total + 
-           props.summary.rental.extensions.total + 
-           props.summary.additional_charges.total +
+const subtotal = computed(() => {
+    return props.summary.rental.base.net_amount + 
+           props.summary.rental.extensions.net_amount + 
+           props.summary.additional_charges.net_amount +
            (props.summary.additional_fees?.subtotal || 0) +
            insuranceFeeAmount.value +
-           securityDepositAmount.value;
-});
-
-const customLinesSubtotal = computed(() => {
-    return finalizeForm.invoice_items.reduce((sum, item) => sum + item.amount, 0);
-});
-
-const subtotal = computed(() => {
-    return fixedLinesSubtotal.value + customLinesSubtotal.value;
+           securityDepositAmount.value +
+           finalizeForm.invoice_items.reduce((sum, item) => sum + item.amount, 0);
 });
 
 const vatAmount = computed(() => {
-    // VAT on items without pre-calculated VAT
-    const itemsWithoutVAT = props.summary.rental.base.total + 
-                            props.summary.rental.extensions.total + 
-                            props.summary.additional_charges.total +
-                            insuranceFeeAmount.value +
-                            securityDepositAmount.value +
-                            customLinesSubtotal.value;
-    
-    // Add pre-calculated VAT from additional fees
-    const additionalFeesVAT = props.summary.additional_fees?.vat || 0;
-    
-    return (itemsWithoutVAT * VAT_RATE) + additionalFeesVAT;
+    return props.summary.rental.base.vat_amount + 
+           props.summary.rental.extensions.vat_amount + 
+           props.summary.additional_charges.vat_amount +
+           (props.summary.additional_fees?.vat || 0);
 });
 
 // Computed totals for table footer
@@ -221,29 +222,27 @@ const tableTotals = computed(() => {
 
     // Base rental
     totalQty += Number(props.summary.rental.base.days) || 0;
-    totalSubtotal += Number(props.summary.rental.base.total) || 0;
-    totalVat += baseRentalVat.value;
-    totalAmount += Number(props.summary.rental.base.total) + baseRentalVat.value || 0;
+    totalSubtotal += Number(props.summary.rental.base.net_amount) || 0;
+    totalVat += Number(props.summary.rental.base.vat_amount) || 0;
+    totalAmount += Number(props.summary.rental.base.total) || 0;
 
     // Extensions
     if (props.summary.rental.extensions?.extensions) {
         props.summary.rental.extensions.extensions.forEach(ext => {
-            const extVat = calcVat(ext.total);
             totalQty += Number(ext.days) || 0;
-            totalSubtotal += Number(ext.total) || 0;
-            totalVat += extVat;
-            totalAmount += (Number(ext.total) || 0) + extVat;
+            totalSubtotal += Number(ext.net_amount) || 0;
+            totalVat += Number(ext.vat_amount) || 0;
+            totalAmount += Number(ext.total) || 0;
         });
     }
 
     // Additional charges
     if (props.summary.additional_charges?.charges) {
         props.summary.additional_charges.charges.forEach(charge => {
-            const chVat = calcVat(charge.amount);
             totalQty += 1;
-            totalSubtotal += Number(charge.amount) || 0;
-            totalVat += chVat;
-            totalAmount += (Number(charge.amount) || 0) + chVat;
+            totalSubtotal += Number(charge.net_amount) || 0;
+            totalVat += Number(charge.vat_amount) || 0;
+            totalAmount += Number(charge.amount) || 0;
         });
     }
 
@@ -257,9 +256,6 @@ const tableTotals = computed(() => {
         });
     }
 
-    // Delivery (hardcoded)
-    totalQty += 1;
-    // 0 amount
 
     // Insurance fee
     if (insuranceFeeAmount.value > 0) {
@@ -331,83 +327,9 @@ const updateItemTotal = (index: number) => {
     item.amount = item.quantity * item.unit_price;
 };
 
-// Build system-generated invoice items from current summary (amounts include VAT where applicable)
+// Use backend-provided invoice items
 const buildAutoInvoiceItems = () => {
-    const items: Array<{ description: string; quantity: number; unit_price: number; amount: number }> = [];
-
-    // Base rental
-    if (props.summary.rental.base.total > 0) {
-        items.push({
-            description: t('base_rental'),
-            quantity: Number(props.summary.rental.base.days) || 1,
-            unit_price: Number(props.summary.rental.base.daily_rate) || Number(props.summary.rental.base.total),
-            amount: round2((Number(props.summary.rental.base.total) || 0) + baseRentalVat.value),
-        });
-    }
-
-    // Extensions
-    (props.summary.rental.extensions.extensions || []).forEach((ext: any) => {
-        const extTotal = Number(ext.total) || 0;
-        if (extTotal > 0) {
-            items.push({
-                description: `${t('extension')} #${ext.extension_number}`,
-                quantity: Number(ext.days) || 1,
-                unit_price: Number(ext.daily_rate) || extTotal,
-                amount: round2(extTotal + calcVat(extTotal)),
-            });
-        }
-    });
-
-    // Additional charges
-    (props.summary.additional_charges.charges || []).forEach((charge: any) => {
-        const amt = Number(charge.amount) || 0;
-        if (amt > 0) {
-            items.push({
-                description: charge.description,
-                quantity: 1,
-                unit_price: amt,
-                amount: round2(amt + calcVat(amt)),
-            });
-        }
-    });
-
-    // Additional fees (already have VAT included in total)
-    (props.summary.additional_fees?.fees || []).forEach((fee: any) => {
-        const total = Number(fee.total) || 0;
-        if (total > 0) {
-            items.push({
-            description: fee.fee_type_name +
-                (fee.description ? ` - ${fee.description}` : '') +
-                (Number(fee.discount) > 0 ? ` (${t('discount')}: ${formatNumber(fee.discount)})` : ''),
-                quantity: Number(fee.quantity) || 1,
-                unit_price: Number(fee.unit_price) || total,
-                amount: round2(total),
-            });
-        }
-    });
-
-    // Insurance fee (from Quick Pay)
-    if ((Number(insuranceFeeAmount.value) || 0) > 0) {
-        items.push({
-            description: t('insurance_fee_line'),
-            quantity: 1,
-            unit_price: Number(insuranceFeeAmount.value) || 0,
-            amount: round2(Number(insuranceFeeAmount.value) || 0),
-        });
-    }
-
-    // Security deposit line (if included as line)
-    if ((Number(securityDepositAmount.value) || 0) > 0) {
-        items.push({
-            description: t('security_deposit_line'),
-            quantity: 1,
-            unit_price: Number(securityDepositAmount.value) || 0,
-            amount: round2(Number(securityDepositAmount.value) || 0),
-        });
-    }
-
-    // Delivery (0) omitted
-    return items;
+    return props.invoiceItems || [];
 };
 
 const submitFinalize = () => {
@@ -532,10 +454,10 @@ onMounted(() => {
                                     <tr class="border-b bg-gray-50">
                                         <td class="px-4 py-2 text-gray-800">{{ t('base_rental') }}</td>
                                         <td class="px-2 py-2 text-center text-gray-700">{{ summary.rental.base.days }}</td>
-                                        <td class="px-2 py-2 text-right text-gray-700">{{ formatNumber(summary.rental.base.daily_rate) }}</td>
-                                        <td class="px-2 py-2 text-right text-gray-700">{{ formatNumber(summary.rental.base.total) }}</td>
-                                        <td class="px-2 py-2 text-right text-gray-700">{{ formatNumber(baseRentalVat) }}</td>
-                                        <td class="px-4 py-2 text-right font-semibold">{{ formatNumber(summary.rental.base.total + baseRentalVat) }}</td>
+                                        <td class="px-2 py-2 text-right text-gray-700">{{ formatNumber(summary.rental.base.unit_price_net) }}</td>
+                                        <td class="px-2 py-2 text-right text-gray-700">{{ formatNumber(summary.rental.base.net_amount) }}</td>
+                                        <td class="px-2 py-2 text-right text-gray-700">{{ formatNumber(summary.rental.base.vat_amount) }}</td>
+                                        <td class="px-4 py-2 text-right font-semibold">{{ formatNumber(summary.rental.base.total) }}</td>
                                     </tr>
                                     
                                     <tr 
@@ -545,10 +467,10 @@ onMounted(() => {
                                     >
                                         <td class="px-4 py-2 text-gray-800">{{ t('extension') }} #{{ ext.extension_number }}</td>
                                         <td class="px-2 py-2 text-center text-gray-700">{{ ext.days }}</td>
-                                        <td class="px-2 py-2 text-right text-gray-700">{{ formatNumber(ext.daily_rate) }}</td>
-                                        <td class="px-2 py-2 text-right text-gray-700">{{ formatNumber(ext.total) }}</td>
-                                        <td class="px-2 py-2 text-right text-gray-700">{{ formatNumber(calcVat(ext.total)) }}</td>
-                                        <td class="px-4 py-2 text-right font-semibold">{{ formatNumber(ext.total + calcVat(ext.total)) }}</td>
+                                        <td class="px-2 py-2 text-right text-gray-700">{{ formatNumber(ext.unit_price_net) }}</td>
+                                        <td class="px-2 py-2 text-right text-gray-700">{{ formatNumber(ext.net_amount) }}</td>
+                                        <td class="px-2 py-2 text-right text-gray-700">{{ formatNumber(ext.vat_amount) }}</td>
+                                        <td class="px-4 py-2 text-right font-semibold">{{ formatNumber(ext.total) }}</td>
                                     </tr>
                                     
                                     <tr 
@@ -558,10 +480,10 @@ onMounted(() => {
                                     >
                                         <td class="px-4 py-2 text-gray-800">{{ charge.description }}</td>
                                         <td class="px-2 py-2 text-center text-gray-700">1</td>
-                                        <td class="px-2 py-2 text-right text-gray-700">{{ formatNumber(charge.amount) }}</td>
-                                        <td class="px-2 py-2 text-right text-gray-700">{{ formatNumber(charge.amount) }}</td>
-                                        <td class="px-2 py-2 text-right text-gray-700">{{ formatNumber(calcVat(charge.amount)) }}</td>
-                                        <td class="px-4 py-2 text-right font-semibold">{{ formatNumber(charge.amount + calcVat(charge.amount)) }}</td>
+                                        <td class="px-2 py-2 text-right text-gray-700">{{ formatNumber(charge.net_amount) }}</td>
+                                        <td class="px-2 py-2 text-right text-gray-700">{{ formatNumber(charge.net_amount) }}</td>
+                                        <td class="px-2 py-2 text-right text-gray-700">{{ formatNumber(charge.vat_amount) }}</td>
+                                        <td class="px-4 py-2 text-right font-semibold">{{ formatNumber(charge.amount) }}</td>
                                     </tr>
 
                                     <!-- Additional Fees (from ContractAdditionalFee) -->
@@ -591,15 +513,6 @@ onMounted(() => {
                                         <td class="px-4 py-2 text-right font-semibold">{{ formatNumber(fee.total) }}</td>
                                     </tr>
 
-                                    <!-- Delivery Line -->
-                                    <tr class="border-b bg-green-50">
-                                        <td class="px-4 py-2 text-gray-800">{{ t('delivery') }}</td>
-                                        <td class="px-2 py-2 text-center text-gray-700">1</td>
-                                        <td class="px-2 py-2 text-right text-gray-700">{{ formatNumber(0) }}</td>
-                                        <td class="px-2 py-2 text-right text-gray-700">{{ formatNumber(0) }}</td>
-                                        <td class="px-2 py-2 text-right text-gray-600">-</td>
-                                        <td class="px-4 py-2 text-right font-semibold">{{ formatNumber(0) }}</td>
-                                    </tr>
 
                                     <!-- Insurance Fee (Auto-filled from Quick Pay) -->
                                     <tr v-if="insuranceFeeAmount > 0" class="border-b bg-blue-50">

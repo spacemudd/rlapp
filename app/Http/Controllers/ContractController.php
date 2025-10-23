@@ -1334,10 +1334,12 @@ class ContractController extends Controller
 
         $closureService = new ContractClosureService();
         $summary = $closureService->getContractSummary($contract);
+        $invoiceItems = $closureService->buildInvoiceItems($contract);
 
         return Inertia::render('Contracts/ClosureReview', [
             'contract' => $contract->load(['customer', 'vehicle', 'paymentReceipts.allocations', 'extensions', 'additionalFees']),
             'summary' => $summary,
+            'invoiceItems' => $invoiceItems,
         ]);
     }
 
