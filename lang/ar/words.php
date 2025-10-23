@@ -1159,6 +1159,10 @@ return [
     'manual_entry' => 'إدخال يدوي',
     'enter_fuel_charge_if_applicable' => 'أدخل رسوم الوقود إن وجدت',
     'enter_fuel_charge_manually_if_customer_returned_with_less_fuel' => 'أدخل رسوم الوقود يدوياً إذا أرجع العميل المركبة بوقود أقل من وقت الاستلام',
+    'select_charge_type' => 'اختر نوع الرسوم',
+    'fuel_charge_description' => 'رسوم الوقود',
+    'excess_mileage_charge_description' => 'رسوم المسافة الزائدة',
+    'charge_will_be_added_as_additional_fee' => 'سيتم إضافة هذه الرسوم كرسوم إضافية',
     
     // Contract Closure Workflow
     'contract_closure_review' => 'مراجعة إغلاق العقد',

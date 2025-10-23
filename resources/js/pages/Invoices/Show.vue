@@ -6,7 +6,6 @@ import { Link } from '@inertiajs/vue3';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { ref, computed } from 'vue';
-import { useForm } from '@inertiajs/vue3';
 import { Dialog, DialogOverlay, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'vue3-toastify';
 import axios from '@/lib/axios';
@@ -191,30 +190,6 @@ function printPaymentReceipt(paymentId: string) {
     window.open(`/payments/${paymentId}/receipt`, '_blank');
 }
 
-const showPaymentModal = ref(false);
-const paymentForm = useForm({
-    amount: '',
-    payment_method: '',
-    payment_date: format(new Date(), 'yyyy-MM-dd'),
-    status: 'completed',
-    notes: '',
-    transaction_type: 'payment',
-});
-
-function openPaymentModal() {
-    showPaymentModal.value = true;
-}
-function closePaymentModal() {
-    showPaymentModal.value = false;
-    paymentForm.reset();
-}
-function submitPayment() {
-    paymentForm.post(route('payments.store', { invoice: props.invoice.id }), {
-        onSuccess: () => {
-            closePaymentModal();
-        },
-    });
-}
 
 function getTransactionTypeLabel(type: string) {
     if (type === 'deposit') return t('security_deposit');
@@ -304,10 +279,6 @@ async function sendEmail() {
                     <Button variant="outline" class="flex items-center gap-2" @click="downloadPdf">
                         <Download class="h-4 w-4" />
                         {{ t('download_pdf') }}
-                    </Button>
-                    <Button class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white" @click="openPaymentModal">
-                        <DollarSign class="h-4 w-4" />
-                        {{ t('add_payment') }}
                     </Button>
                     <DropdownMenu>
                         <DropdownMenuTrigger as-child>
@@ -414,10 +385,10 @@ async function sendEmail() {
                                         <tr v-for="(item, index) in invoice.items" :key="index">
                                             <td class="py-2 text-sm">{{ item.description }}</td>
                                             <td class="py-2 text-sm text-center">{{ item.quantity || 1 }}</td>
-                                            <td class="py-2 text-sm text-right">{{ (item.unit_price || item.amount || 0).toFixed(2) }}</td>
-                                            <td class="py-2 text-sm text-right">{{ (item.subtotal || item.amount || 0).toFixed(2) }}</td>
+                                            <td class="py-2 text-sm text-right">{{ (item.unit_price || 0).toFixed(2) }}</td>
+                                            <td class="py-2 text-sm text-right">{{ (item.subtotal || 0).toFixed(2) }}</td>
                                             <td class="py-2 text-sm text-right">{{ (item.vat_amount || 0).toFixed(2) }}</td>
-                                            <td class="py-2 text-sm text-right font-medium">{{ (item.total || item.amount || 0).toFixed(2) }}</td>
+                                            <td class="py-2 text-sm text-right font-medium">{{ (item.total || 0).toFixed(2) }}</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -554,59 +525,6 @@ async function sendEmail() {
         </div>
     </AppSidebarLayout>
 
-    <Dialog v-model:open="showPaymentModal">
-        <DialogOverlay />
-        <DialogContent class="max-w-md w-full">
-            <DialogTitle>{{ t('add_payment') }}</DialogTitle>
-            <DialogDescription>{{ t('enter_payment_details_for_this_invoice') }}</DialogDescription>
-            <form @submit.prevent="submitPayment" class="space-y-4 mt-4">
-                <div>
-                    <label class="block text-sm font-medium mb-1">{{ t('amount') }}</label>
-                    <input v-model="paymentForm.amount" type="number" min="0" step="0.01" class="input w-full" required />
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">{{ t('payment_method') }}</label>
-                    <select v-model="paymentForm.payment_method" class="input w-full" required>
-                        <option value="">{{ t('select_method') }}</option>
-                        <option value="cash">{{ t('cash') }}</option>
-                        <option value="credit_card">{{ t('credit_card') }}</option>
-                        <option value="bank_transfer">{{ t('bank_transfer') }}</option>
-                        <option value="tabby">{{ t('tabby') }}</option>
-                        <option value="tamara">{{ t('tamara') }}</option>
-                        <option value="other">{{ t('other') }}</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">{{ t('payment_date') }}</label>
-                    <input v-model="paymentForm.payment_date" type="date" class="input w-full" required />
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">{{ t('status') }}</label>
-                    <select v-model="paymentForm.status" class="input w-full" required>
-                        <option value="completed">{{ t('completed') }}</option>
-                        <option value="pending">{{ t('pending') }}</option>
-                        <option value="failed">{{ t('failed') }}</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">{{ t('transaction_type') }}</label>
-                    <select v-model="paymentForm.transaction_type" class="input w-full" required>
-                        <option value="payment">{{ t('payment') }}</option>
-                        <option value="deposit">{{ t('security_deposit') }}</option>
-                        <option value="refund">{{ t('refund') }}</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">{{ t('notes') }}</label>
-                    <textarea v-model="paymentForm.notes" class="input w-full" rows="2"></textarea>
-                </div>
-                <div class="flex justify-end gap-2 mt-4">
-                    <Button type="button" variant="outline" @click="closePaymentModal">{{ t('cancel') }}</Button>
-                    <Button type="submit" :disabled="paymentForm.processing">{{ t('save_payment') }}</Button>
-                </div>
-            </form>
-        </DialogContent>
-    </Dialog>
 
     <Dialog v-model:open="showEmailModal">
         <DialogOverlay />

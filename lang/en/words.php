@@ -1186,6 +1186,10 @@ return [
     'manual_entry' => 'Manual Entry',
     'enter_fuel_charge_if_applicable' => 'Enter fuel charge if applicable',
     'enter_fuel_charge_manually_if_customer_returned_with_less_fuel' => 'Enter fuel charge manually if customer returned with less fuel than pickup',
+    'select_charge_type' => 'Select Charge Type',
+    'fuel_charge_description' => 'Fuel Charge',
+    'excess_mileage_charge_description' => 'Excess Mileage Charge',
+    'charge_will_be_added_as_additional_fee' => 'This charge will be added as an additional fee',
     
     // Contract Closure Workflow
     'contract_closure_review' => 'Contract Closure Review',

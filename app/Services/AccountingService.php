@@ -1832,6 +1832,11 @@ class AccountingService
             'account_id' => $advanceAccount->id,
             'description' => "Apply advance to invoice {$invoice->invoice_number}",
             'amount' => $allocation->amount,
+            'entity_id' => $entity->id,
+            'currency_id' => $currency->id,
+            'quantity' => 1,
+            'vat_inclusive' => false,
+            'credited' => false, // Debit the advance account
         ]);
 
         // Associate line item with transaction and post

@@ -151,8 +151,18 @@ class ContractClosureService
         $totalNet = 0;
         $totalVat = 0;
 
-        // Excess mileage charge
-        if ($contract->excess_mileage_charge && $contract->excess_mileage_charge > 0) {
+        // Check if there are ContractAdditionalFee records for these charges
+        // If so, don't include them in additional_charges to avoid duplication
+        $hasFuelFee = $contract->additionalFees()
+            ->where('description', __('words.fuel_charge_description'))
+            ->exists();
+        
+        $hasExcessMileageFee = $contract->additionalFees()
+            ->where('description', __('words.excess_mileage_charge_description'))
+            ->exists();
+
+        // Excess mileage charge - only include if no ContractAdditionalFee exists
+        if ($contract->excess_mileage_charge && $contract->excess_mileage_charge > 0 && !$hasExcessMileageFee) {
             $vatSplit = $this->splitVATAmount((float) $contract->excess_mileage_charge, $contract->is_vat_inclusive ?? true);
             $charges[] = [
                 'type' => 'excess_mileage',
@@ -166,8 +176,8 @@ class ContractClosureService
             $totalVat += $vatSplit['vat'];
         }
 
-        // Fuel charge
-        if ($contract->fuel_charge && $contract->fuel_charge > 0) {
+        // Fuel charge - only include if no ContractAdditionalFee exists
+        if ($contract->fuel_charge && $contract->fuel_charge > 0 && !$hasFuelFee) {
             $vatSplit = $this->splitVATAmount((float) $contract->fuel_charge, $contract->is_vat_inclusive ?? true);
             $charges[] = [
                 'type' => 'fuel_charge',

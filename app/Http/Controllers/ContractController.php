@@ -1288,11 +1288,21 @@ class ContractController extends Controller
             'return_fuel_level' => 'required|string|in:full,3/4,1/2,1/4,low,empty',
             'return_condition_photos' => 'nullable|array',
             'fuel_charge' => 'nullable|numeric|min:0',
+            'fuel_charge_fee_type' => 'required_if:fuel_charge,>,0|string',
+            'excess_mileage_fee_type' => 'nullable|string',
         ]);
         
         // Ensure contract is active
         if ($contract->status !== 'active') {
             return back()->withErrors(['error' => 'Only active contracts can be closed.']);
+        }
+        
+        // Calculate excess mileage charge
+        $excessMileageCharge = 0;
+        if ($contract->mileage_limit && $contract->excess_mileage_rate) {
+            $actualMileage = $validated['return_mileage'] - $contract->pickup_mileage;
+            $excessMileage = max(0, $actualMileage - $contract->mileage_limit);
+            $excessMileageCharge = $excessMileage * $contract->excess_mileage_rate;
         }
         
         // Record vehicle return using existing model method
@@ -1302,12 +1312,16 @@ class ContractController extends Controller
             returnPhotos: $validated['return_condition_photos'] ?? []
         );
         
-        // Update contract with manual fuel charge if provided
+        // Update contract with charges
         $contract->update([
             'status' => 'completed',
             'completed_at' => now(),
             'fuel_charge' => $validated['fuel_charge'] ?? 0,
+            'excess_mileage_charge' => $excessMileageCharge,
         ]);
+
+        // Create ContractAdditionalFee records for charges
+        $this->createAdditionalFeesFromCharges($contract, $validated, $excessMileageCharge);
 
         // Record vehicle movement for contract return
         $movementService = new VehicleMovementService();
@@ -1319,6 +1333,43 @@ class ContractController extends Controller
         
         return redirect()->route('contracts.show', $contract)
             ->with('success', 'Contract closed successfully');
+    }
+
+    /**
+     * Create ContractAdditionalFee records from closure charges.
+     * These fees are VAT-exempt as they represent direct charges to the customer.
+     */
+    private function createAdditionalFeesFromCharges(Contract $contract, array $validated, float $excessMileageCharge): void
+    {
+        // Create fuel charge additional fee if applicable
+        if (($validated['fuel_charge'] ?? 0) > 0 && !empty($validated['fuel_charge_fee_type'])) {
+            \App\Models\ContractAdditionalFee::create([
+                'contract_id' => $contract->id,
+                'fee_type' => $validated['fuel_charge_fee_type'],
+                'description' => __('words.fuel_charge_description'),
+                'quantity' => 1,
+                'unit_price' => $validated['fuel_charge'],
+                'discount' => 0,
+                'vat_account_id' => null, // No VAT account needed for exempt fees
+                'is_vat_exempt' => true, // No VAT on closure charges
+                'created_by' => auth()->id(),
+            ]);
+        }
+
+        // Create excess mileage charge additional fee if applicable
+        if ($excessMileageCharge > 0 && !empty($validated['excess_mileage_fee_type'])) {
+            \App\Models\ContractAdditionalFee::create([
+                'contract_id' => $contract->id,
+                'fee_type' => $validated['excess_mileage_fee_type'],
+                'description' => __('words.excess_mileage_charge_description'),
+                'quantity' => 1,
+                'unit_price' => $excessMileageCharge,
+                'discount' => 0,
+                'vat_account_id' => null, // No VAT account needed for exempt fees
+                'is_vat_exempt' => true, // No VAT on closure charges
+                'created_by' => auth()->id(),
+            ]);
+        }
     }
 
     /**
@@ -1452,20 +1503,22 @@ class ContractController extends Controller
         $closureService = new ContractClosureService();
         $summary = $closureService->getContractSummary($contract);
         
-        // Calculate total from contract summary (base rental, extensions, charges, fees, etc.)
-        $contractTotal = $summary['rental']['base']['total'] + 
-                        $summary['rental']['extensions']['total'] + 
-                        $summary['additional_charges']['total'] +
-                        ($summary['additional_fees']['total'] ?? 0);
+        // Use proper totals from closure service (already has VAT split)
+        $subTotal = $summary['rental']['base']['net_amount'] + 
+                    $summary['rental']['extensions']['net_amount'] + 
+                    $summary['additional_charges']['net_amount'] +
+                    ($summary['additional_fees']['subtotal'] ?? 0);
         
-        // Add custom items total
+        $vatAmount = $summary['rental']['base']['vat_amount'] + 
+                     $summary['rental']['extensions']['vat_amount'] + 
+                     $summary['additional_charges']['vat_amount'] +
+                     ($summary['additional_fees']['vat'] ?? 0);
+        
+        // Add custom items total (custom items are treated as net amounts)
         $customItemsTotal = array_sum(array_column($customInvoiceItems, 'amount'));
         
         // Calculate final totals
-        $totalAmount = $contractTotal + $customItemsTotal;
-        $vatRate = 0.05;
-        $subTotal = round($totalAmount / (1 + $vatRate), 2);
-        $vatAmount = round($totalAmount - $subTotal, 2);
+        $totalAmount = $subTotal + $vatAmount + $customItemsTotal;
 
         $invoice = Invoice::create([
             'contract_id' => $contract->id,
@@ -1511,7 +1564,7 @@ class ContractController extends Controller
         if ($summary['rental']['base']['total'] > 0) {
             $invoice->items()->create([
                 'description' => 'Base Rental',
-                'amount' => $summary['rental']['base']['total'],
+                'amount' => $summary['rental']['base']['net_amount'],
                 'discount' => 0,
             ]);
         }
@@ -1521,7 +1574,7 @@ class ContractController extends Controller
             if ($extension['total'] > 0) {
                 $invoice->items()->create([
                     'description' => 'Extension #' . $extension['extension_number'],
-                    'amount' => $extension['total'],
+                    'amount' => $extension['net_amount'],
                     'discount' => 0,
                 ]);
             }
@@ -1532,7 +1585,7 @@ class ContractController extends Controller
             if ($charge['amount'] > 0) {
                 $invoice->items()->create([
                     'description' => $charge['description'],
-                    'amount' => $charge['amount'],
+                    'amount' => $charge['net_amount'],
                     'discount' => 0,
                 ]);
             }
@@ -1544,7 +1597,7 @@ class ContractController extends Controller
                 if ($fee['total'] > 0) {
                     $invoice->items()->create([
                         'description' => $fee['fee_type_name'],
-                        'amount' => $fee['total'],
+                        'amount' => $fee['subtotal'],
                         'discount' => 0,
                     ]);
                 }

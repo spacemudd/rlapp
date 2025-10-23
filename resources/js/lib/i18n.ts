@@ -981,6 +981,10 @@ const messages = {
         manual_entry: 'Manual Entry',
         enter_fuel_charge_if_applicable: 'Enter fuel charge if applicable',
         enter_fuel_charge_manually_if_customer_returned_with_less_fuel: 'Enter fuel charge manually if customer returned with less fuel than pickup',
+        select_charge_type: 'Select Charge Type',
+        fuel_charge_description: 'Fuel Charge',
+        excess_mileage_charge_description: 'Excess Mileage Charge',
+        charge_will_be_added_as_additional_fee: 'This charge will be added as an additional fee',
         
         // Vehicle Form Fields
         plate_number: 'Plate Number',
@@ -2097,6 +2101,10 @@ const messages = {
         manual_entry: 'إدخال يدوي',
         enter_fuel_charge_if_applicable: 'أدخل رسوم الوقود إن وجدت',
         enter_fuel_charge_manually_if_customer_returned_with_less_fuel: 'أدخل رسوم الوقود يدوياً إذا أرجع العميل المركبة بوقود أقل من وقت الاستلام',
+        select_charge_type: 'اختر نوع الرسوم',
+        fuel_charge_description: 'رسوم الوقود',
+        excess_mileage_charge_description: 'رسوم المسافة الزائدة',
+        charge_will_be_added_as_additional_fee: 'سيتم إضافة هذه الرسوم كرسوم إضافية',
         
         // Vehicle Form Fields
         plate_number: 'رقم اللوحة',

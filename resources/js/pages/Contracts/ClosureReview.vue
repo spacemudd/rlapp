@@ -632,19 +632,7 @@ onMounted(() => {
                     <Card>
                         <CardContent class="pt-4">
                             <div class="space-y-2 text-sm">
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">{{ t('subtotal') }}:</span>
-                                    <span class="font-semibold">{{ formatNumber(subtotal) }}</span>
-                                </div>
-                                    <div class="flex justify-between" v-if="discountsTotal > 0">
-                                        <span class="text-gray-600">{{ t('discount') }}:</span>
-                                        <span class="font-semibold text-gray-700">-{{ formatNumber(discountsTotal) }}</span>
-                                    </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">{{ t('vat') }} (5%):</span>
-                                    <span class="font-semibold">{{ formatNumber(vatAmount) }}</span>
-                                </div>
-                                <div class="flex justify-between border-t pt-2">
+                                <div class="flex justify-between pt-2">
                                     <span class="font-bold">{{ t('grand_total') }}:</span>
                                     <span class="font-bold text-lg">{{ formatNumber(grandTotal) }}</span>
                                 </div>

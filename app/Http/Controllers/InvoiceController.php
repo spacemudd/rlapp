@@ -81,7 +81,10 @@ class InvoiceController extends Controller
         $appliedCredits = \App\Models\PaymentReceiptAllocation::query()
             ->with(['paymentReceipt'])
             ->where('invoice_id', $invoice->id)
-            ->whereIn('row_id', ['prepayment', 'rental_income', 'vat_collection', 'security_deposit'])
+            ->where(function ($q) {
+                $q->whereIn('row_id', ['prepayment', 'rental_income', 'vat_collection', 'security_deposit'])
+                  ->orWhere('row_id', 'like', 'additional_fee_%');
+            })
             ->get()
             ->map(function ($allocation) {
                 return [
@@ -206,7 +209,8 @@ class InvoiceController extends Controller
             ->where('invoice_id', $invoice->id)
             ->where(function ($q) {
                 $q->where('allocation_type', 'advance_payment')
-                  ->orWhere('row_id', 'prepayment');
+                  ->orWhere('row_id', 'prepayment')
+                  ->orWhere('row_id', 'like', 'additional_fee_%');
             })
             ->get();
         $appliedCreditsTotal = (float) $appliedCredits->sum('amount');
@@ -252,7 +256,8 @@ class InvoiceController extends Controller
             ->where('invoice_id', $invoice->id)
             ->where(function ($q) {
                 $q->where('allocation_type', 'advance_payment')
-                  ->orWhere('row_id', 'prepayment');
+                  ->orWhere('row_id', 'prepayment')
+                  ->orWhere('row_id', 'like', 'additional_fee_%');
             })
             ->get();
         $appliedCreditsTotal = (float) $appliedCredits->sum('amount');
@@ -288,7 +293,8 @@ class InvoiceController extends Controller
                 ->where('invoice_id', $invoice->id)
                 ->where(function ($q) {
                     $q->where('allocation_type', 'advance_payment')
-                      ->orWhere('row_id', 'prepayment');
+                      ->orWhere('row_id', 'prepayment')
+                      ->orWhere('row_id', 'like', 'additional_fee_%');
                 })
                 ->get();
             $appliedCreditsTotal = (float) $appliedCredits->sum('amount');

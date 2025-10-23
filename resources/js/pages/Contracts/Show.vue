@@ -2,7 +2,7 @@
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import { Edit, User, Car, Calendar, FileText, Receipt, Play, CheckCircle, XCircle, Download, Mail, FileSignature } from 'lucide-vue-next';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { ref, watch, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import axios from 'axios';
 import QuickPayModal from '@/components/QuickPayModal.vue';
 import PaymentReceiptDetailsModal from '@/components/PaymentReceiptDetailsModal.vue';
 import RefundModal from '@/components/RefundModal.vue';
@@ -166,6 +167,8 @@ const closeForm = useForm({
     return_fuel_level: '',
     return_condition_photos: [] as any[],
     fuel_charge: 0,
+    fuel_charge_fee_type: '',
+    excess_mileage_fee_type: '',
 });
 
 // Dialog state
@@ -180,6 +183,10 @@ const showAdditionalFeesDialog = ref(false);
 const selectedReceipt = ref<any>(null);
 const extensionPricing = ref<any>(null);
 
+// Fee types for close contract dialog
+const feeTypes = ref<Array<{key: string, en: string, ar: string}>>([]);
+const loadingFeeTypes = ref(false);
+
 // Action handlers
 const activateContract = () => {
     showActivateDialog.value = true;
@@ -192,6 +199,25 @@ const showReceiptDetails = (receipt: any) => {
 
 const openAdditionalFeesDialog = () => {
     showAdditionalFeesDialog.value = true;
+};
+
+const fetchFeeTypes = async () => {
+    if (feeTypes.value.length > 0) return; // Already fetched
+    
+    loadingFeeTypes.value = true;
+    try {
+        const response = await axios.get('/api/system-settings/fee-types');
+        feeTypes.value = response.data.fee_types || [];
+    } catch (error) {
+        console.error('Failed to fetch fee types:', error);
+    } finally {
+        loadingFeeTypes.value = false;
+    }
+};
+
+const openCloseDialog = () => {
+    showCloseDialog.value = true;
+    fetchFeeTypes(); // Fetch fee types when opening dialog
 };
 
 const handleFeeSubmitted = (data: any) => {
@@ -394,8 +420,6 @@ const formatDateTime = (date: string) => {
     });
 };
 
-import { router } from '@inertiajs/vue3';
-
 function goToCreateInvoice() {
     // Redirect to invoice creation page with prefilled contract for editing before save
     router.visit(route('contracts.create-invoice', props.contract.id), { method: 'post' });
@@ -480,7 +504,7 @@ const hasTermsOrNotes = computed(() =>
                                 </DropdownMenuContent>
                             </DropdownMenu>
 
-                            <!-- Show invoice link if invoice exists, otherwise show create button -->
+                            <!-- Show invoice link if invoice exists -->
                             <div v-if="contract.invoices && contract.invoices.length > 0" class="flex items-center gap-2">
                                 <Link :href="route('invoices.show', contract.invoices[0].id)" class="btn btn-primary bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-md text-sm font-medium">
                                     View Invoice #{{ contract.invoices[0].invoice_number }}
@@ -489,14 +513,6 @@ const hasTermsOrNotes = computed(() =>
                                     (Contract can have only one invoice)
                                 </span>
                             </div>
-                            <Button
-                                v-else-if="contract.status === 'active' || contract.status === 'completed'"
-                                variant="default"
-                                class="bg-indigo-600 text-white hover:bg-indigo-700"
-                                @click="$inertia.visit(route('contracts.prepare-closure', contract.id))"
-                            >
-                                {{ t('create_invoice') }}
-                            </Button>
                             
                         </div>
                     </div>
@@ -511,32 +527,33 @@ const hasTermsOrNotes = computed(() =>
                         <Button size="sm" class="h-6 px-2 py-0 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="openAdditionalFeesDialog">
                             {{ t('additional_fees') }}
                         </Button>
-                        <Button size="sm" class="h-6 px-2 py-0 text-xs bg-blue-600 text-white hover:bg-blue-700">
-                            {{ t('traffic_fines') }}
-                        </Button>
                         <Button size="sm" class="h-6 px-2 py-0 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="downloadPdf">
                             {{ t('download_pdf') }}
                         </Button>
                         <Button v-if="contract.status === 'draft'" size="sm" class="h-6 px-2 py-0 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="activateContract">
                             {{ t('activate_contract') }}
                         </Button>
-                        <Button v-if="contract.status === 'active'" size="sm" class="h-6 px-2 py-0 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="showCloseDialog = true">
+                        <Button v-if="contract.status === 'active'" size="sm" class="h-6 px-2 py-0 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="openExtendDialog">
+                            {{ t('extend_contract') }}
+                        </Button>
+                        <Button v-if="contract.status === 'active'" size="sm" class="h-6 px-2 py-0 text-xs bg-orange-600 text-white hover:bg-orange-700" @click="openCloseDialog">
                             {{ t('close_contract') }}
                         </Button>
                         <Link v-if="contract.invoices && contract.invoices.length > 0" :href="route('invoices.show', contract.invoices[0].id)" size="sm" class="h-6 px-2 py-0 text-xs bg-blue-600 text-white hover:bg-blue-700 inline-flex items-center rounded">
                             View Invoice
                         </Link>
-                        <Button v-else-if="contract.status !== 'void'" size="sm" class="h-6 px-2 py-0 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="$inertia.visit(route('contracts.prepare-closure', contract.id))">
+                        <Button v-else-if="contract.status !== 'void'" size="sm" :class="contract.status === 'completed' ? 'h-6 px-2 py-0 text-xs bg-blue-600 text-white hover:bg-blue-700' : 'h-6 px-2 py-0 text-xs bg-gray-400 text-white cursor-not-allowed'" :disabled="contract.status !== 'completed'" @click="contract.status === 'completed' ? $inertia.visit(route('contracts.prepare-closure', contract.id)) : null">
                             {{ t('create_invoice') }}
-                        </Button>
-                        <Button v-if="contract.status === 'active'" size="sm" class="h-6 px-2 py-0 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="openExtendDialog">
-                            {{ t('extend_contract') }}
-                        </Button>
-                        <Button v-if="contract.status !== 'completed' && contract.status !== 'void'" size="sm" class="h-6 px-2 py-0 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="showVoidDialog = true">
-                            {{ t('void_contract') }}
                         </Button>
                         <Button v-if="contract.status === 'draft'" size="sm" class="h-6 px-2 py-0 text-xs bg-blue-600 text-white hover:bg-blue-700" @click="deleteContract">
                             {{ t('delete_contract') }}
+                        </Button>
+                        <!-- Disabled buttons moved to the end -->
+                        <Button size="sm" class="h-6 px-2 py-0 text-xs bg-gray-400 text-white cursor-not-allowed" disabled>
+                            {{ t('traffic_fines') }}
+                        </Button>
+                        <Button v-if="contract.status !== 'completed' && contract.status !== 'void'" size="sm" class="h-6 px-2 py-0 text-xs bg-gray-400 text-white cursor-not-allowed" disabled>
+                            {{ t('void_contract') }}
                         </Button>
                     </div>
                 </div>
@@ -1024,6 +1041,30 @@ const hasTermsOrNotes = computed(() =>
                                 {{ closeForm.errors.fuel_charge }}
                             </div>
                         </div>
+
+                        <!-- Fuel Charge Fee Type Selection -->
+                        <div v-if="closeForm.fuel_charge > 0" class="space-y-1">
+                            <Label for="fuel_charge_fee_type" class="text-xs">{{ t('select_charge_type') }} - {{ t('fuel_charge_description') }}</Label>
+                            <select 
+                                id="fuel_charge_fee_type"
+                                v-model="closeForm.fuel_charge_fee_type" 
+                                required
+                                class="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <option value="" disabled>{{ t('select_fee_type') }}</option>
+                                <option 
+                                    v-for="feeType in feeTypes" 
+                                    :key="feeType.key" 
+                                    :value="feeType.key"
+                                >
+                                    {{ feeType.en }} / {{ feeType.ar }}
+                                </option>
+                            </select>
+                            <div v-if="closeForm.errors.fuel_charge_fee_type" class="text-xs text-red-600">
+                                {{ closeForm.errors.fuel_charge_fee_type }}
+                            </div>
+                            <p class="text-xs text-gray-600">{{ t('charge_will_be_added_as_additional_fee') }}</p>
+                        </div>
                     </div>
 
                     <!-- Live Calculations -->
@@ -1052,6 +1093,30 @@ const hasTermsOrNotes = computed(() =>
                                     </span>
                                 </div>
                             </div>
+                        </div>
+
+                        <!-- Excess Mileage Fee Type Selection -->
+                        <div v-if="excessMileage > 0 && contract.excess_mileage_rate" class="space-y-1">
+                            <Label for="excess_mileage_fee_type" class="text-xs">{{ t('select_charge_type') }} - {{ t('excess_mileage_charge_description') }}</Label>
+                            <select 
+                                id="excess_mileage_fee_type"
+                                v-model="closeForm.excess_mileage_fee_type" 
+                                required
+                                class="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <option value="" disabled>{{ t('select_fee_type') }}</option>
+                                <option 
+                                    v-for="feeType in feeTypes" 
+                                    :key="feeType.key" 
+                                    :value="feeType.key"
+                                >
+                                    {{ feeType.en }} / {{ feeType.ar }}
+                                </option>
+                            </select>
+                            <div v-if="closeForm.errors.excess_mileage_fee_type" class="text-xs text-red-600">
+                                {{ closeForm.errors.excess_mileage_fee_type }}
+                            </div>
+                            <p class="text-xs text-gray-600">{{ t('charge_will_be_added_as_additional_fee') }}</p>
                         </div>
                     </div>
 
