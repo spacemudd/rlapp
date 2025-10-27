@@ -470,20 +470,7 @@ onMounted(() => {
                                 <tbody>
                                     <!-- Fixed Lines -->
                                     <tr class="border-b bg-gray-50">
-                                        <td class="px-4 py-2 text-gray-800">
-                                            {{ t('base_rental') }}
-                                            <span v-if="summary.rental.base.contracted_days && summary.rental.base.days !== summary.rental.base.contracted_days" 
-                                                  class="text-xs text-gray-500">
-                                                (
-                                                    <span v-if="summary.rental.base.is_early_return" class="text-green-600">
-                                                        {{ summary.rental.base.days }} of {{ summary.rental.base.contracted_days }} days
-                                                    </span>
-                                                    <span v-else-if="summary.rental.base.is_late_return" class="text-red-600">
-                                                        {{ summary.rental.base.days }} of {{ summary.rental.base.contracted_days }} days
-                                                    </span>
-                                                )
-                                            </span>
-                                        </td>
+                                        <td class="px-4 py-2 text-gray-800">{{ t('base_rental') }}</td>
                                         <td class="px-2 py-2 text-center text-gray-700">{{ summary.rental.base.days }}</td>
                                         <td class="px-2 py-2 text-right text-gray-700">{{ formatNumber(summary.rental.base.unit_price_net) }}</td>
                                         <td class="px-2 py-2 text-right text-gray-700">{{ formatNumber(summary.rental.base.net_amount) }}</td>
