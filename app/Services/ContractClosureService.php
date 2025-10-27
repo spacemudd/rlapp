@@ -43,19 +43,30 @@ class ContractClosureService
 
     private function calculateBaseRental(Contract $contract): array
     {
-        // Use the contract's total_days field instead of calculating from dates
-        // This ensures consistency with the contract's actual duration
-        $days = (int) $contract->total_days;
-        $total = $days * $contract->daily_rate;
+        // Calculate actual rental days based on completion date
+        $startDate = Carbon::parse($contract->start_date);
+        $actualEndDate = $contract->completed_at 
+            ? Carbon::parse($contract->completed_at)->startOfDay()
+            : Carbon::parse($contract->end_date);
+        
+        // Calculate actual days (inclusive of start day)
+        $actualDays = $startDate->diffInDays($actualEndDate) + 1;
+        
+        // Use daily rate from contract to maintain consistent pricing
+        $dailyRate = $contract->daily_rate;
+        $total = $actualDays * $dailyRate;
         $vatSplit = $this->splitVATAmount((float) $total, $contract->is_vat_inclusive ?? true);
         
         return [
-            'days' => $days,
+            'days' => $actualDays, // Actual billed days
+            'contracted_days' => (int) $contract->total_days, // Original contract
+            'is_early_return' => $actualDays < (int) $contract->total_days,
+            'is_late_return' => $actualDays > (int) $contract->total_days,
             'daily_rate' => $contract->daily_rate,
             'total' => $total,
             'net_amount' => $vatSplit['net'],
             'vat_amount' => $vatSplit['vat'],
-            'unit_price_net' => round($vatSplit['net'] / max(1, $days), 2),
+            'unit_price_net' => round($vatSplit['net'] / max(1, $actualDays), 2),
             'is_vat_inclusive' => $contract->is_vat_inclusive ?? true,
             'currency' => $contract->currency ?? 'AED',
         ];
@@ -189,30 +200,6 @@ class ContractClosureService
             $total += $contract->fuel_charge;
             $totalNet += $vatSplit['net'];
             $totalVat += $vatSplit['vat'];
-        }
-
-        // Late return charge (if contract is completed and there's a late return)
-        if ($contract->status === 'completed' && $contract->completed_at) {
-            $endDate = Carbon::parse($contract->end_date);
-            $completedAt = Carbon::parse($contract->completed_at);
-            
-            if ($completedAt->gt($endDate)) {
-                $lateDays = $endDate->diffInDays($completedAt);
-                $lateCharge = $lateDays * $contract->daily_rate;
-                $vatSplit = $this->splitVATAmount((float) $lateCharge, $contract->is_vat_inclusive ?? true);
-                
-                $charges[] = [
-                    'type' => 'late_return',
-                    'description' => __('words.late_return_charge'),
-                    'amount' => $lateCharge,
-                    'net_amount' => $vatSplit['net'],
-                    'vat_amount' => $vatSplit['vat'],
-                    'details' => "{$lateDays} " . __('words.days') . " × " . number_format($contract->daily_rate, 2) . " AED",
-                ];
-                $total += $lateCharge;
-                $totalNet += $vatSplit['net'];
-                $totalVat += $vatSplit['vat'];
-            }
         }
 
         return [

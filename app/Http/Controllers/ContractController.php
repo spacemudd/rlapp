@@ -1574,9 +1574,9 @@ class ContractController extends Controller
             'invoice_number' => $this->generateInvoiceNumber(),
             'invoice_date' => now(),
             'due_date' => now()->addDays(30),
-            'total_days' => $contract->total_days,
+            'total_days' => $summary['rental']['base']['days'], // Use actual days from summary
             'start_datetime' => $contract->start_date,
-            'end_datetime' => $contract->end_date,
+            'end_datetime' => $contract->completed_at ?? $contract->end_date, // Use actual return date
             'sub_total' => $subTotal,
             'total_discount' => 0,
             'total_amount' => $totalAmount,
