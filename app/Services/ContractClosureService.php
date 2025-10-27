@@ -44,13 +44,14 @@ class ContractClosureService
     private function calculateBaseRental(Contract $contract): array
     {
         // Calculate actual rental days based on completion date
-        $startDate = Carbon::parse($contract->start_date);
+        $startDate = Carbon::parse($contract->start_date)->startOfDay();
         $actualEndDate = $contract->completed_at 
             ? Carbon::parse($contract->completed_at)->startOfDay()
-            : Carbon::parse($contract->end_date);
+            : Carbon::parse($contract->end_date)->startOfDay();
         
         // Calculate actual days (inclusive of start day)
-        $actualDays = $startDate->diffInDays($actualEndDate) + 1;
+        // Round up to full days - if returned anytime during a day, charge full day
+        $actualDays = (int) ceil($startDate->diffInDays($actualEndDate) + 1);
         
         // Use daily rate from contract to maintain consistent pricing
         $dailyRate = $contract->daily_rate;

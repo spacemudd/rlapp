@@ -1328,7 +1328,7 @@ class ContractController extends Controller
             'return_fuel_level' => 'required|string|in:full,3/4,1/2,1/4,low,empty',
             'return_condition_photos' => 'nullable|array',
             'fuel_charge' => 'nullable|numeric|min:0',
-            'fuel_charge_fee_type' => 'required_if:fuel_charge,>,0|string',
+            'fuel_charge_fee_type' => 'nullable|string',
             'excess_mileage_fee_type' => 'nullable|string',
         ]);
         
@@ -1338,6 +1338,13 @@ class ContractController extends Controller
             $actualMileage = $validated['return_mileage'] - $contract->pickup_mileage;
             $excessMileage = max(0, $actualMileage - $contract->mileage_limit);
             $excessMileageCharge = $excessMileage * $contract->excess_mileage_rate;
+        }
+        
+        // Additional validation: require fuel charge fee type if fuel charge is greater than 0
+        if (($validated['fuel_charge'] ?? 0) > 0 && empty($validated['fuel_charge_fee_type'])) {
+            return back()->withErrors([
+                'fuel_charge_fee_type' => 'The fuel charge fee type field is required when fuel charge is greater than 0.'
+            ]);
         }
         
         // Additional validation: require fee type if there will be an excess mileage charge
