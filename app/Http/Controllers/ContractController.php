@@ -861,9 +861,29 @@ class ContractController extends Controller
         $glAccountIds = array_merge(array_values($liabilityMap), array_values($incomeMap));
         $glAccounts = \IFRS\Models\Account::whereIn('id', $glAccountIds)->get()->keyBy('id');
 
+        // Get payment accounts for each method
+        $branch = $contract->vehicle?->branch ?? $contract->branch;
+        $paymentAccounts = [];
+
+        if ($branch) {
+            $accountingService = app(\App\Services\AccountingService::class);
+            
+            $cashAccount = $accountingService->getPaymentAccountInfo($branch, 'cash');
+            if ($cashAccount) {
+                $paymentAccounts['cash'] = $cashAccount;
+            }
+            
+            $bankAccount = $accountingService->getPaymentAccountInfo($branch, 'card');
+            if ($bankAccount) {
+                $paymentAccounts['card'] = $bankAccount;
+                $paymentAccounts['bank_transfer'] = $bankAccount; // Same account for both
+            }
+        }
+
         $response = [
             'contract_id' => (string) $contract->id,
             'currency' => $contract->currency ?? 'AED',
+            'payment_accounts' => $paymentAccounts,
             'sections' => [
                 [
                     'key' => 'liability',

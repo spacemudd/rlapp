@@ -1508,6 +1508,30 @@ class AccountingService
     }
 
     /**
+     * Get payment account info for a given payment method and branch
+     */
+    public function getPaymentAccountInfo(Branch $branch, string $paymentMethod): ?array
+    {
+        try {
+            $account = $this->getPaymentAccountForMethod($paymentMethod, $branch);
+            if ($account) {
+                return [
+                    'id' => $account->id,
+                    'name' => $account->name,
+                    'code' => $account->code,
+                ];
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to get payment account info', [
+                'branch_id' => $branch->id,
+                'payment_method' => $paymentMethod,
+                'error' => $e->getMessage(),
+            ]);
+        }
+        return null;
+    }
+
+    /**
      * Get customer's accounts receivable account
      */
     private function getCustomerReceivableAccount(Customer $customer)
