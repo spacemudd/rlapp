@@ -1,5 +1,6 @@
 <template>
-  <AppLayout title="Accounting Dashboard">
+  <Head :title="t('Accounting Dashboard')" />
+  <AppLayout>
     <div class="p-6">
       <!-- Header Section -->
       <div class="mb-8">
@@ -333,6 +334,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { Head, router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import { route } from 'ziggy-js'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -354,6 +356,8 @@ import {
   TruckIcon,
   UsersIcon,
 } from '@heroicons/vue/24/outline'
+
+const { t } = useI18n()
 
 // Props
 const props = defineProps({
@@ -392,7 +396,7 @@ const formatAgingLabel = (key) => {
     '91_180_days': '91-180 Days',
     '180_plus_days': '180+ Days'
   }
-  return labels[key] || key
+  return t(labels[key] || key)
 }
 
 const getStatusVariant = (status) => {
