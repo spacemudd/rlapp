@@ -792,7 +792,7 @@ class AccountingService
             return $entity;
         }
 
-        $entity = Entity::where('name', config('app.name', 'Laravel'))->first();
+        $entity = auth()->user()->entity;
 
         if (!$entity) {
             // Create entity without currency first
