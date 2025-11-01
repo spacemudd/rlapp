@@ -216,10 +216,18 @@ class AccountingDashboardController extends Controller
                 ];
             });
 
-        return $recentPayments->merge($recentInvoices)
-            ->sortByDesc('date')
-            ->take(15)
-            ->values();
+        // Convert both collections to arrays and merge
+        $paymentsArray = $recentPayments->toArray();
+        $invoicesArray = $recentInvoices->toArray();
+        $allTransactions = array_merge($paymentsArray, $invoicesArray);
+        
+        // Sort by date descending (newest first)
+        usort($allTransactions, function ($a, $b) {
+            return strcmp($b['date'], $a['date']);
+        });
+        
+        // Take first 15 and return as collection
+        return collect(array_slice($allTransactions, 0, 15));
     }
 
     /**
