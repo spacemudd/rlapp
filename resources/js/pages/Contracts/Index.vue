@@ -36,9 +36,21 @@ interface Contract {
     created_at: string;
 }
 
+interface PaginatedContracts {
+    data: Contract[];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from: number;
+    to: number;
+}
+
 interface Props {
-    contracts: {
-        data: Contract[];
+    contracts: PaginatedContracts;
+    filters?: {
+        search?: string;
+        status?: string;
     };
 }
 
@@ -131,6 +143,44 @@ const endingSoonContracts = computed(() => {
 function viewContract(contract: Contract) {
     router.get(route('contracts.show', contract.id));
 }
+
+// Pagination helper functions
+const generatePageNumbers = () => {
+    const current = props.contracts.current_page;
+    const last = props.contracts.last_page;
+    const pages: number[] = [];
+
+    // Simple approach: show all pages if 10 or fewer, otherwise show range around current
+    if (last <= 10) {
+        for (let i = 1; i <= last; i++) {
+            pages.push(i);
+        }
+    } else {
+        // Show current page +/- 2 pages
+        const start = Math.max(1, current - 2);
+        const end = Math.min(last, current + 2);
+
+        for (let i = start; i <= end; i++) {
+            pages.push(i);
+        }
+    }
+
+    return pages;
+};
+
+const buildPaginationUrl = (page: number) => {
+    const params = new URLSearchParams();
+    params.set('page', page.toString());
+    
+    if (props.filters?.search) {
+        params.set('search', props.filters.search);
+    }
+    if (props.filters?.status && props.filters.status !== 'all') {
+        params.set('status', props.filters.status);
+    }
+    
+    return `/contracts?${params.toString()}`;
+};
 </script>
 
 <template>
@@ -308,6 +358,59 @@ function viewContract(contract: Contract) {
                             </div>
                         </CardContent>
                     </Card>
+                </div>
+
+                <!-- Pagination -->
+                <div v-if="contracts.last_page > 1" class="flex justify-between mt-6">
+                    <p class="text-sm text-muted-foreground">
+                        {{ t('showing') }} {{ contracts.from ?? 0 }} {{ t('to') }} {{ contracts.to ?? 0 }} {{ t('of') }} {{ contracts.total }} {{ t('results') }}
+                    </p>
+
+                    <div class="flex gap-2">
+                        <!-- Previous Button -->
+                        <template v-if="contracts.current_page > 1">
+                            <Link
+                                :href="buildPaginationUrl(contracts.current_page - 1)"
+                                class="px-3 py-2 text-sm border rounded-md transition-colors hover:bg-muted"
+                            >
+                                {{ t('previous') }}
+                            </Link>
+                        </template>
+                        <template v-else>
+                            <span class="px-3 py-2 text-sm border rounded-md text-muted-foreground cursor-not-allowed bg-muted/50">
+                                {{ t('previous') }}
+                            </span>
+                        </template>
+
+                        <!-- Page Numbers -->
+                        <template v-for="page in generatePageNumbers()" :key="`page-${page}`">
+                            <Link
+                                :href="buildPaginationUrl(page)"
+                                class="px-3 py-2 text-sm border rounded-md transition-colors"
+                                :class="{
+                                    'bg-primary text-primary-foreground border-primary': page === contracts.current_page,
+                                    'hover:bg-muted': page !== contracts.current_page
+                                }"
+                            >
+                                {{ page }}
+                            </Link>
+                        </template>
+
+                        <!-- Next Button -->
+                        <template v-if="contracts.current_page < contracts.last_page">
+                            <Link
+                                :href="buildPaginationUrl(contracts.current_page + 1)"
+                                class="px-3 py-2 text-sm border rounded-md transition-colors hover:bg-muted"
+                            >
+                                {{ t('next') }}
+                            </Link>
+                        </template>
+                        <template v-else>
+                            <span class="px-3 py-2 text-sm border rounded-md text-muted-foreground cursor-not-allowed bg-muted/50">
+                                {{ t('next') }}
+                            </span>
+                        </template>
+                    </div>
                 </div>
 
                 <!-- Empty State for entire dataset -->
