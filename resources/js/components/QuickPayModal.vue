@@ -213,20 +213,29 @@ const computeGrandTotal = (row: { total?: number; paid?: number; remaining?: num
     return total - paid - amount;
 };
 
+// Calculate remaining amount: Total - Paid = Remaining
+const computeRemaining = (row: { total?: number; paid?: number }) => {
+    const total = Number(row.total || 0);
+    const paid = Number(row.paid || 0);
+    return Math.max(0, total - paid);
+};
+
 // Compute table totals
 const computeTableTotals = () => {
     if (!quickPaySummary.value?.sections) return { total: 0, paid: 0, remaining: 0, amount: 0, grandTotal: 0 };
     
-    let total = 0, paid = 0, remaining = 0, amount = 0;
+    let total = 0, paid = 0, amount = 0;
     
     quickPaySummary.value.sections.forEach(section => {
         section.rows?.forEach(row => {
             total += Number(row.total || 0);
             paid += Number(row.paid || 0);
-            remaining += Number(row.remaining || 0);
             amount += Number(row.amount || 0);
         });
     });
+    
+    // Calculate remaining as: Total - Paid = Remaining
+    const remaining = Math.max(0, total - paid);
     
     // Grand total: Total - Paid - Amount = Remaining Balance
     const grandTotal = total - paid - amount;
@@ -448,9 +457,9 @@ watch(() => props.isOpen, async (isOpen) => {
                                 </td>
                                 <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(row.total) }}</td>
                                 <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(row.paid) }}</td>
-                                <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(row.remaining) }}</td>
+                                <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(computeRemaining(row)) }}</td>
                                 <td class="px-1 py-0.5 text-center border border-gray-300">
-                                    <Input type="number" class="h-6 text-xs focus:bg-yellow-50 transition-colors" v-model.number="row.amount" :max="row.remaining" min="0" @input="handleRentalIncomeInput(row, 'liability')" @change="handleRentalIncomeInput(row, 'liability')" />
+                                    <Input type="number" class="h-6 text-xs focus:bg-yellow-50 transition-colors" v-model.number="row.amount" :max="computeRemaining(row)" min="0" @input="handleRentalIncomeInput(row, 'liability')" @change="handleRentalIncomeInput(row, 'liability')" />
                                 </td>
                                 <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(computeGrandTotal(row, 'liability')) }}</td>
                             </tr>
@@ -461,7 +470,7 @@ watch(() => props.isOpen, async (isOpen) => {
                                     <td class="px-1 py-0.5 font-medium text-center text-xs border border-gray-300" colspan="3">{{ t('income_section') || 'Income' }}</td>
                                     <td class="px-1 py-0.5 border border-gray-300" colspan="4"></td>
                                 </tr>
-                                <tr v-for="row in (quickPaySummary.sections?.find((s: any) => s.key === 'income')?.rows || [])" :key="row.id">
+                                <tr v-for="row in (quickPaySummary?.sections?.find((s: any) => s.key === 'income')?.rows || [])" :key="row.id">
                                     <td class="px-1 py-0.5 text-start border border-gray-300">
                                         <Input 
                                             v-model="row.memo" 
@@ -475,7 +484,7 @@ watch(() => props.isOpen, async (isOpen) => {
                                     </td>
                                     <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(row.total) }}</td>
                                     <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(row.paid) }}</td>
-                                    <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(row.remaining) }}</td>
+                                    <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(computeRemaining(row)) }}</td>
                                     <td class="px-1 py-0.5 text-center border border-gray-300">
                                         <div class="space-y-1">
                                             <Input 
@@ -483,7 +492,7 @@ watch(() => props.isOpen, async (isOpen) => {
                                                 type="number" 
                                                 class="h-6 text-xs focus:bg-yellow-50 transition-colors" 
                                                 v-model.number="row.amount" 
-                                                :max="row.remaining" 
+                                                :max="computeRemaining(row)" 
                                                 min="0" 
                                                 @input="handleRentalIncomeInput(row, 'income')" 
                                                 @change="handleRentalIncomeInput(row, 'income')" 

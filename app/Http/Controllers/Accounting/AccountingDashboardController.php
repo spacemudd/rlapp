@@ -45,6 +45,7 @@ class AccountingDashboardController extends Controller
             'quickActions' => $this->getQuickActions(),
             'assetsSummary' => $this->getAssetsSummary(),
             'kpiMetrics' => $this->getKPIMetrics(),
+            'dailyActivity' => $this->getDailyActivity(),
         ]);
     }
 
@@ -384,6 +385,133 @@ class AccountingDashboardController extends Controller
             'average_invoice_value' => $avgInvoiceValue,
             'current_month_revenue' => $currentRevenue,
             'previous_month_revenue' => $previousRevenue,
+        ];
+    }
+
+    /**
+     * Get daily activity summary for today.
+     */
+    private function getDailyActivity()
+    {
+        $today = now()->toDateString();
+
+        // Get today's payments (exclude refunds)
+        $todayPayments = Payment::whereDate('payment_date', $today)
+            ->where('status', 'completed')
+            ->where('transaction_type', 'payment')
+            ->with(['customer', 'invoice', 'bank', 'cashAccount'])
+            ->get();
+
+        // Get today's income (invoices issued today)
+        $todayInvoices = Invoice::whereDate('invoice_date', $today)
+            ->with(['customer', 'vehicle'])
+            ->get();
+
+        // Get today's refunds
+        $todayRefunds = Payment::whereDate('payment_date', $today)
+            ->where('status', 'completed')
+            ->where('transaction_type', 'refund')
+            ->with(['customer', 'invoice', 'bank', 'cashAccount'])
+            ->get();
+
+        // Get today's deposits
+        $todayDeposits = Payment::whereDate('payment_date', $today)
+            ->where('status', 'completed')
+            ->where('transaction_type', 'deposit')
+            ->with(['customer', 'invoice', 'bank', 'cashAccount'])
+            ->get();
+
+        // Calculate totals
+        $totalPayments = $todayPayments->sum('amount');
+        $totalIncome = $todayInvoices->sum('total_amount');
+        $totalRefunds = $todayRefunds->sum('amount');
+        $totalDeposits = $todayDeposits->sum('amount');
+        $netCashFlow = $totalPayments + $totalIncome - $totalRefunds - $totalDeposits;
+
+        // Format transactions for display
+        $transactions = collect();
+
+        // Add payments
+        foreach ($todayPayments as $payment) {
+            $transactions->push([
+                'id' => $payment->id,
+                'type' => 'payment',
+                'date' => $payment->payment_date->format('Y-m-d'),
+                'time' => $payment->created_at->format('H:i'),
+                'amount' => $payment->amount,
+                'description' => "Payment from {$payment->customer->full_name}",
+                'reference' => $payment->reference_number ?? $payment->invoice->invoice_number ?? 'N/A',
+                'status' => $payment->status,
+                'method' => $payment->payment_method,
+                'account' => $payment->bank ? $payment->bank->name : ($payment->cashAccount ? $payment->cashAccount->name : 'N/A'),
+            ]);
+        }
+
+        // Add income (invoices)
+        foreach ($todayInvoices as $invoice) {
+            $transactions->push([
+                'id' => $invoice->id,
+                'type' => 'income',
+                'date' => $invoice->invoice_date->format('Y-m-d'),
+                'time' => $invoice->created_at->format('H:i'),
+                'amount' => $invoice->total_amount,
+                'description' => "Invoice {$invoice->invoice_number} - {$invoice->customer->full_name}",
+                'reference' => $invoice->invoice_number,
+                'status' => $invoice->payment_status,
+                'method' => 'invoice',
+                'account' => 'Accounts Receivable',
+            ]);
+        }
+
+        // Add refunds
+        foreach ($todayRefunds as $refund) {
+            $transactions->push([
+                'id' => $refund->id,
+                'type' => 'refund',
+                'date' => $refund->payment_date->format('Y-m-d'),
+                'time' => $refund->created_at->format('H:i'),
+                'amount' => $refund->amount,
+                'description' => "Refund to {$refund->customer->full_name}",
+                'reference' => $refund->reference_number ?? $refund->invoice->invoice_number ?? 'N/A',
+                'status' => $refund->status,
+                'method' => $refund->payment_method,
+                'account' => $refund->bank ? $refund->bank->name : ($refund->cashAccount ? $refund->cashAccount->name : 'N/A'),
+            ]);
+        }
+
+        // Add deposits
+        foreach ($todayDeposits as $deposit) {
+            $transactions->push([
+                'id' => $deposit->id,
+                'type' => 'deposit',
+                'date' => $deposit->payment_date->format('Y-m-d'),
+                'time' => $deposit->created_at->format('H:i'),
+                'amount' => $deposit->amount,
+                'description' => "Deposit from {$deposit->customer->full_name}",
+                'reference' => $deposit->reference_number ?? $deposit->invoice->invoice_number ?? 'N/A',
+                'status' => $deposit->status,
+                'method' => $deposit->payment_method,
+                'account' => $deposit->bank ? $deposit->bank->name : ($deposit->cashAccount ? $deposit->cashAccount->name : 'N/A'),
+            ]);
+        }
+
+        // Sort by time descending (newest first)
+        $transactions = $transactions->sortByDesc(function ($transaction) {
+            return $transaction['date'] . ' ' . $transaction['time'];
+        })->values();
+
+        return [
+            'date' => $today,
+            'total_payments' => $totalPayments,
+            'total_income' => $totalIncome,
+            'total_refunds' => $totalRefunds,
+            'total_deposits' => $totalDeposits,
+            'net_cash_flow' => $netCashFlow,
+            'payments_count' => $todayPayments->count(),
+            'invoices_count' => $todayInvoices->count(),
+            'refunds_count' => $todayRefunds->count(),
+            'deposits_count' => $todayDeposits->count(),
+            'transactions' => $transactions->take(20), // Limit to 20 most recent
         ];
     }
 }
