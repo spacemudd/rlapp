@@ -1,5 +1,6 @@
 <template>
-  <AppLayout title="Accounting Dashboard">
+  <Head :title="t('Accounting Dashboard')" />
+  <AppLayout>
     <div class="p-6">
       <!-- Header Section -->
       <div class="mb-8">
@@ -57,6 +58,133 @@
           color="red"
         />
       </div>
+
+      <!-- Daily Activity Section -->
+      <Card class="mb-8">
+        <CardHeader>
+          <CardTitle class="flex items-center">
+            <ClockIcon class="h-5 w-5 mr-2 text-blue-500" />
+            {{ $t('daily_activity') }} - {{ dailyActivity?.date ? formatDate(dailyActivity.date) : formatDate(new Date().toISOString().split('T')[0]) }}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <!-- Summary Cards -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+            <div class="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <div class="text-2xl font-bold text-green-600 dark:text-green-400">
+                {{ formatCurrency(dailyActivity?.total_income || 0) }}
+              </div>
+              <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                {{ $t('income_invoices') }}
+              </div>
+              <div class="text-xs text-gray-500 mt-1">
+                {{ dailyActivity?.invoices_count || 0 }} {{ $t('invoices') }}
+              </div>
+            </div>
+            
+            <div class="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                {{ formatCurrency(dailyActivity?.total_payments || 0) }}
+              </div>
+              <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                {{ $t('payments_received') }}
+              </div>
+              <div class="text-xs text-gray-500 mt-1">
+                {{ dailyActivity?.payments_count || 0 }} {{ $t('transactions') }}
+              </div>
+            </div>
+            
+            <div class="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+              <div class="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                {{ formatCurrency(dailyActivity?.total_deposits || 0) }}
+              </div>
+              <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                {{ $t('deposits') }}
+              </div>
+              <div class="text-xs text-gray-500 mt-1">
+                {{ dailyActivity?.deposits_count || 0 }} {{ $t('transactions') }}
+              </div>
+            </div>
+            
+            <div class="text-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+              <div class="text-2xl font-bold text-red-600 dark:text-red-400">
+                {{ formatCurrency(dailyActivity?.total_refunds || 0) }}
+              </div>
+              <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                {{ $t('refunds') }}
+              </div>
+              <div class="text-xs text-gray-500 mt-1">
+                {{ dailyActivity?.refunds_count || 0 }} {{ $t('transactions') }}
+              </div>
+            </div>
+            
+            <div class="text-center p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
+              <div class="text-2xl font-bold" 
+                   :class="(dailyActivity?.net_cash_flow || 0) >= 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-red-600 dark:text-red-400'">
+                {{ formatCurrency(dailyActivity?.net_cash_flow || 0) }}
+              </div>
+              <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                {{ $t('net_cash_flow') }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Daily Transactions Table -->
+          <div class="mt-6">
+            <h4 class="font-medium text-gray-900 dark:text-white mb-4">
+              {{ $t('todays_transactions') }}
+            </h4>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="border-b dark:border-gray-700">
+                    <th class="text-left py-2">{{ $t('time') }}</th>
+                    <th class="text-left py-2">{{ $t('type') }}</th>
+                    <th class="text-left py-2">{{ $t('description') }}</th>
+                    <th class="text-left py-2">{{ $t('reference') }}</th>
+                    <th class="text-left py-2">{{ $t('method') }}</th>
+                    <th class="text-left py-2">{{ $t('account') }}</th>
+                    <th class="text-right py-2">{{ $t('amount') }}</th>
+                    <th class="text-center py-2">{{ $t('status') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="!dailyActivity?.transactions || dailyActivity.transactions.length === 0"
+                      class="border-b dark:border-gray-700">
+                    <td colspan="8" class="py-8 text-center text-gray-500">
+                      {{ $t('no_transactions_today') }}
+                    </td>
+                  </tr>
+                  <tr v-for="transaction in (dailyActivity?.transactions || [])" :key="`${transaction.type}-${transaction.id}`" 
+                      class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <td class="py-3">{{ transaction.time }}</td>
+                    <td class="py-3">
+                      <Badge :variant="getTransactionTypeVariant(transaction.type)">
+                        {{ $t(formatTransactionType(transaction.type)) }}
+                      </Badge>
+                    </td>
+                    <td class="py-3">
+                      <div class="font-medium text-gray-900 dark:text-white">{{ transaction.description }}</div>
+                    </td>
+                    <td class="py-3 text-gray-500">{{ transaction.reference }}</td>
+                    <td class="py-3">{{ formatPaymentMethod(transaction.method) }}</td>
+                    <td class="py-3">{{ transaction.account }}</td>
+                    <td class="py-3 text-right font-semibold" 
+                        :class="getAmountColorClass(transaction.type)">
+                      {{ getAmountPrefix(transaction.type) }}{{ formatCurrency(transaction.amount) }}
+                    </td>
+                    <td class="py-3 text-center">
+                      <Badge :variant="getStatusVariant(transaction.status)">
+                        {{ transaction.status }}
+                      </Badge>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <!-- Main Dashboard Grid -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -333,6 +461,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { Head, router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import { route } from 'ziggy-js'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -355,6 +484,8 @@ import {
   UsersIcon,
 } from '@heroicons/vue/24/outline'
 
+const { t } = useI18n()
+
 // Props
 const props = defineProps({
   financialOverview: Object,
@@ -365,6 +496,7 @@ const props = defineProps({
   quickActions: Array,
   assetsSummary: Object,
   kpiMetrics: Object,
+  dailyActivity: Object,
 })
 
 // Methods
@@ -392,7 +524,7 @@ const formatAgingLabel = (key) => {
     '91_180_days': '91-180 Days',
     '180_plus_days': '180+ Days'
   }
-  return labels[key] || key
+  return t(labels[key] || key)
 }
 
 const getStatusVariant = (status) => {
@@ -423,5 +555,53 @@ const navigateToAction = (routeName) => {
   if (routeName) {
     router.visit(route(routeName))
   }
+}
+
+const formatTransactionType = (type) => {
+  const types = {
+    'payment': 'payment',
+    'income': 'income',
+    'refund': 'refund',
+    'deposit': 'deposit',
+  }
+  return types[type] || type
+}
+
+const getTransactionTypeVariant = (type) => {
+  const variants = {
+    'payment': 'default',
+    'income': 'default',
+    'refund': 'destructive',
+    'deposit': 'secondary',
+  }
+  return variants[type] || 'outline'
+}
+
+const getAmountPrefix = (type) => {
+  if (type === 'payment' || type === 'income' || type === 'deposit') {
+    return '+'
+  }
+  return '-'
+}
+
+const getAmountColorClass = (type) => {
+  if (type === 'payment' || type === 'income' || type === 'deposit') {
+    return 'text-green-600 dark:text-green-400'
+  }
+  return 'text-red-600 dark:text-red-400'
+}
+
+const formatPaymentMethod = (method) => {
+  const methods = {
+    'cash': t('Cash'),
+    'check': t('Check'),
+    'bank_transfer': t('Bank Transfer'),
+    'credit_card': t('Credit Card'),
+    'online': t('Online Payment'),
+    'tabby': t('Tabby'),
+    'tamara': t('Tamara'),
+    'invoice': t('Invoice'),
+  }
+  return methods[method] || method
 }
 </script> 

@@ -24,6 +24,11 @@ interface QuickPaySummary {
         }>;
     }>;
     currency: string;
+    payment_accounts?: {
+        cash?: { id: string; name: string; code: string };
+        card?: { id: string; name: string; code: string };
+        bank_transfer?: { id: string; name: string; code: string };
+    };
 }
 
 interface Props {
@@ -43,7 +48,7 @@ const { t } = useI18n();
 // Local state
 const quickPaySummary = ref<QuickPaySummary | null>(null);
 const quickPayLoading = ref(false);
-const quickPayMethod = ref<'cash' | 'card' | 'bank_transfer'>('cash');
+const quickPayMethod = ref<'cash' | 'card' | 'bank_transfer' | ''>('');
 const quickPayRef = ref('');
 const isCalculatingVAT = ref(false);
 const showVATOptions = ref<{ [key: string]: boolean }>({});
@@ -56,6 +61,14 @@ const isSubmitting = ref(false);
 const isDialogOpen = computed({
     get: () => props.isOpen,
     set: (value: boolean) => emit('update:isOpen', value)
+});
+
+// Computed for selected payment account
+const selectedPaymentAccount = computed(() => {
+    if (!quickPayMethod.value || !quickPaySummary.value?.payment_accounts) {
+        return null;
+    }
+    return quickPaySummary.value.payment_accounts[quickPayMethod.value as 'cash' | 'card' | 'bank_transfer'];
 });
 
 // Methods
@@ -102,6 +115,13 @@ const fetchQuickPaySummary = async () => {
 const submitQuickPay = async () => {
     if (!quickPaySummary.value) return;
     
+    // Validate payment method
+    if (!quickPayMethod.value) {
+        errorMessage.value = t('payment_method_required') || 'Please select a payment method';
+        isSubmitting.value = false;
+        return;
+    }
+    
     isSubmitting.value = true;
     errorMessage.value = '';
     
@@ -140,7 +160,7 @@ const submitQuickPay = async () => {
             emit('payment-submitted', data);
             isDialogOpen.value = false;
             // Reset form
-            quickPayMethod.value = 'cash';
+            quickPayMethod.value = '';
             quickPayRef.value = '';
         }
     } catch (error: any) {
@@ -169,7 +189,7 @@ const submitQuickPay = async () => {
 
 const handleCancel = () => {
     isDialogOpen.value = false;
-    quickPayMethod.value = 'cash';
+    quickPayMethod.value = '';
     quickPayRef.value = '';
     errorMessage.value = '';
 };
@@ -193,20 +213,29 @@ const computeGrandTotal = (row: { total?: number; paid?: number; remaining?: num
     return total - paid - amount;
 };
 
+// Calculate remaining amount: Total - Paid = Remaining
+const computeRemaining = (row: { total?: number; paid?: number }) => {
+    const total = Number(row.total || 0);
+    const paid = Number(row.paid || 0);
+    return Math.max(0, total - paid);
+};
+
 // Compute table totals
 const computeTableTotals = () => {
     if (!quickPaySummary.value?.sections) return { total: 0, paid: 0, remaining: 0, amount: 0, grandTotal: 0 };
     
-    let total = 0, paid = 0, remaining = 0, amount = 0;
+    let total = 0, paid = 0, amount = 0;
     
     quickPaySummary.value.sections.forEach(section => {
         section.rows?.forEach(row => {
             total += Number(row.total || 0);
             paid += Number(row.paid || 0);
-            remaining += Number(row.remaining || 0);
             amount += Number(row.amount || 0);
         });
     });
+    
+    // Calculate remaining as: Total - Paid = Remaining
+    const remaining = Math.max(0, total - paid);
     
     // Grand total: Total - Paid - Amount = Remaining Balance
     const grandTotal = total - paid - amount;
@@ -368,6 +397,10 @@ const handleRentalIncomeInput = (row: any, sectionKey: string) => {
 // Watch for dialog opening to fetch data
 watch(() => props.isOpen, async (isOpen) => {
     if (isOpen) {
+        // Reset form when modal opens
+        quickPayMethod.value = '';
+        quickPayRef.value = '';
+        errorMessage.value = '';
         await fetchQuickPaySummary();
         // Focus first input after data loads and DOM is updated
         focusFirstInput();
@@ -424,9 +457,9 @@ watch(() => props.isOpen, async (isOpen) => {
                                 </td>
                                 <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(row.total) }}</td>
                                 <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(row.paid) }}</td>
-                                <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(row.remaining) }}</td>
+                                <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(computeRemaining(row)) }}</td>
                                 <td class="px-1 py-0.5 text-center border border-gray-300">
-                                    <Input type="number" class="h-6 text-xs focus:bg-yellow-50 transition-colors" v-model.number="row.amount" :max="row.remaining" min="0" @input="handleRentalIncomeInput(row, 'liability')" @change="handleRentalIncomeInput(row, 'liability')" />
+                                    <Input type="number" class="h-6 text-xs focus:bg-yellow-50 transition-colors" v-model.number="row.amount" :max="computeRemaining(row)" min="0" @input="handleRentalIncomeInput(row, 'liability')" @change="handleRentalIncomeInput(row, 'liability')" />
                                 </td>
                                 <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(computeGrandTotal(row, 'liability')) }}</td>
                             </tr>
@@ -437,7 +470,7 @@ watch(() => props.isOpen, async (isOpen) => {
                                     <td class="px-1 py-0.5 font-medium text-center text-xs border border-gray-300" colspan="3">{{ t('income_section') || 'Income' }}</td>
                                     <td class="px-1 py-0.5 border border-gray-300" colspan="4"></td>
                                 </tr>
-                                <tr v-for="row in (quickPaySummary.sections?.find((s: any) => s.key === 'income')?.rows || [])" :key="row.id">
+                                <tr v-for="row in (quickPaySummary?.sections?.find((s: any) => s.key === 'income')?.rows || [])" :key="row.id">
                                     <td class="px-1 py-0.5 text-start border border-gray-300">
                                         <Input 
                                             v-model="row.memo" 
@@ -451,7 +484,7 @@ watch(() => props.isOpen, async (isOpen) => {
                                     </td>
                                     <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(row.total) }}</td>
                                     <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(row.paid) }}</td>
-                                    <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(row.remaining) }}</td>
+                                    <td class="px-1 py-0.5 text-end text-xs border border-gray-300" dir="ltr">{{ formatNumber(computeRemaining(row)) }}</td>
                                     <td class="px-1 py-0.5 text-center border border-gray-300">
                                         <div class="space-y-1">
                                             <Input 
@@ -459,7 +492,7 @@ watch(() => props.isOpen, async (isOpen) => {
                                                 type="number" 
                                                 class="h-6 text-xs focus:bg-yellow-50 transition-colors" 
                                                 v-model.number="row.amount" 
-                                                :max="row.remaining" 
+                                                :max="computeRemaining(row)" 
                                                 min="0" 
                                                 @input="handleRentalIncomeInput(row, 'income')" 
                                                 @change="handleRentalIncomeInput(row, 'income')" 
@@ -506,10 +539,15 @@ watch(() => props.isOpen, async (isOpen) => {
                     <div class="space-y-1">
                         <Label for="qp_method">{{ t('payment_method') }}</Label>
                         <select id="qp_method" class="border rounded-md h-9 px-2 bg-white mt-2 focus:bg-yellow-50 transition-colors" v-model="quickPayMethod">
+                            <option value="">{{ t('select_payment_method') || 'Select payment method' }}</option>
                             <option value="cash">{{ t('cash') }}</option>
                             <option value="card">{{ t('card') }}</option>
                             <option value="bank_transfer">{{ t('bank_transfer') }}</option>
                         </select>
+                        <div v-if="quickPayMethod && selectedPaymentAccount" class="text-xs text-gray-600 mt-1">
+                            <span class="font-medium">{{ t('ifrs_account') || 'IFRS Account' }}:</span>
+                            <span dir="ltr">{{ selectedPaymentAccount.name }} ({{ selectedPaymentAccount.code }})</span>
+                        </div>
                     </div>
                     <div class="space-y-1">
                         <Label for="qp_ref">{{ t('reference_number') || 'Ref number' }}</Label>
