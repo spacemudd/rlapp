@@ -217,7 +217,7 @@ const computeGrandTotal = (row: { total?: number; paid?: number; remaining?: num
 const computeRemaining = (row: { total?: number; paid?: number }) => {
     const total = Number(row.total || 0);
     const paid = Number(row.paid || 0);
-    return Math.max(0, total - paid);
+    return total - paid; // Allow negative values when paid > total
 };
 
 // Compute table totals
@@ -234,8 +234,8 @@ const computeTableTotals = () => {
         });
     });
     
-    // Calculate remaining as: Total - Paid = Remaining
-    const remaining = Math.max(0, total - paid);
+    // Calculate remaining as: Total - Paid = Remaining (allow negative values)
+    const remaining = total - paid;
     
     // Grand total: Total - Paid - Amount = Remaining Balance
     const grandTotal = total - paid - amount;
