@@ -97,6 +97,19 @@ class Contract extends Model
     ];
 
     /**
+     * The accessors to append to the model's array form.
+     *
+     * @var array<int, string>
+     */
+    protected $appends = [
+        'start_date_human',
+        'end_date_human',
+        'created_at_human',
+        'start_time_human',
+        'end_time_human',
+    ];
+
+    /**
      * Get the customer that owns the contract.
      */
     public function customer()
@@ -190,6 +203,46 @@ class Contract extends Model
     public function getFullTitleAttribute(): string
     {
         return "{$this->contract_number} - {$this->customer->first_name} {$this->customer->last_name}";
+    }
+
+    /**
+     * Get the start date in yyyy-mm-dd format.
+     */
+    public function getStartDateHumanAttribute(): ?string
+    {
+        return $this->start_date ? $this->start_date->format('Y-m-d') : null;
+    }
+
+    /**
+     * Get the end date in yyyy-mm-dd format.
+     */
+    public function getEndDateHumanAttribute(): ?string
+    {
+        return $this->end_date ? $this->end_date->format('Y-m-d') : null;
+    }
+
+    /**
+     * Get the created at in yyyy-mm-dd hh:mm am/pm format.
+     */
+    public function getCreatedAtHumanAttribute(): ?string
+    {
+        return $this->created_at ? $this->created_at->format('Y-m-d h:i a') : null;
+    }
+
+    /**
+     * Get the start time in hh:mm am/pm format.
+     */
+    public function getStartTimeHumanAttribute(): ?string
+    {
+        return $this->start_date ? $this->start_date->format('h:i a') : null;
+    }
+
+    /**
+     * Get the end time in hh:mm am/pm format.
+     */
+    public function getEndTimeHumanAttribute(): ?string
+    {
+        return $this->end_date ? $this->end_date->format('h:i a') : null;
     }
 
     /**

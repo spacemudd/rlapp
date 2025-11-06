@@ -633,11 +633,13 @@ const hasTermsOrNotes = computed(() =>
                         <div class="grid grid-cols-6 gap-1.5 text-xs">
                             <div class="border border-gray-200 rounded px-1.5 py-1">
                                 <span class="text-gray-500 block">{{ t('start_date') }}</span>
-                                <p class="font-medium text-sm">{{ formatDate(contract.start_date) }}</p>
+                                <p class="font-medium text-sm">{{ contract.start_date_human }}</p>
+                                <p class="text-xs text-gray-500" dir="ltr">{{ contract.start_time_human }}</p>
                             </div>
                             <div class="border border-gray-200 rounded px-1.5 py-1">
                                 <span class="text-gray-500 block">{{ t('end_date') }}</span>
-                                <p class="font-medium text-sm">{{ formatDate(contract.end_date) }}</p>
+                                <p class="font-medium text-sm">{{ contract.end_date_human }}</p>
+                                <p class="text-xs text-gray-500" dir="ltr">{{ contract.end_time_human }}</p>
                             </div>
                             <div v-if="contract.branch" class="border border-gray-200 rounded px-1.5 py-1">
                                 <span class="text-gray-500 block">{{ t('branch') }}</span>
@@ -665,7 +667,7 @@ const hasTermsOrNotes = computed(() =>
                             </div>
                             <div class="border border-gray-200 rounded px-1.5 py-1 col-span-2">
                                 <span class="text-gray-500 block">{{ t('created_at') }}</span>
-                                <p class="font-medium text-sm">{{ formatDateTime(contract.created_at) }}</p>
+                                <p class="font-medium text-sm" dir="ltr">{{ contract.created_at_human }}</p>
                             </div>
                             <!-- Override warning -->
                             <div v-if="contract.override_daily_rate || contract.override_final_price" class="col-span-6">
