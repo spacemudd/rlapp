@@ -8,6 +8,10 @@ use App\Models\Customer;
 use App\Models\User;
 use App\Models\Vehicle;
 use IFRS\Models\Account;
+use App\Services\AccountingService;
+use Carbon\Carbon;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class QuickPayTest extends TestCase
@@ -19,6 +23,184 @@ class QuickPayTest extends TestCase
         $this->artisan('migrate:fresh', [
             '--path' => 'database/migrations',
         ])->run();
+
+        Schema::disableForeignKeyConstraints();
+        if (!Schema::hasTable('ifrs_accounts')) {
+            Schema::create('ifrs_accounts', function (Blueprint $table) {
+                $table->uuid('id')->primary();
+                $table->string('name')->nullable();
+                $table->string('code')->nullable();
+                $table->uuid('entity_id')->nullable();
+            });
+        }
+        Schema::enableForeignKeyConstraints();
+    }
+
+    public function test_quick_pay_respects_initial_grace_period_before_first_day()
+    {
+        config(['app.timezone' => 'Asia/Dubai']);
+
+        app()->bind(AccountingService::class, fn () => new class {
+            public function getPaymentAccountInfo(): ?array
+            {
+                return null;
+            }
+        });
+
+        $start = Carbon::parse('2025-01-01 15:00:00', 'Asia/Dubai');
+        Carbon::setTestNow($start->copy()->addHours(2)->addMinutes(59));
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $customer = Customer::factory()->create([
+            'team_id' => $user->team_id,
+        ]);
+
+        $branch = Branch::factory()->create();
+        $vehicle = Vehicle::factory()->create([
+            'branch_id' => $branch->id,
+        ]);
+
+        $contract = Contract::factory()->create([
+            'team_id' => $user->team_id,
+            'customer_id' => $customer->id,
+            'vehicle_id' => $vehicle->id,
+            'branch_id' => $branch->id,
+            'status' => 'active',
+            'start_date' => $start,
+            'end_date' => $start->copy()->addDays(5),
+            'total_days' => 5,
+            'total_amount' => 525.00, // 5 days * 105 AED (VAT inclusive)
+            'daily_rate' => 105.00,
+            'is_vat_inclusive' => true,
+        ]);
+
+        $response = $this->getJson(route('contracts.quick-pay-summary', $contract));
+        $response->assertOk();
+
+        $data = $response->json();
+        $liabilitySection = collect($data['sections'])->firstWhere('key', 'liability');
+        $this->assertNotNull($liabilitySection);
+
+        $rentalRow = collect($liabilitySection['rows'])->firstWhere('id', 'rental_income');
+        $vatRow = collect($liabilitySection['rows'])->firstWhere('id', 'vat_collection');
+
+        $this->assertNotNull($rentalRow);
+        $this->assertNotNull($vatRow);
+
+        $this->assertSame(0.0, (float) $rentalRow['total']);
+        $this->assertSame(0.0, (float) $vatRow['total']);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_quick_pay_recognizes_first_day_after_grace_period()
+    {
+        config(['app.timezone' => 'Asia/Dubai']);
+
+        app()->bind(AccountingService::class, fn () => new class {
+            public function getPaymentAccountInfo(): ?array
+            {
+                return null;
+            }
+        });
+
+        $start = Carbon::parse('2025-01-01 15:00:00', 'Asia/Dubai');
+        Carbon::setTestNow($start->copy()->addHours(3)->addMinutes(5));
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $customer = Customer::factory()->create([
+            'team_id' => $user->team_id,
+        ]);
+
+        $branch = Branch::factory()->create();
+        $vehicle = Vehicle::factory()->create([
+            'branch_id' => $branch->id,
+        ]);
+
+        $contract = Contract::factory()->create([
+            'team_id' => $user->team_id,
+            'customer_id' => $customer->id,
+            'vehicle_id' => $vehicle->id,
+            'branch_id' => $branch->id,
+            'status' => 'active',
+            'start_date' => $start,
+            'end_date' => $start->copy()->addDays(5),
+            'total_days' => 5,
+            'total_amount' => 525.00,
+            'daily_rate' => 105.00,
+            'is_vat_inclusive' => true,
+        ]);
+
+        $response = $this->getJson(route('contracts.quick-pay-summary', $contract));
+        $response->assertOk();
+
+        $data = $response->json();
+        $liabilitySection = collect($data['sections'])->firstWhere('key', 'liability');
+        $rentalRow = collect($liabilitySection['rows'])->firstWhere('id', 'rental_income');
+        $vatRow = collect($liabilitySection['rows'])->firstWhere('id', 'vat_collection');
+
+        $this->assertSame(100.0, (float) $rentalRow['total']);
+        $this->assertSame(5.0, (float) $vatRow['total']);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_quick_pay_recognizes_second_day_after_one_hour_buffer()
+    {
+        config(['app.timezone' => 'Asia/Dubai']);
+
+        app()->bind(AccountingService::class, fn () => new class {
+            public function getPaymentAccountInfo(): ?array
+            {
+                return null;
+            }
+        });
+
+        $start = Carbon::parse('2025-01-01 15:00:00', 'Asia/Dubai');
+        Carbon::setTestNow($start->copy()->addHours(25)->addMinutes(10));
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $customer = Customer::factory()->create([
+            'team_id' => $user->team_id,
+        ]);
+
+        $branch = Branch::factory()->create();
+        $vehicle = Vehicle::factory()->create([
+            'branch_id' => $branch->id,
+        ]);
+
+        $contract = Contract::factory()->create([
+            'team_id' => $user->team_id,
+            'customer_id' => $customer->id,
+            'vehicle_id' => $vehicle->id,
+            'branch_id' => $branch->id,
+            'status' => 'active',
+            'start_date' => $start,
+            'end_date' => $start->copy()->addDays(5),
+            'total_days' => 5,
+            'total_amount' => 525.00,
+            'daily_rate' => 105.00,
+            'is_vat_inclusive' => true,
+        ]);
+
+        $response = $this->getJson(route('contracts.quick-pay-summary', $contract));
+        $response->assertOk();
+
+        $data = $response->json();
+        $liabilitySection = collect($data['sections'])->firstWhere('key', 'liability');
+        $rentalRow = collect($liabilitySection['rows'])->firstWhere('id', 'rental_income');
+        $vatRow = collect($liabilitySection['rows'])->firstWhere('id', 'vat_collection');
+
+        $this->assertSame(200.0, (float) $rentalRow['total']);
+        $this->assertSame(10.0, (float) $vatRow['total']);
+
+        Carbon::setTestNow();
     }
 
     public function test_quick_pay_summary_returns_empty_sections_for_new_contract()
