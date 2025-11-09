@@ -862,7 +862,11 @@ class ContractController extends Controller
         $glAccounts = collect();
         if (!empty($glAccountIds)) {
             try {
-                if (class_exists(\IFRS\Models\Entity::class) && \IFRS\Models\Entity::getCurrent()) {
+                if (
+                    class_exists(\IFRS\Models\Entity::class)
+                    && method_exists(\IFRS\Models\Entity::class, 'getCurrent')
+                    && \IFRS\Models\Entity::getCurrent()
+                ) {
                     $glAccounts = \IFRS\Models\Account::whereIn('id', $glAccountIds)->get()->keyBy('id');
                 }
             } catch (\Throwable $e) {

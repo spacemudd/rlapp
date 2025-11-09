@@ -49,7 +49,7 @@ class RecognizeContractRevenue extends Command
 
             // Query active contracts
             $query = Contract::where('status', 'active')
-                ->with(['vehicle.branch']);
+                ->with(['vehicle.branch', 'team.entity']);
 
             // Optional: Process specific contract for testing
             if ($this->option('contract_id')) {
@@ -221,6 +221,25 @@ class RecognizeContractRevenue extends Command
         // Process each unrecognized day
         $totalRevenueAmount = 0;
         $totalVATAmount = 0;
+        $entity = optional($contract->team)->entity;
+
+        if (!$entity) {
+            Log::error('Missing IFRS entity for contract revenue recognition', [
+                'contract_id' => $contract->id,
+                'contract_number' => $contract->contract_number,
+                'team_id' => $contract->team_id,
+            ]);
+
+            return [
+                'processed' => false,
+                'reason' => 'IFRS entity not configured for contract team',
+                'days' => 0,
+                'amount' => 0,
+            ];
+        }
+
+        $this->accountingService->setEntityContext($entity);
+
         DB::beginTransaction();
 
         try {
@@ -290,6 +309,8 @@ class RecognizeContractRevenue extends Command
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
+        } finally {
+            $this->accountingService->clearEntityContext();
         }
     }
 
