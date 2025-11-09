@@ -378,6 +378,7 @@ return [
     'last_week' => 'Last Week',
     'last_month' => 'Last Month',
     'last_year' => 'Last Year',
+    'actual_days' => 'Actual Days',
 
     // Welcome Page
     'welcome' => 'Welcome',

@@ -351,6 +351,7 @@ return [
     'last_week' => 'الأسبوع الماضي',
     'last_month' => 'الشهر الماضي',
     'last_year' => 'العام الماضي',
+    'actual_days' => 'الأيام الفعلية',
 
     // Welcome Page
     'welcome' => 'أهلاً وسهلاً',

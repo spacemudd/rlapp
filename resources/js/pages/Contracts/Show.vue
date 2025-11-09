@@ -66,6 +66,12 @@ interface Contract {
     override_reason?: string;
     created_by: string;
     created_at: string;
+    start_date_human?: string;
+    end_date_human?: string;
+    start_time_human?: string;
+    end_time_human?: string;
+    created_at_human?: string;
+    actual_days?: number;
     // Pickup/Return fields
     pickup_mileage?: number;
     pickup_fuel_level?: string;
@@ -648,6 +654,12 @@ const hasTermsOrNotes = computed(() =>
                             <div class="border border-gray-200 rounded px-1.5 py-1">
                                 <span class="text-gray-500 block">{{ t('total_days') }}</span>
                                 <p class="font-medium text-sm">{{ contract.total_days }} {{ t('days') }}</p>
+                                <p class="text-xs text-gray-500 mt-0.5">
+                                    {{ t('actual_days') }}:
+                                    <span class="font-medium text-gray-700">
+                                        {{ contract.actual_days ?? contract.total_days }} {{ t('days') }}
+                                    </span>
+                                </p>
                             </div>
                             <div class="border border-gray-200 rounded px-1.5 py-1">
                                 <span class="text-gray-500 block">{{ t('daily_rate') }}</span>

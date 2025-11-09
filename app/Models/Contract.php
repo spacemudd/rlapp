@@ -107,6 +107,7 @@ class Contract extends Model
         'created_at_human',
         'start_time_human',
         'end_time_human',
+        'actual_days',
     ];
 
     /**
@@ -243,6 +244,30 @@ class Contract extends Model
     public function getEndTimeHumanAttribute(): ?string
     {
         return $this->end_date ? $this->end_date->format('h:i a') : null;
+    }
+
+    /**
+     * Get the actual rental days based on completion or scheduled end.
+     */
+    public function getActualDaysAttribute(): ?int
+    {
+        if (!$this->start_date) {
+            return null;
+        }
+
+        $startDate = $this->start_date->copy()->startOfDay();
+
+        if ($this->completed_at) {
+            $endDate = $this->completed_at->copy()->startOfDay();
+        } elseif ($this->end_date) {
+            $endDate = $this->end_date->copy()->startOfDay();
+        } else {
+            return null;
+        }
+
+        $days = $startDate->diffInDays($endDate, false);
+
+        return (int) max(1, $days + 1);
     }
 
     /**
