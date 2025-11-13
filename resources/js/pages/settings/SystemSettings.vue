@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import AppSidebarLayout from '@/layouts/app/AppSidebarLayout.vue';
 import { useI18n } from 'vue-i18n';
-import { Building2 } from 'lucide-vue-next';
-import { Link } from '@inertiajs/vue3';
+import { Building2, Users } from 'lucide-vue-next';
+import { Link, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 const { t } = useI18n();
+const page = usePage();
+
+const userPermissions = computed(() => page.props.auth?.permissions || []);
+const canManageTeam = computed(() => userPermissions.value.includes('manage team settings'));
 </script>
 
 <template>
@@ -30,6 +35,15 @@ const { t } = useI18n();
                         </svg>
                         <div class="mt-3 text-sm font-medium text-gray-700 dark:text-gray-200">
                             {{ t('manage_fee_types') }}
+                        </div>
+                    </div>
+                </Link>
+
+                <Link v-if="canManageTeam" href="/team">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex flex-col items-center justify-center h-40 border border-gray-200/60 hover:shadow-md transition-shadow cursor-pointer">
+                        <Users class="w-12 h-12 text-gray-500" />
+                        <div class="mt-3 text-sm font-medium text-gray-700 dark:text-gray-200">
+                            {{ t('manage_team') }}
                         </div>
                     </div>
                 </Link>
