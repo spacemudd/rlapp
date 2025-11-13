@@ -7,18 +7,211 @@ use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Models\PaymentReceiptAllocation;
 use IFRS\Models\Account;
+use IFRS\Models\Transaction;
+use App\Services\AccountingService;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class QuickPayTest extends TestCase
 {
+    protected Branch $branch;
+    protected int $defaultGlAccountId;
+    protected array $quickPayAccounts;
+
     protected function setUp(): void
     {
         parent::setUp();
-        // Migrate only our application's migrations to avoid vendor IFRS migrations on SQLite
-        $this->artisan('migrate:fresh', [
-            '--path' => 'database/migrations',
-        ])->run();
+        $this->artisan('migrate:fresh', ['--force' => true])->run();
+
+        $this->defaultGlAccountId = $this->ensureIfrsAccount();
+
+        $defaultGlAccountId = $this->defaultGlAccountId;
+
+        $this->app->bind(AccountingService::class, function () use ($defaultGlAccountId) {
+            return new class ($defaultGlAccountId) {
+                public function __construct(private int $defaultGlAccountId)
+                {
+                }
+
+                public function getPaymentAccountInfo($branch, string $method): array
+                {
+                    return [
+                        'id' => "{$method}_account",
+                        'name' => ucfirst(str_replace('_', ' ', $method)) . ' Account',
+                        'code' => strtoupper($method),
+                    ];
+                }
+
+                public function recordPaymentReceipt($paymentReceipt, array $allocations, array $mappings): object
+                {
+                    foreach ($allocations as $allocation) {
+                        $glAccountId = $mappings[$allocation['row_id']] ?? $this->defaultGlAccountId;
+                        if (!is_numeric($glAccountId)) {
+                            $glAccountId = $this->defaultGlAccountId;
+                        }
+
+                        PaymentReceiptAllocation::create([
+                            'payment_receipt_id' => $paymentReceipt->id,
+                            'row_id' => $allocation['row_id'],
+                            'amount' => $allocation['amount'],
+                            'memo' => $allocation['memo'] ?? null,
+                            'gl_account_id' => $glAccountId,
+                            'description' => $allocation['memo'] ?? ucfirst(str_replace('_', ' ', $allocation['row_id'])),
+                        ]);
+                    }
+
+                    return new Transaction();
+                }
+            };
+        });
+
+        $this->quickPayAccounts = [
+            'liability' => [
+                'violation_guarantee' => $this->defaultGlAccountId,
+                'prepayment' => $this->defaultGlAccountId,
+                'rental_income' => $this->defaultGlAccountId,
+                'vat_collection' => $this->defaultGlAccountId,
+            ],
+            'income' => [
+                'rental_income' => $this->defaultGlAccountId,
+                'vat_collection' => $this->defaultGlAccountId,
+                'insurance_fee' => $this->defaultGlAccountId,
+                'fines' => $this->defaultGlAccountId,
+                'salik_fees' => $this->defaultGlAccountId,
+            ],
+        ];
+
+        $this->branch = Branch::factory()->create([
+            'quick_pay_accounts' => $this->quickPayAccounts,
+        ]);
+    }
+
+    public function test_quick_pay_respects_initial_grace_period_before_first_day()
+    {
+        config(['app.timezone' => 'Asia/Dubai']);
+
+        app()->bind(AccountingService::class, fn () => new class {
+            public function getPaymentAccountInfo(): ?array
+            {
+                return null;
+            }
+        });
+
+        $start = Carbon::parse('2025-01-01 15:00:00', 'Asia/Dubai');
+        Carbon::setTestNow($start->copy()->addHours(2)->addMinutes(59));
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $contract = $this->createContract($user, [
+            'start_date' => $start,
+            'end_date' => $start->copy()->addDays(5),
+            'total_days' => 5,
+            'total_amount' => 525.00, // 5 days * 105 AED (VAT inclusive)
+            'daily_rate' => 105.00,
+            'is_vat_inclusive' => true,
+        ]);
+
+        $response = $this->getJson(route('contracts.quick-pay-summary', $contract));
+        $response->assertOk();
+
+        $data = $response->json();
+        $liabilitySection = collect($data['sections'])->firstWhere('key', 'liability');
+        $this->assertNotNull($liabilitySection);
+
+        $rentalRow = collect($liabilitySection['rows'])->firstWhere('id', 'rental_income');
+        $vatRow = collect($liabilitySection['rows'])->firstWhere('id', 'vat_collection');
+
+        $this->assertNotNull($rentalRow);
+        $this->assertNotNull($vatRow);
+
+        $this->assertSame(0.0, (float) $rentalRow['total']);
+        $this->assertSame(0.0, (float) $vatRow['total']);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_quick_pay_recognizes_first_day_after_grace_period()
+    {
+        config(['app.timezone' => 'Asia/Dubai']);
+
+        app()->bind(AccountingService::class, fn () => new class {
+            public function getPaymentAccountInfo(): ?array
+            {
+                return null;
+            }
+        });
+
+        $start = Carbon::parse('2025-01-01 15:00:00', 'Asia/Dubai');
+        Carbon::setTestNow($start->copy()->addHours(3)->addMinutes(5));
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $contract = $this->createContract($user, [
+            'start_date' => $start,
+            'end_date' => $start->copy()->addDays(5),
+            'total_days' => 5,
+            'total_amount' => 525.00,
+            'daily_rate' => 105.00,
+            'is_vat_inclusive' => true,
+        ]);
+
+        $response = $this->getJson(route('contracts.quick-pay-summary', $contract));
+        $response->assertOk();
+
+        $data = $response->json();
+        $liabilitySection = collect($data['sections'])->firstWhere('key', 'liability');
+        $rentalRow = collect($liabilitySection['rows'])->firstWhere('id', 'rental_income');
+        $vatRow = collect($liabilitySection['rows'])->firstWhere('id', 'vat_collection');
+
+        $this->assertSame(100.0, (float) $rentalRow['total']);
+        $this->assertSame(5.0, (float) $vatRow['total']);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_quick_pay_recognizes_second_day_after_one_hour_buffer()
+    {
+        config(['app.timezone' => 'Asia/Dubai']);
+
+        app()->bind(AccountingService::class, fn () => new class {
+            public function getPaymentAccountInfo(): ?array
+            {
+                return null;
+            }
+        });
+
+        $start = Carbon::parse('2025-01-01 15:00:00', 'Asia/Dubai');
+        Carbon::setTestNow($start->copy()->addHours(25)->addMinutes(10));
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $contract = $this->createContract($user, [
+            'start_date' => $start,
+            'end_date' => $start->copy()->addDays(5),
+            'total_days' => 5,
+            'total_amount' => 525.00,
+            'daily_rate' => 105.00,
+            'is_vat_inclusive' => true,
+        ]);
+
+        $response = $this->getJson(route('contracts.quick-pay-summary', $contract));
+        $response->assertOk();
+
+        $data = $response->json();
+        $liabilitySection = collect($data['sections'])->firstWhere('key', 'liability');
+        $rentalRow = collect($liabilitySection['rows'])->firstWhere('id', 'rental_income');
+        $vatRow = collect($liabilitySection['rows'])->firstWhere('id', 'vat_collection');
+
+        $this->assertSame(200.0, (float) $rentalRow['total']);
+        $this->assertSame(10.0, (float) $vatRow['total']);
+
+        Carbon::setTestNow();
     }
 
     public function test_quick_pay_summary_returns_empty_sections_for_new_contract()
@@ -26,22 +219,7 @@ class QuickPayTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user);
 
-        $customer = Customer::factory()->create([
-            'team_id' => $user->team_id,
-        ]);
-
-        $branch = Branch::factory()->create();
-
-        $vehicle = Vehicle::factory()->create([
-            'branch_id' => $branch->id,
-        ]);
-
-        $contract = Contract::factory()->create([
-            'team_id' => $user->team_id,
-            'customer_id' => $customer->id,
-            'vehicle_id' => $vehicle->id,
-            'status' => 'active',
-        ]);
+        $contract = $this->createContract($user);
 
         $response = $this->getJson(route('contracts.quick-pay-summary', $contract));
 
@@ -71,10 +249,14 @@ class QuickPayTest extends TestCase
         $this->assertContains('liability', $sectionKeys);
         $this->assertContains('income', $sectionKeys);
         
-        // Sections should be empty for now (placeholder implementation)
-        foreach ($data['sections'] as $section) {
-            $this->assertEmpty($section['rows']);
-        }
+        $liabilitySection = collect($data['sections'])->firstWhere('key', 'liability');
+        $rentalRow = collect($liabilitySection['rows'])->firstWhere('id', 'rental_income');
+        $vatRow = collect($liabilitySection['rows'])->firstWhere('id', 'vat_collection');
+
+        $this->assertNotNull($rentalRow);
+        $this->assertNotNull($vatRow);
+        $this->assertSame(0.0, (float) $rentalRow['total']);
+        $this->assertSame(0.0, (float) $vatRow['total']);
     }
 
     public function test_quick_pay_submission_validates_required_fields()
@@ -86,14 +268,7 @@ class QuickPayTest extends TestCase
             'team_id' => $user->team_id,
         ]);
 
-        $vehicle = Vehicle::factory()->create();
-
-        $contract = Contract::factory()->create([
-            'team_id' => $user->team_id,
-            'customer_id' => $customer->id,
-            'vehicle_id' => $vehicle->id,
-            'status' => 'active',
-        ]);
+        $contract = $this->createContract($user, [], $customer);
 
         // Test missing payment_method
         $response = $this->postJson(route('contracts.quick-pay', $contract), [
@@ -140,14 +315,7 @@ class QuickPayTest extends TestCase
             'team_id' => $user->team_id,
         ]);
 
-        $vehicle = Vehicle::factory()->create();
-
-        $contract = Contract::factory()->create([
-            'team_id' => $user->team_id,
-            'customer_id' => $customer->id,
-            'vehicle_id' => $vehicle->id,
-            'status' => 'active',
-        ]);
+        $contract = $this->createContract($user, [], $customer);
 
         $payload = [
             'payment_method' => 'cash',
@@ -164,18 +332,14 @@ class QuickPayTest extends TestCase
         $response->assertOk()
             ->assertJson([
                 'success' => true,
-                'message' => 'Created successfully',
+                'message' => __('words.payment_receipt_created_successfully'),
             ]);
     }
 
     public function test_quick_pay_requires_authentication()
     {
-        $customer = Customer::factory()->create();
-        $vehicle = Vehicle::factory()->create();
-        $contract = Contract::factory()->create([
-            'customer_id' => $customer->id,
-            'vehicle_id' => $vehicle->id,
-        ]);
+        $user = User::factory()->create();
+        $contract = $this->createContract($user);
 
         // Test quick pay summary without authentication
         $response = $this->getJson(route('contracts.quick-pay-summary', $contract));
@@ -195,17 +359,7 @@ class QuickPayTest extends TestCase
         $user1 = User::factory()->create();
         $user2 = User::factory()->create(); // Different team
 
-        $customer = Customer::factory()->create([
-            'team_id' => $user1->team_id,
-        ]);
-
-        $vehicle = Vehicle::factory()->create();
-
-        $contract = Contract::factory()->create([
-            'team_id' => $user1->team_id, // Belongs to user1's team
-            'customer_id' => $customer->id,
-            'vehicle_id' => $vehicle->id,
-        ]);
+        $contract = $this->createContract($user1);
 
         // User2 (different team) tries to access the contract
         $this->actingAs($user2);
@@ -232,14 +386,7 @@ class QuickPayTest extends TestCase
             'team_id' => $user->team_id,
         ]);
 
-        $vehicle = Vehicle::factory()->create();
-
-        $contract = Contract::factory()->create([
-            'team_id' => $user->team_id,
-            'customer_id' => $customer->id,
-            'vehicle_id' => $vehicle->id,
-            'status' => 'active',
-        ]);
+        $contract = $this->createContract($user, [], $customer);
 
         // Test empty allocations
         $response = $this->postJson(route('contracts.quick-pay', $contract), [
@@ -297,14 +444,7 @@ class QuickPayTest extends TestCase
             'team_id' => $user->team_id,
         ]);
 
-        $vehicle = Vehicle::factory()->create();
-
-        $contract = Contract::factory()->create([
-            'team_id' => $user->team_id,
-            'customer_id' => $customer->id,
-            'vehicle_id' => $vehicle->id,
-            'status' => 'active',
-        ]);
+        $contract = $this->createContract($user, [], $customer);
 
         // Test with reference
         $response = $this->postJson(route('contracts.quick-pay', $contract), [
@@ -339,14 +479,7 @@ class QuickPayTest extends TestCase
             'team_id' => $user->team_id,
         ]);
 
-        $vehicle = Vehicle::factory()->create();
-
-        $contract = Contract::factory()->create([
-            'team_id' => $user->team_id,
-            'customer_id' => $customer->id,
-            'vehicle_id' => $vehicle->id,
-            'status' => 'active',
-        ]);
+        $contract = $this->createContract($user, [], $customer);
 
         // Test missing amount_total
         $response = $this->postJson(route('contracts.quick-pay', $contract), [
@@ -381,14 +514,7 @@ class QuickPayTest extends TestCase
             'team_id' => $user->team_id,
         ]);
 
-        $vehicle = Vehicle::factory()->create();
-
-        $contract = Contract::factory()->create([
-            'team_id' => $user->team_id,
-            'customer_id' => $customer->id,
-            'vehicle_id' => $vehicle->id,
-            'status' => 'active',
-        ]);
+        $contract = $this->createContract($user, [], $customer);
 
         $validMethods = ['cash', 'card', 'bank_transfer'];
 
@@ -426,14 +552,9 @@ class QuickPayTest extends TestCase
             'team_id' => $user->team_id,
         ]);
 
-        $vehicle = Vehicle::factory()->create();
-
-        $contract = Contract::factory()->create([
-            'team_id' => $user->team_id,
-            'customer_id' => $customer->id,
-            'vehicle_id' => $vehicle->id,
+        $contract = $this->createContract($user, [
             'currency' => 'USD',
-        ]);
+        ], $customer);
 
         $response = $this->getJson(route('contracts.quick-pay-summary', $contract));
 
@@ -449,5 +570,81 @@ class QuickPayTest extends TestCase
         $response->assertOk();
         $data = $response->json();
         $this->assertEquals('AED', $data['currency']);
+    }
+
+    private function createContract(
+        User $user,
+        array $overrides = [],
+        ?Customer $customer = null,
+        ?Vehicle $vehicle = null,
+        ?Branch $branch = null
+    ): Contract
+    {
+        $branch = $branch ?? $this->branch;
+
+        $customer = $customer ?? Customer::factory()->create([
+            'team_id' => $user->team_id,
+        ]);
+
+        $vehicle = $vehicle ?? Vehicle::factory()->create([
+            'branch_id' => $branch->id,
+        ]);
+
+        $defaults = [
+            'team_id' => $user->team_id,
+            'customer_id' => $customer->id,
+            'vehicle_id' => $vehicle->id,
+            'branch_id' => $branch->id,
+            'status' => 'active',
+        ];
+
+        return Contract::factory()->create(array_merge($defaults, $overrides));
+    }
+
+    private function ensureIfrsAccount(): int
+    {
+        $entityId = DB::table('ifrs_entities')->value('id');
+        if (!$entityId) {
+            $entityId = DB::table('ifrs_entities')->insertGetId([
+                'currency_id' => null,
+                'name' => 'Test Entity',
+                'multi_currency' => false,
+                'mid_year_balances' => false,
+                'year_start' => 1,
+                'locale' => 'en_GB',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        $currencyId = DB::table('ifrs_currencies')->value('id');
+        if (!$currencyId) {
+            $currencyId = DB::table('ifrs_currencies')->insertGetId([
+                'entity_id' => $entityId,
+                'name' => 'Test Currency',
+                'currency_code' => 'TST',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        DB::table('ifrs_entities')->where('id', $entityId)->update(['currency_id' => $currencyId]);
+
+        $accountId = DB::table('ifrs_accounts')->value('id');
+        if (!$accountId) {
+            $accountId = DB::table('ifrs_accounts')->insertGetId([
+                'entity_id' => $entityId,
+                'category_id' => null,
+                'currency_id' => $currencyId,
+                'code' => '9999',
+                'name' => 'Test Account',
+                'description' => 'Auto-generated for tests',
+                'account_type' => 'CURRENT_ASSET',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return (int) $accountId;
     }
 }

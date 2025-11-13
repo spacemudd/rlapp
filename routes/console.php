@@ -44,5 +44,5 @@ Artisan::command('reservations:expire-pending', function () {
 // تشغيل الأمر كل دقيقة تلقائياً
 Schedule::command('reservations:expire-pending')->everyMinute();
 
-// Daily revenue recognition at 3 AM Dubai time
-Schedule::command('contracts:recognize-revenue')->dailyAt('03:00')->timezone('Asia/Dubai');
+// Revenue recognition runs hourly to respect intra-day accrual rules (Asia/Dubai)
+Schedule::command('contracts:recognize-revenue')->hourly()->timezone('Asia/Dubai');

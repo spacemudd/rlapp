@@ -2,7 +2,7 @@
 
 ## Overview
 
-This implementation adds IFRS-compliant daily revenue and VAT recognition for rental contracts. Both revenue and VAT are now recognized daily at 3 AM Dubai time as the rental service is consumed, following proper accrual accounting principles and UAE VAT regulations.
+This implementation adds IFRS-compliant daily revenue and VAT recognition for rental contracts. Revenue checks now run hourly and respect business timing rules (3-hour post-start grace period, 1-hour buffer after each 24-hour cycle) while following accrual accounting principles and UAE VAT regulations.
 
 ## What Was Implemented
 
@@ -10,9 +10,9 @@ This implementation adds IFRS-compliant daily revenue and VAT recognition for re
 **File**: `app/Console/Commands/RecognizeContractRevenue.php`
 
 A Laravel artisan command that:
-- Runs daily at 3 AM Dubai time (scheduled in `routes/console.php`)
+- Runs every hour (scheduled in `routes/console.php`) using Dubai time
 - Processes all active contracts
-- Calculates days elapsed from contract start date
+- Calculates eligible billable days using a 3-hour initial grace period and a 1-hour buffer for subsequent days
 - Splits daily amounts into net rental and VAT based on contract's `is_vat_inclusive` flag
 - Checks how many days have already been recognized for both revenue and VAT
 - Creates separate IFRS journal entries for revenue and VAT per unrecognized day
@@ -43,9 +43,9 @@ Added two methods for daily recognition:
 ### 3. Scheduler Configuration
 **File**: `routes/console.php`
 
-Added daily schedule:
+Added hourly schedule:
 ```php
-Schedule::command('contracts:recognize-revenue')->dailyAt('03:00')->timezone('Asia/Dubai');
+Schedule::command('contracts:recognize-revenue')->hourly()->timezone('Asia/Dubai');
 ```
 
 ### 4. VAT Configuration
@@ -98,7 +98,7 @@ Cr: Customer Deposits (Liability) 200 AED  (Net rental)
 Cr: VAT Collection (Liability)     10 AED  (VAT collected)
 ```
 
-**Oct 17, 3:00 AM** - First day recognition:
+**Oct 15, 7:00 PM** *(3 hours after start)* - First day recognition:
 ```
 Revenue Recognition:
 Dr: Customer Deposits (Liability) 100 AED
@@ -111,7 +111,7 @@ Cr: VAT Payable (Liability)         5 AED
 Narration: "VAT recognition for Contract CON-001234 - Day 1"
 ```
 
-**Oct 18, 3:00 AM** - Second day recognition:
+**Oct 16, 4:00 PM** *(24h + 1h buffer after start)* - Second day recognition:
 ```
 Revenue Recognition:
 Dr: Customer Deposits (Liability) 100 AED
@@ -260,7 +260,7 @@ tail -f storage/logs/laravel.log | grep "Revenue recognition"
 ```
 
 ### Manual test on specific date
-You can temporarily modify the `$today` variable in the command to test different scenarios.
+You can temporarily modify the `$now` variable in the command to test different scenarios.
 
 ## Files Modified
 
@@ -269,7 +269,7 @@ You can temporarily modify the `$today` variable in the command to test differen
 2. ✅ `app/Services/AccountingService.php` - Added recordDailyVATRecognition() and helper methods
 3. ✅ `app/Http/Controllers/ContractController.php` - Updated Quick Pay to split rental/VAT
 4. ✅ `app/Models/Contract.php` - Added is_vat_inclusive field
-5. ✅ `routes/console.php` - Daily schedule at 3 AM
+5. ✅ `routes/console.php` - Hourly schedule with Dubai timezone
 6. ✅ `database/migrations/..._add_is_vat_inclusive_to_contracts_table.php` - New migration
 
 ### Frontend

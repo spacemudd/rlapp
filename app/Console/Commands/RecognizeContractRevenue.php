@@ -45,11 +45,11 @@ class RecognizeContractRevenue extends Command
         try {
             // Get timezone for Dubai
             $timezone = 'Asia/Dubai';
-            $today = Carbon::now($timezone)->startOfDay();
+            $now = Carbon::now($timezone);
 
             // Query active contracts
             $query = Contract::where('status', 'active')
-                ->with(['vehicle.branch']);
+                ->with(['vehicle.branch', 'team.entity']);
 
             // Optional: Process specific contract for testing
             if ($this->option('contract_id')) {
@@ -74,7 +74,7 @@ class RecognizeContractRevenue extends Command
 
             foreach ($contracts as $contract) {
                 try {
-                    $result = $this->processContract($contract, $today, $timezone);
+                    $result = $this->processContract($contract, $now, $timezone);
                     
                     if ($result['processed']) {
                         $processedCount++;
@@ -134,14 +134,12 @@ class RecognizeContractRevenue extends Command
     /**
      * Process a single contract for revenue recognition.
      */
-    private function processContract(Contract $contract, Carbon $today, string $timezone): array
+    private function processContract(Contract $contract, Carbon $currentTime, string $timezone): array
     {
-        // Parse contract dates in Dubai timezone
-        $startDate = Carbon::parse($contract->start_date)->timezone($timezone)->startOfDay();
-        $endDate = Carbon::parse($contract->end_date)->timezone($timezone)->startOfDay();
+        // Parse contract start in Dubai timezone (keep original time component)
+        $startDateTime = Carbon::parse($contract->start_date)->timezone($timezone);
 
-        // Calculate days elapsed since contract start
-        if ($today->lt($startDate)) {
+        if ($currentTime->lt($startDateTime)) {
             return [
                 'processed' => false,
                 'reason' => 'Contract has not started yet',
@@ -150,17 +148,45 @@ class RecognizeContractRevenue extends Command
             ];
         }
 
-        // Clamp today to contract period (don't recognize beyond end date)
-        $clampedToday = $today->gt($endDate) ? $endDate : $today;
+        $secondsSinceStart = $startDateTime->diffInSeconds($currentTime, false);
+        if ($secondsSinceStart < 0) {
+            return [
+                'processed' => false,
+                'reason' => 'Contract has not started yet',
+                'days' => 0,
+                'amount' => 0,
+            ];
+        }
 
-        // Calculate total days elapsed (inclusive of start day)
-        $daysElapsed = $startDate->diffInDays($clampedToday) + 1;
+        $firstDayGraceSeconds = 3 * 3600; // 3 hour grace period
+        if ($secondsSinceStart < $firstDayGraceSeconds) {
+            return [
+                'processed' => false,
+                'reason' => 'Initial grace period not yet elapsed',
+                'days' => 0,
+                'amount' => 0,
+            ];
+        }
+
+        // First day is billable once grace period ends
+        $eligibleDays = 1;
+
+        // Subsequent days accrue once 24h + 1h buffer has passed
+        $secondsAfterInitialBuffer = max(0, $secondsSinceStart - 3600); // 1 hour buffer past each 24h cycle
+        if ($secondsAfterInitialBuffer >= 86400) {
+            $eligibleDays += intdiv($secondsAfterInitialBuffer, 86400);
+        }
+
+        $totalContractDays = max(1, (int) $contract->total_days);
+        if ($contract->status !== 'active') {
+            $eligibleDays = min($eligibleDays, $totalContractDays);
+        }
 
         // Check how many days have already been recognized
         $recognizedDays = $this->getRecognizedDays($contract);
 
         // Calculate days that need recognition
-        $daysToRecognize = $daysElapsed - $recognizedDays;
+        $daysToRecognize = $eligibleDays - $recognizedDays;
 
         if ($daysToRecognize <= 0) {
             return [
@@ -172,8 +198,7 @@ class RecognizeContractRevenue extends Command
         }
 
         // Calculate daily rate and split into net rental and VAT
-        $totalDays = max(1, (int) $contract->total_days);
-        $dailyRate = round($contract->total_amount / $totalDays, 2);
+        $dailyRate = round($contract->total_amount / $totalContractDays, 2);
         
         // Split into net rental and VAT based on contract setting
         $isVatInclusive = $contract->is_vat_inclusive ?? true;
@@ -191,22 +216,43 @@ class RecognizeContractRevenue extends Command
 
         // Check how many days have already been recognized for VAT
         $recognizedVATDays = $this->getRecognizedVATDays($contract);
-        $vatDaysToRecognize = $daysElapsed - $recognizedVATDays;
+        $vatDaysToRecognize = max(0, $eligibleDays - $recognizedVATDays);
 
         // Process each unrecognized day
         $totalRevenueAmount = 0;
         $totalVATAmount = 0;
+        $entity = optional($contract->team)->entity;
+
+        if (!$entity) {
+            Log::error('Missing IFRS entity for contract revenue recognition', [
+                'contract_id' => $contract->id,
+                'contract_number' => $contract->contract_number,
+                'team_id' => $contract->team_id,
+            ]);
+
+            return [
+                'processed' => false,
+                'reason' => 'IFRS entity not configured for contract team',
+                'days' => 0,
+                'amount' => 0,
+            ];
+        }
+
+        $this->accountingService->setEntityContext($entity);
+
         DB::beginTransaction();
 
         try {
             for ($i = 0; $i < $daysToRecognize; $i++) {
                 $dayNumber = $recognizedDays + $i + 1;
-                $recognitionDate = $startDate->copy()->addDays($dayNumber - 1);
+                $recognitionMoment = $dayNumber === 1
+                    ? $startDateTime->copy()->addHours(3)
+                    : $startDateTime->copy()->addHours(($dayNumber - 1) * 24 + 1);
 
                 // Record revenue recognition
                 $revenueTransaction = $this->accountingService->recordDailyRevenueRecognition(
                     $contract,
-                    $recognitionDate,
+                    $recognitionMoment,
                     $dayNumber,
                     $dailyNetRental
                 );
@@ -217,7 +263,7 @@ class RecognizeContractRevenue extends Command
                     'contract_id' => $contract->id,
                     'contract_number' => $contract->contract_number,
                     'day_number' => $dayNumber,
-                    'recognition_date' => $recognitionDate->toDateString(),
+                    'recognition_date' => $recognitionMoment->toDateString(),
                     'amount' => $dailyNetRental,
                     'transaction_id' => $revenueTransaction->id,
                 ]);
@@ -226,12 +272,14 @@ class RecognizeContractRevenue extends Command
             // Process VAT recognition for unrecognized days
             for ($i = 0; $i < $vatDaysToRecognize; $i++) {
                 $dayNumber = $recognizedVATDays + $i + 1;
-                $recognitionDate = $startDate->copy()->addDays($dayNumber - 1);
+                $recognitionMoment = $dayNumber === 1
+                    ? $startDateTime->copy()->addHours(3)
+                    : $startDateTime->copy()->addHours(($dayNumber - 1) * 24 + 1);
 
                 // Record VAT recognition
                 $vatTransaction = $this->accountingService->recordDailyVATRecognition(
                     $contract,
-                    $recognitionDate,
+                    $recognitionMoment,
                     $dayNumber,
                     $dailyVAT
                 );
@@ -242,7 +290,7 @@ class RecognizeContractRevenue extends Command
                     'contract_id' => $contract->id,
                     'contract_number' => $contract->contract_number,
                     'day_number' => $dayNumber,
-                    'recognition_date' => $recognitionDate->toDateString(),
+                    'recognition_date' => $recognitionMoment->toDateString(),
                     'amount' => $dailyVAT,
                     'transaction_id' => $vatTransaction->id,
                 ]);
@@ -261,6 +309,8 @@ class RecognizeContractRevenue extends Command
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
+        } finally {
+            $this->accountingService->clearEntityContext();
         }
     }
 

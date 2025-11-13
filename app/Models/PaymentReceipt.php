@@ -96,8 +96,20 @@ class PaymentReceipt extends Model
      */
     public static function generateReceiptNumber(): string
     {
-        $lastReceipt = static::orderBy('created_at', 'desc')->first();
-        $lastNumber = $lastReceipt ? (int) substr($lastReceipt->receipt_number, 3) : 0;
+        $connection = static::query()->getModel()->getConnection();
+        $driver = $connection->getDriverName();
+
+        $expression = match ($driver) {
+            'mysql' => 'CAST(SUBSTRING(receipt_number, 4) AS UNSIGNED)',
+            'pgsql' => 'CAST(SUBSTRING(receipt_number FROM 4) AS INTEGER)',
+            'sqlite' => 'CAST(SUBSTR(receipt_number, 4) AS INTEGER)',
+            'sqlsrv' => 'CAST(SUBSTRING(receipt_number, 4, LEN(receipt_number)) AS INT)',
+            default => 'CAST(SUBSTRING(receipt_number, 4) AS UNSIGNED)',
+        };
+
+        $lastNumber = (int) static::query()
+            ->selectRaw("MAX({$expression}) as max_number")
+            ->value('max_number');
         return 'PR-' . str_pad((string) ($lastNumber + 1), 6, '0', STR_PAD_LEFT);
     }
 

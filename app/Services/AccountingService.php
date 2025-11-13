@@ -19,12 +19,17 @@ use IFRS\Models\Currency;
 use IFRS\Models\Vat;
 use IFRS\Models\ReportingPeriod;
 use IFRS\Exceptions\MissingReportingPeriod;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Exception;
 
 class AccountingService
 {
+    private ?Entity $entityContext = null;
+
+    private ?Entity $cachedEntity = null;
+
     /**
      * Create IFRS receivable account for a customer.
      */
@@ -784,15 +789,45 @@ class AccountingService
     /**
      * Get the current entity.
      */
-    public function getCurrentEntity(): Entity
+    public function setEntityContext(?Entity $entity): self
     {
-        static $entity = null;
+        $this->entityContext = $entity;
 
         if ($entity) {
-            return $entity;
+            $this->cachedEntity = $entity;
         }
 
-        $entity = auth()->user()->entity;
+        return $this;
+    }
+
+    public function clearEntityContext(): self
+    {
+        $this->entityContext = null;
+        $this->cachedEntity = null;
+
+        return $this;
+    }
+
+    public function getCurrentEntity(): Entity
+    {
+        if ($this->entityContext) {
+            return $this->entityContext;
+        }
+
+        if ($this->cachedEntity) {
+            return $this->cachedEntity;
+        }
+
+        $entity = null;
+        $user = Auth::user();
+
+        if ($user && $user->entity) {
+            $entity = $user->entity;
+        }
+
+        if (!$entity) {
+            $entity = Entity::first();
+        }
 
         if (!$entity) {
             // Create entity without currency first
@@ -813,7 +848,9 @@ class AccountingService
             $entity->refresh();
         }
 
-        return $entity;
+        $this->cachedEntity = $entity;
+
+        return $this->cachedEntity;
     }
 
     /**

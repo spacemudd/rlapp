@@ -8,6 +8,7 @@ use App\Models\Vehicle;
 use App\Models\User;
 use App\Models\Payment;
 use App\Models\Reservation;
+use App\Models\PaymentReceipt;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
@@ -83,26 +84,32 @@ class DashboardController extends Controller
         $totalCars = Vehicle::count();
         $usersCount = User::count();
 
-        // Cash payment statistics
-        $cashPayments = Payment::where('payment_method', 'cash')
+        // Cash payment statistics (combine legacy payments + quick pay receipts)
+        $cashPaymentsQuery = Payment::where('payment_method', 'cash')
             ->where('status', 'completed')
             ->where('transaction_type', 'payment');
-        $cashPaymentsTotal = $cashPayments->sum('amount');
-        $cashPaymentsCount = $cashPayments->count();
+        $cashReceiptsQuery = PaymentReceipt::where('payment_method', 'cash')
+            ->where('status', 'completed');
+        $cashPaymentsTotal = (clone $cashPaymentsQuery)->sum('amount') + (clone $cashReceiptsQuery)->sum('total_amount');
+        $cashPaymentsCount = (clone $cashPaymentsQuery)->count() + (clone $cashReceiptsQuery)->count();
 
-        // Credit card payment statistics
-        $creditCardPayments = Payment::where('payment_method', 'credit_card')
+        // Credit card payment statistics (legacy payments + quick pay receipts)
+        $creditCardPaymentsQuery = Payment::where('payment_method', 'credit_card')
             ->where('status', 'completed')
             ->where('transaction_type', 'payment');
-        $creditCardPaymentsTotal = $creditCardPayments->sum('amount');
-        $creditCardPaymentsCount = $creditCardPayments->count();
+        $creditCardReceiptsQuery = PaymentReceipt::where('payment_method', 'card')
+            ->where('status', 'completed');
+        $creditCardPaymentsTotal = (clone $creditCardPaymentsQuery)->sum('amount') + (clone $creditCardReceiptsQuery)->sum('total_amount');
+        $creditCardPaymentsCount = (clone $creditCardPaymentsQuery)->count() + (clone $creditCardReceiptsQuery)->count();
 
-        // Bank transfer payment statistics
-        $bankTransferPayments = Payment::where('payment_method', 'bank_transfer')
+        // Bank transfer payment statistics (legacy payments + quick pay receipts)
+        $bankTransferPaymentsQuery = Payment::where('payment_method', 'bank_transfer')
             ->where('status', 'completed')
             ->where('transaction_type', 'payment');
-        $bankTransferPaymentsTotal = $bankTransferPayments->sum('amount');
-        $bankTransferPaymentsCount = $bankTransferPayments->count();
+        $bankTransferReceiptsQuery = PaymentReceipt::where('payment_method', 'bank_transfer')
+            ->where('status', 'completed');
+        $bankTransferPaymentsTotal = (clone $bankTransferPaymentsQuery)->sum('amount') + (clone $bankTransferReceiptsQuery)->sum('total_amount');
+        $bankTransferPaymentsCount = (clone $bankTransferPaymentsQuery)->count() + (clone $bankTransferReceiptsQuery)->count();
 
         // Latest payments
         $latestPayments = Payment::where('status', 'completed')

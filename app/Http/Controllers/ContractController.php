@@ -859,7 +859,25 @@ class ContractController extends Controller
 
         // Get GL account details for the mapped accounts
         $glAccountIds = array_merge(array_values($liabilityMap), array_values($incomeMap));
-        $glAccounts = \IFRS\Models\Account::whereIn('id', $glAccountIds)->get()->keyBy('id');
+        $glAccounts = collect();
+        if (!empty($glAccountIds)) {
+            try {
+                if (
+                    class_exists(\IFRS\Models\Entity::class)
+                    && method_exists(\IFRS\Models\Entity::class, 'getCurrent')
+                    && \IFRS\Models\Entity::getCurrent()
+                ) {
+                    $glAccounts = \IFRS\Models\Account::whereIn('id', $glAccountIds)->get()->keyBy('id');
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Failed to load IFRS accounts for quick pay summary', [
+                    'contract_id' => $contract->id,
+                    'account_ids' => $glAccountIds,
+                    'error' => $e->getMessage(),
+                ]);
+                $glAccounts = collect();
+            }
+        }
 
         // Get payment accounts for each method
         $branch = $contract->vehicle?->branch ?? $contract->branch;
@@ -1071,24 +1089,33 @@ class ContractController extends Controller
         // Calculate consumed rental income to date (accrued) and split VAT
         try {
             $tz = config('app.timezone', 'UTC');
-            $start = \Carbon\Carbon::parse($contract->start_date)->timezone($tz)->startOfDay();
-            $end = \Carbon\Carbon::parse($contract->end_date)->timezone($tz)->startOfDay();
-            $now = now()->timezone($tz)->startOfDay();
+            $start = \Carbon\Carbon::parse($contract->start_date)->timezone($tz);
+            $now = now()->timezone($tz);
 
-            // Clamp now to contract period
-            $clampedNow = $now->lt($start) ? $start : ($now->gt($end) ? $end : $now);
+            $secondsSinceStart = $start->diffInSeconds($now, false);
             $daysConsumed = 0;
-            if ($clampedNow->gte($start)) {
-                // +1 to include the start day itself
-                $daysConsumed = $start->diffInDays($clampedNow) + 1;
+
+            if ($secondsSinceStart >= 0) {
+                $firstDayGraceSeconds = 3 * 3600;
+                if ($secondsSinceStart >= $firstDayGraceSeconds) {
+                    $daysConsumed = 1;
+
+                    $secondsAfterInitialBuffer = max(0, $secondsSinceStart - 3600);
+                    if ($secondsAfterInitialBuffer >= 86400) {
+                        $daysConsumed += intdiv($secondsAfterInitialBuffer, 86400);
+                    }
+                }
             }
+
             $totalDays = max(0, (int) $contract->total_days);
-            $daysConsumed = min($daysConsumed, $totalDays);
+            if ($contract->status !== 'active') {
+                $daysConsumed = min($daysConsumed, $totalDays);
+            }
 
             // Prefer per-day derived from total to avoid overridden VAT/rounding mismatches
             $perDay = 0.0;
             if ($totalDays > 0 && $contract->total_amount !== null) {
-                $perDay = round(((float) $contract->total_amount) / $totalDays, 2);
+                $perDay = round(((float) $contract->total_amount) / max(1, $totalDays), 2);
             } else {
                 $perDay = round((float) ($contract->daily_rate ?? 0), 2);
             }

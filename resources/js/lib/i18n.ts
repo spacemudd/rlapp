@@ -249,6 +249,7 @@ const messages = {
         'Average Age': 'Average Age',
         years: 'years',
         days: 'days',
+        actual_days: 'Actual Days',
 
         // Financial Reports
         financial_reports: 'Financial Reports',
@@ -381,6 +382,7 @@ const messages = {
         rented_vehicles_description: 'History of all vehicles rented by this customer',
         rental_duration: 'Rental Duration',
         days: 'days',
+        actual_days: 'Actual Days',
         no_rented_vehicles: 'No vehicles rented yet',
         add_customer: 'Add Customer',
         edit_customer: 'Edit Customer',
@@ -1474,6 +1476,7 @@ const messages = {
         'Average Age': 'متوسط العمر',
         years: 'سنوات',
         days: 'أيام',
+        actual_days: 'الأيام الفعلية',
 
         // Financial Reports
         financial_reports: 'التقارير المالية',
