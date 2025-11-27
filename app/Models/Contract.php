@@ -434,6 +434,9 @@ class Contract extends Model
 
     /**
      * Calculate excess mileage charge.
+     * 
+     * The mileage_limit is treated as a daily limit. Total allowed mileage
+     * is calculated as: daily_limit × (actual rental days + extension days).
      */
     public function calculateExcessMileageCharge(int $returnMileage): float
     {
@@ -441,8 +444,37 @@ class Contract extends Model
             return 0;
         }
 
+        // Calculate actual rental days (from start_date to completed_at or end_date)
+        $startDate = Carbon::parse($this->start_date)->startOfDay();
+        
+        // Determine the actual end date for calculation
+        // Priority: completed_at > end_date > now()
+        // Note: When this method is called from recordVehicleReturn, completed_at may not be set yet,
+        // so we use end_date. The charge will be accurate once completed_at is set.
+        if ($this->completed_at) {
+            $actualEndDate = Carbon::parse($this->completed_at)->startOfDay();
+        } elseif ($this->end_date) {
+            $actualEndDate = Carbon::parse($this->end_date)->startOfDay();
+        } else {
+            // Fallback to current date if end_date is not available
+            $actualEndDate = Carbon::now()->startOfDay();
+        }
+        
+        // Calculate actual days (inclusive of start day)
+        // Round up to full days - if returned anytime during a day, charge full day
+        $actualDays = (int) ceil($startDate->diffInDays($actualEndDate) + 1);
+        
+        // Get extension days
+        $extensionDays = $this->getTotalExtensionDays();
+        
+        // Calculate total allowed mileage: daily limit × (actual days + extension days)
+        $totalAllowedMileage = $this->mileage_limit * ($actualDays + $extensionDays);
+        
+        // Calculate actual mileage driven
         $actualMileage = $returnMileage - $this->pickup_mileage;
-        $excessMileage = max(0, $actualMileage - $this->mileage_limit);
+        
+        // Calculate excess mileage
+        $excessMileage = max(0, $actualMileage - $totalAllowedMileage);
 
         return $excessMileage * $this->excess_mileage_rate;
     }
