@@ -1381,6 +1381,7 @@ class ContractController extends Controller
         
         // Calculate excess mileage charge to determine if fee type is required
         $excessMileageCharge = 0;
+        $excessMileage = 0;
         if ($contract->mileage_limit && $contract->excess_mileage_rate) {
             $actualMileage = $validated['return_mileage'] - $contract->pickup_mileage;
             $excessMileage = max(0, $actualMileage - $contract->mileage_limit);
@@ -1395,7 +1396,7 @@ class ContractController extends Controller
         }
         
         // Additional validation: require fee type if there will be an excess mileage charge
-        if ($excessMileageCharge > 0 && empty($validated['excess_mileage_fee_type'])) {
+        if ($excessMileage > 0 && empty($validated['excess_mileage_fee_type'])) {
             return back()->withErrors([
                 'excess_mileage_fee_type' => 'Please select a fee type for the excess mileage charge.'
             ]);
