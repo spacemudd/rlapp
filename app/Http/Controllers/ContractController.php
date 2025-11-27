@@ -1396,7 +1396,8 @@ class ContractController extends Controller
         }
         
         // Additional validation: require fee type if there will be an excess mileage charge
-        if ($excessMileage > 0 && empty($validated['excess_mileage_fee_type'])) {
+        // Use >= 0.01 to handle floating point precision issues
+        if ($excessMileageCharge >= 0.01 && empty($validated['excess_mileage_fee_type'])) {
             return back()->withErrors([
                 'excess_mileage_fee_type' => 'Please select a fee type for the excess mileage charge.'
             ]);
